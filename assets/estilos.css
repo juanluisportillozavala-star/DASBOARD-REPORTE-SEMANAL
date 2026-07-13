@@ -1,0 +1,53 @@
+body{
+
+    background:#F5F7FA;
+
+    font-family:'Segoe UI';
+
+}
+
+/* HEADER */
+
+h1{
+
+    font-weight:bold;
+
+}
+
+/* TARJETAS */
+
+.card{
+
+    border-radius:15px;
+
+    border:none;
+
+    box-shadow:0px 2px 12px rgba(0,0,0,.08);
+
+}
+
+/* MENU */
+
+.menu-superior{
+
+    margin:25px;
+
+}
+
+.menu-superior .nav-link{
+
+    color:#0B2D5B;
+
+    font-size:18px;
+
+    font-weight:600;
+
+}
+
+.menu-superior .nav-link.active{
+
+    background:#0B2D5B;
+
+    color:white;
+
+}
