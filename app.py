@@ -1,20 +1,21 @@
 """
-=========================================================
+============================================================
 SISTEMA GERENCIAL LIDERZA
-=========================================================
-Archivo principal
+============================================================
+Aplicación principal
 """
 
 from dash import Dash
 import dash_bootstrap_components as dbc
 
-from layouts.home import layout
-from callbacks.callbacks import register_callbacks
+from ventas.layout import crear_layout
+from ventas.callbacks import registrar_callbacks
 
 app = Dash(
     __name__,
     external_stylesheets=[
-        dbc.themes.BOOTSTRAP
+        dbc.themes.BOOTSTRAP,
+        "/assets/estilos.css"
     ],
     suppress_callback_exceptions=True,
     title="Sistema Gerencial Liderza"
@@ -22,9 +23,9 @@ app = Dash(
 
 server = app.server
 
-app.layout = layout
+app.layout = crear_layout()
 
-register_callbacks(app)
+registrar_callbacks(app)
 
 if __name__ == "__main__":
     app.run(debug=True)
