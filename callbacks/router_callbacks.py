@@ -7,7 +7,7 @@ Callbacks de navegación del Sistema Gerencial Liderza.
 
 from dash import Input, Output
 
-from layouts.router import obtener_layout
+from layouts.router import crear_router
 
 
 def registrar_router_callbacks(app):
@@ -27,7 +27,7 @@ def registrar_router_callbacks(app):
 
         if pathname is None:
 
-            return obtener_layout("dashboard")
+            return crear_router("dashboard")
 
         pagina = pathname.replace("/", "").lower()
 
@@ -35,4 +35,4 @@ def registrar_router_callbacks(app):
 
             pagina = "dashboard"
 
-        return obtener_layout(pagina)
+        return crear_router(pagina)
