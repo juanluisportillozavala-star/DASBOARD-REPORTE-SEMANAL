@@ -5,14 +5,15 @@ CALLBACKS DEL MÓDULO VENTAS
 """
 
 from dash import Input, Output, State, html
+
 from ventas.procesamiento import leer_archivos
 
 
 def registrar_callbacks_ventas(app):
 
-    # ======================================================
-    # Mostrar nombre del Catálogo
-    # ======================================================
+    # =====================================================
+    # Mostrar nombre Catálogo
+    # =====================================================
 
     @app.callback(
 
@@ -42,9 +43,9 @@ def registrar_callbacks_ventas(app):
         ]
 
 
-    # ======================================================
+    # =====================================================
     # Mostrar nombre BD Ventas
-    # ======================================================
+    # =====================================================
 
     @app.callback(
 
@@ -74,9 +75,9 @@ def registrar_callbacks_ventas(app):
         ]
 
 
-    # ======================================================
-    # Procesar información
-    # ======================================================
+    # =====================================================
+    # PROCESAR INFORMACIÓN
+    # =====================================================
 
     @app.callback(
 
@@ -92,19 +93,19 @@ def registrar_callbacks_ventas(app):
 
     )
 
-    def procesar_archivos(click, catalogo, ventas):
+    def procesar(click, catalogo, ventas):
 
         if catalogo is None:
 
             return html.Div(
 
-                "❌ Debe seleccionar el archivo Catálogo.",
+                "Debe seleccionar el archivo Catálogo.",
 
                 style={
 
-                    "color": "red",
+                    "color":"red",
 
-                    "fontWeight": "bold"
+                    "fontWeight":"bold"
 
                 }
 
@@ -114,13 +115,13 @@ def registrar_callbacks_ventas(app):
 
             return html.Div(
 
-                "❌ Debe seleccionar el archivo BD Ventas.",
+                "Debe seleccionar el archivo BD Ventas.",
 
                 style={
 
-                    "color": "red",
+                    "color":"red",
 
-                    "fontWeight": "bold"
+                    "fontWeight":"bold"
 
                 }
 
@@ -136,35 +137,61 @@ def registrar_callbacks_ventas(app):
 
             )
 
+            productos_catalogo = len(df_catalogo)
+
+            registros = len(df_ventas)
+
+            productos_encontrados = df_ventas["Producto 2"].notna().sum()
+
+            productos_faltantes = df_ventas["Producto 2"].isna().sum()
+
+            monedas_usd = 0
+
+            if "Líneas de la orden de venta/Divisa" in df_ventas.columns:
+
+                monedas_usd = (
+
+                    df_ventas["Líneas de la orden de venta/Divisa"]
+
+                    .astype(str)
+
+                    .str.upper()
+
+                    .eq("USD")
+
+                    .sum()
+
+                )
+
             return html.Div(
 
                 [
 
-                    html.P("✅ Catálogo leído correctamente"),
+                    html.H5("Proceso terminado correctamente"),
 
-                    html.P("✅ BD Ventas leída correctamente"),
+                    html.Hr(),
 
-                    html.P(
+                    html.P(f"📄 Registros procesados: {registros:,}"),
 
-                        f"📄 Registros encontrados: {len(df_ventas):,}"
+                    html.P(f"📦 Productos en catálogo: {productos_catalogo:,}"),
 
-                    ),
+                    html.P(f"✅ Productos encontrados: {productos_encontrados:,}"),
 
-                    html.P(
+                    html.P(f"⚠ Productos sin encontrar: {productos_faltantes:,}"),
 
-                        f"📦 Productos del catálogo: {len(df_catalogo):,}"
-
-                    ),
+                    html.P(f"💲 Registros en USD: {monedas_usd:,}"),
 
                     html.Br(),
 
-                    html.B(
+                    html.Div(
 
-                        "Proceso terminado correctamente.",
+                        "La base quedó lista para generar KPIs, gráficas y calendario.",
 
                         style={
 
-                            "color": "#198754"
+                            "color":"green",
+
+                            "fontWeight":"bold"
 
                         }
 
@@ -180,21 +207,21 @@ def registrar_callbacks_ventas(app):
 
                 [
 
-                    html.P(
+                    html.H5(
 
-                        "❌ Error al procesar los archivos.",
+                        "Error durante el procesamiento",
 
                         style={
 
-                            "color": "red",
-
-                            "fontWeight": "bold"
+                            "color":"red"
 
                         }
 
                     ),
 
-                    html.P(str(e))
+                    html.Hr(),
+
+                    html.Pre(str(e))
 
                 ]
 
