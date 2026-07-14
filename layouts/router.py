@@ -1,20 +1,16 @@
 """
 =========================================================
-ROUTER
+ROUTER DEL SISTEMA
 =========================================================
-Controla las páginas del sistema.
 """
 
 from dash import html
 
 from layouts.dashboard import crear_dashboard
+from ventas.layout import crear_layout_ventas
 
 
-# =========================================================
-# PLANTILLA TEMPORAL PARA MÓDULOS
-# =========================================================
-
-def pagina_temporal(titulo):
+def pagina_temporal(nombre):
 
     return html.Div(
 
@@ -23,40 +19,13 @@ def pagina_temporal(titulo):
         children=[
 
             html.H1(
-                titulo,
+                nombre,
                 className="titulo"
             ),
 
             html.P(
-                "Módulo en desarrollo.",
+                "Módulo en construcción.",
                 className="subtitulo"
-            ),
-
-            html.Hr(),
-
-            html.Br(),
-
-            html.H3(
-                "🚧 Próximamente",
-                style={
-                    "color": "#173C73"
-                }
-            ),
-
-            html.Br(),
-
-            html.P(
-
-                "Este módulo será desarrollado en las siguientes etapas del proyecto.",
-
-                style={
-
-                    "fontSize": "18px",
-
-                    "color": "#666"
-
-                }
-
             )
 
         ]
@@ -64,19 +33,15 @@ def pagina_temporal(titulo):
     )
 
 
-# =========================================================
-# ROUTER
-# =========================================================
-
 def crear_router(pathname):
 
-    if pathname in ["/", "/dashboard", None]:
+    if pathname in [None, "/", "/dashboard"]:
 
         return crear_dashboard()
 
     elif pathname == "/ventas":
 
-        return pagina_temporal("Ventas")
+        return crear_layout_ventas()
 
     elif pathname == "/ingresos":
 
@@ -102,24 +67,4 @@ def crear_router(pathname):
 
         return pagina_temporal("Configuración")
 
-    else:
-
-        return html.Div(
-
-            className="card-premium",
-
-            children=[
-
-                html.H1(
-                    "404",
-                    className="titulo"
-                ),
-
-                html.P(
-                    "Página no encontrada.",
-                    className="subtitulo"
-                )
-
-            ]
-
-        )
+    return pagina_temporal("Página no encontrada")

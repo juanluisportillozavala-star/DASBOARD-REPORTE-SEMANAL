@@ -2,7 +2,7 @@
 =========================================================
 MÓDULO VENTAS
 =========================================================
-Layout del módulo de Ventas
+Layout principal del módulo de Ventas
 """
 
 from dash import html, dcc
@@ -11,49 +11,27 @@ import dash_bootstrap_components as dbc
 
 def crear_layout_ventas():
 
-    return dbc.Container(
-
-        fluid=True,
+    return html.Div(
 
         children=[
 
-            # ======================================================
-            # TITULO
-            # ======================================================
+            # =====================================
+            # TÍTULOS
+            # =====================================
 
-            dbc.Row(
-
-                dbc.Col(
-
-                    [
-
-                        html.H2(
-
-                            "📈 Ventas",
-
-                            className="titulo"
-
-                        ),
-
-                        html.P(
-
-                            "Análisis comercial y seguimiento de ventas.",
-
-                            className="subtitulo"
-
-                        )
-
-                    ]
-
-                )
-
+            html.H1(
+                "Ventas",
+                className="titulo"
             ),
 
-            html.Br(),
+            html.P(
+                "Carga y procesamiento del reporte de ventas.",
+                className="subtitulo"
+            ),
 
-            # ======================================================
-            # CARGA DE ARCHIVOS
-            # ======================================================
+            # =====================================
+            # TARJETAS DE CARGA
+            # =====================================
 
             dbc.Row(
 
@@ -67,9 +45,10 @@ def crear_layout_ventas():
 
                                 [
 
-                                    html.H5("Catálogo"),
-
-                                    html.Br(),
+                                    html.H4(
+                                        "Catálogo",
+                                        className="mb-3"
+                                    ),
 
                                     dcc.Upload(
 
@@ -79,7 +58,9 @@ def crear_layout_ventas():
 
                                             [
 
-                                                "📂 Arrastra o selecciona el archivo"
+                                                "Arrastra el archivo aquí o ",
+
+                                                html.A("Selecciona un archivo")
 
                                             ]
 
@@ -89,11 +70,25 @@ def crear_layout_ventas():
 
                                         multiple=False
 
+                                    ),
+
+                                    html.Br(),
+
+                                    html.Div(
+
+                                        id="nombre-catalogo",
+
+                                        children="Ningún archivo seleccionado.",
+
+                                        className="archivo-seleccionado"
+
                                     )
 
                                 ]
 
-                            )
+                            ),
+
+                            className="card-premium"
 
                         ),
 
@@ -109,19 +104,22 @@ def crear_layout_ventas():
 
                                 [
 
-                                    html.H5("Base de Datos"),
-
-                                    html.Br(),
+                                    html.H4(
+                                        "BD Ventas",
+                                        className="mb-3"
+                                    ),
 
                                     dcc.Upload(
 
-                                        id="upload-bd",
+                                        id="upload-ventas",
 
                                         children=html.Div(
 
                                             [
 
-                                                "📂 Arrastra o selecciona el archivo"
+                                                "Arrastra el archivo aquí o ",
+
+                                                html.A("Selecciona un archivo")
 
                                             ]
 
@@ -131,11 +129,25 @@ def crear_layout_ventas():
 
                                         multiple=False
 
+                                    ),
+
+                                    html.Br(),
+
+                                    html.Div(
+
+                                        id="nombre-ventas",
+
+                                        children="Ningún archivo seleccionado.",
+
+                                        className="archivo-seleccionado"
+
                                     )
 
                                 ]
 
-                            )
+                            ),
+
+                            className="card-premium"
 
                         ),
 
@@ -149,167 +161,35 @@ def crear_layout_ventas():
 
             html.Br(),
 
-            # ======================================================
-            # KPI
-            # ======================================================
+            dbc.Button(
 
-            dbc.Row(
+                "Procesar",
 
-                [
+                id="btn-procesar",
 
-                    dbc.Col(
+                color="primary",
 
-                        dbc.Card(
-
-                            dbc.CardBody(
-
-                                [
-
-                                    html.H6("Ventas"),
-
-                                    html.H2("$0")
-
-                                ]
-
-                            ),
-
-                            className="kpi"
-
-                        ),
-
-                        md=3
-
-                    ),
-
-                    dbc.Col(
-
-                        dbc.Card(
-
-                            dbc.CardBody(
-
-                                [
-
-                                    html.H6("Utilidad"),
-
-                                    html.H2("$0")
-
-                                ]
-
-                            ),
-
-                            className="kpi"
-
-                        ),
-
-                        md=3
-
-                    ),
-
-                    dbc.Col(
-
-                        dbc.Card(
-
-                            dbc.CardBody(
-
-                                [
-
-                                    html.H6("Margen"),
-
-                                    html.H2("0%")
-
-                                ]
-
-                            ),
-
-                            className="kpi"
-
-                        ),
-
-                        md=3
-
-                    ),
-
-                    dbc.Col(
-
-                        dbc.Card(
-
-                            dbc.CardBody(
-
-                                [
-
-                                    html.H6("Clientes"),
-
-                                    html.H2("0")
-
-                                ]
-
-                            ),
-
-                            className="kpi"
-
-                        ),
-
-                        md=3
-
-                    )
-
-                ]
+                size="lg"
 
             ),
 
-            html.Br(),
+            html.Hr(),
 
-            # ======================================================
-            # GRAFICA
-            # ======================================================
+            html.H3(
 
-            dbc.Card(
+                "Vista previa",
 
-                dbc.CardBody(
+                style={
 
-                    [
+                    "color":"#173C73"
 
-                        html.H4("Gráfica de Ventas"),
-
-                        html.Hr(),
-
-                        dcc.Graph(
-
-                            id="grafica-ventas"
-
-                        )
-
-                    ]
-
-                )
+                }
 
             ),
 
-            html.Br(),
+            html.Div(
 
-            # ======================================================
-            # TABLA
-            # ======================================================
-
-            dbc.Card(
-
-                dbc.CardBody(
-
-                    [
-
-                        html.H4("Detalle de Ventas"),
-
-                        html.Hr(),
-
-                        html.Div(
-
-                            id="tabla-ventas"
-
-                        )
-
-                    ]
-
-                )
+                id="vista-previa"
 
             )
 

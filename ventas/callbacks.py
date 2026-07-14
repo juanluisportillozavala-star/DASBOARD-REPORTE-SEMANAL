@@ -1,91 +1,64 @@
 """
 =========================================================
-CALLBACKS VENTAS
+CALLBACKS DEL MÓDULO VENTAS
 =========================================================
 """
 
-from dash import Input, Output, callback
-from dash import html
-import plotly.graph_objects as go
+from dash import Input, Output
 
 
-def registrar_callbacks(app):
+def registrar_callbacks_ventas(app):
 
-    # =====================================================
-    # GRAFICA VACÍA
-    # =====================================================
 
-    @app.callback(
-
-        Output("grafica-ventas", "figure"),
-
-        Input("grafica-ventas", "id")
-
-    )
-    def cargar_grafica(_):
-
-        fig = go.Figure()
-
-        fig.update_layout(
-
-            title="Ventas por Mes",
-
-            template="plotly_white",
-
-            paper_bgcolor="white",
-
-            plot_bgcolor="white",
-
-            margin=dict(
-
-                l=20,
-                r=20,
-                t=50,
-                b=20
-
-            ),
-
-            xaxis_title="Mes",
-
-            yaxis_title="Ventas"
-
-        )
-
-        return fig
-
-    # =====================================================
-    # TABLA VACÍA
-    # =====================================================
+    # ==========================================
+    # Nombre Catálogo
+    # ==========================================
 
     @app.callback(
 
-        Output("tabla-ventas", "children"),
+        Output(
+            "nombre-catalogo",
+            "children"
+        ),
 
-        Input("tabla-ventas", "id")
+        Input(
+            "upload-catalogo",
+            "filename"
+        )
 
     )
-    def cargar_tabla(_):
 
-        return html.Div(
+    def mostrar_catalogo(nombre):
 
-            [
+        if nombre is None:
 
-                html.Br(),
+            return "Ningún archivo seleccionado."
 
-                html.H5(
+        return f"✅ {nombre}"
 
-                    "No hay información cargada.",
 
-                    style={
+    # ==========================================
+    # Nombre BD Ventas
+    # ==========================================
 
-                        "textAlign":"center",
+    @app.callback(
 
-                        "color":"gray"
+        Output(
+            "nombre-ventas",
+            "children"
+        ),
 
-                    }
-
-                )
-
-            ]
-
+        Input(
+            "upload-ventas",
+            "filename"
         )
+
+    )
+
+    def mostrar_bd(nombre):
+
+        if nombre is None:
+
+            return "Ningún archivo seleccionado."
+
+        return f"✅ {nombre}"

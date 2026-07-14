@@ -8,9 +8,22 @@ Aplicación principal
 from dash import Dash
 import dash_bootstrap_components as dbc
 
-from layouts.principal import crear_principal
-from callbacks.router_callbacks import registrar_router_callbacks
+# =========================
+# Layouts
+# =========================
 
+from layouts.principal import crear_principal
+
+# =========================
+# Callbacks
+# =========================
+
+from callbacks.router_callbacks import registrar_router_callbacks
+from ventas.callbacks import registrar_callbacks_ventas
+
+# =========================
+# Crear aplicación
+# =========================
 
 app = Dash(
 
@@ -34,24 +47,23 @@ app = Dash(
 
 server = app.server
 
-
-# =========================================================
+# =========================
 # Layout principal
-# =========================================================
+# =========================
 
 app.layout = crear_principal()
 
-
-# =========================================================
-# Callbacks
-# =========================================================
+# =========================
+# Registrar callbacks
+# =========================
 
 registrar_router_callbacks(app)
 
+registrar_callbacks_ventas(app)
 
-# =========================================================
+# =========================
 # Ejecutar
-# =========================================================
+# =========================
 
 if __name__ == "__main__":
 
