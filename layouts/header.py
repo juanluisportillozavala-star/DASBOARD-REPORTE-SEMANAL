@@ -1,25 +1,22 @@
 """
-=========================================================
 HEADER
-=========================================================
-Encabezado principal del Sistema Gerencial Liderza
+Sistema Gerencial Liderza
 """
 
 from dash import html
-from config import *
 
 
 def crear_header():
 
-    return html.Header(
+    return html.Div(
 
         className="header",
 
         children=[
 
-            # ============================================
+            # -------------------------
             # LOGO
-            # ============================================
+            # -------------------------
 
             html.Div(
 
@@ -27,81 +24,36 @@ def crear_header():
 
                 children=[
 
-                    html.Img(
+                    html.Div(
 
-                        src=f"data:image/png;base64,{LOGO_BASE64}",
+                        className="logo-box",
 
-                        className="logo-img"
+                        children=[
+
+                            html.Img(
+                                src="/assets/logo.png",
+                                className="logo-img"
+                            )
+
+                        ]
 
                     ),
 
                     html.Div(
 
-                        [
+                        children=[
 
-                            html.H3(
-
-                                NOMBRE_SISTEMA,
-
+                            html.H1(
+                                "Sistema Gerencial Liderza",
                                 className="logo-titulo"
-
                             ),
 
-                            html.Small(
-
+                            html.P(
                                 "Dashboard Corporativo",
-
                                 className="logo-subtitulo"
-
                             )
 
                         ]
-
-                    )
-
-                ]
-
-            ),
-
-            # ============================================
-            # USUARIO
-            # ============================================
-
-            html.Div(
-
-                className="header-user",
-
-                children=[
-
-                    html.Div(
-
-                        [
-
-                            html.Div(
-
-                                "Juan Portillo",
-
-                                className="usuario"
-
-                            ),
-
-                            html.Small(
-
-                                "Administrador",
-
-                                className="puesto"
-
-                            )
-
-                        ]
-
-                    ),
-
-                    html.Div(
-
-                        "JP",
-
-                        className="avatar"
 
                     )
 

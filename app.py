@@ -1,6 +1,6 @@
 """
 =========================================================
-Sistema Gerencial Liderza
+SISTEMA GERENCIAL LIDERZA
 =========================================================
 Aplicación principal
 """
@@ -11,6 +11,7 @@ import dash_bootstrap_components as dbc
 from layouts.principal import crear_principal
 from callbacks.router_callbacks import registrar_router_callbacks
 
+
 app = Dash(
 
     __name__,
@@ -19,7 +20,7 @@ app = Dash(
 
         dbc.themes.BOOTSTRAP,
 
-        dbc.icons.BOOTSTRAP,
+        "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css",
 
         "/assets/estilos.css"
 
@@ -33,13 +34,24 @@ app = Dash(
 
 server = app.server
 
+
+# =========================================================
+# Layout principal
+# =========================================================
+
 app.layout = crear_principal()
 
-# ============================================
-# CALLBACKS
-# ============================================
+
+# =========================================================
+# Callbacks
+# =========================================================
 
 registrar_router_callbacks(app)
+
+
+# =========================================================
+# Ejecutar
+# =========================================================
 
 if __name__ == "__main__":
 

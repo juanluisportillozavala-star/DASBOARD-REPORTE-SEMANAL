@@ -1,15 +1,11 @@
 """
-=========================================================
-sidebar.py
-=========================================================
-Menú lateral del Sistema Gerencial Liderza.
+SIDEBAR
 """
 
 from dash import html, dcc
-from config import *
 
 
-def item_menu(icono, texto, ruta):
+def item(nombre, icono, ruta):
 
     return dcc.Link(
 
@@ -25,17 +21,9 @@ def item_menu(icono, texto, ruta):
 
                 children=[
 
-                    html.I(
+                    html.I(className=icono),
 
-                        className=icono
-
-                    ),
-
-                    html.Span(
-
-                        texto
-
-                    )
+                    html.Span(nombre)
 
                 ]
 
@@ -54,10 +42,6 @@ def crear_sidebar():
 
         children=[
 
-            # ==========================================
-            # TITULO
-            # ==========================================
-
             html.Div(
 
                 "MENÚ PRINCIPAL",
@@ -66,91 +50,21 @@ def crear_sidebar():
 
             ),
 
-            # ==========================================
-            # OPCIONES
-            # ==========================================
+            item("Dashboard", "fas fa-gauge-high", "/dashboard"),
 
-            item_menu(
+            item("Ventas", "fas fa-chart-line", "/ventas"),
 
-                ICONOS["dashboard"],
+            item("Ingresos", "fas fa-wallet", "/ingresos"),
 
-                "Dashboard",
+            item("Cartera", "fas fa-users", "/cartera"),
 
-                "/dashboard"
+            item("Inventario", "fas fa-box", "/inventario"),
 
-            ),
+            item("Saldo Proveedor", "fas fa-truck", "/saldo-proveedor"),
 
-            item_menu(
+            item("Reportes", "fas fa-file-lines", "/reportes"),
 
-                ICONOS["ventas"],
-
-                "Ventas",
-
-                "/ventas"
-
-            ),
-
-            item_menu(
-
-                ICONOS["ingresos"],
-
-                "Ingresos",
-
-                "/ingresos"
-
-            ),
-
-            item_menu(
-
-                ICONOS["cartera"],
-
-                "Cartera",
-
-                "/cartera"
-
-            ),
-
-            item_menu(
-
-                ICONOS["inventario"],
-
-                "Inventario",
-
-                "/inventario"
-
-            ),
-
-            item_menu(
-
-                ICONOS["proveedores"],
-
-                "Saldo Proveedor",
-
-                "/proveedores"
-
-            ),
-
-            html.Hr(),
-
-            item_menu(
-
-                ICONOS["reportes"],
-
-                "Reportes",
-
-                "/reportes"
-
-            ),
-
-            item_menu(
-
-                ICONOS["configuracion"],
-
-                "Configuración",
-
-                "/configuracion"
-
-            )
+            item("Configuración", "fas fa-gear", "/configuracion")
 
         ]
 

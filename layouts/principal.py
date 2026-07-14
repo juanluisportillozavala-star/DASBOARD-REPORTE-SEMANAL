@@ -1,44 +1,43 @@
 """
-=========================================================
-principal.py
-=========================================================
-Layout principal del Sistema Gerencial Liderza.
+LAYOUT PRINCIPAL
 """
 
-from dash import html, dcc
+from dash import html
 
 from layouts.header import crear_header
 from layouts.sidebar import crear_sidebar
-from layouts.router import obtener_layout
+from layouts.router import crear_router
 
 
 def crear_principal():
 
     return html.Div(
 
-        [
+        children=[
 
-            # ==========================================
-            # URL (necesaria para la navegación)
-            # ==========================================
-
-            dcc.Location(
-
-                id="url",
-
-                refresh=False
-
-            ),
-
-            # ==========================================
+            # ==========================
             # HEADER
-            # ==========================================
+            # ==========================
 
             crear_header(),
 
-            # ==========================================
-            # CUERPO
-            # ==========================================
+            # ==========================
+            # LINEA DORADA
+            # ==========================
+
+            html.Div(
+                className="linea-dorada"
+            ),
+
+            # ==========================
+            # SIDEBAR
+            # ==========================
+
+            crear_sidebar(),
+
+            # ==========================
+            # CONTENIDO
+            # ==========================
 
             html.Div(
 
@@ -46,29 +45,13 @@ def crear_principal():
 
                 children=[
 
-                    # ----------------------------
-                    # SIDEBAR
-                    # ----------------------------
-
-                    crear_sidebar(),
-
-                    # ----------------------------
-                    # CONTENIDO
-                    # ----------------------------
-
                     html.Div(
-
-                        id="contenido-principal",
 
                         className="contenido",
 
                         children=[
 
-                            obtener_layout(
-
-                                "dashboard"
-
-                            )
+                            crear_router()
 
                         ]
 

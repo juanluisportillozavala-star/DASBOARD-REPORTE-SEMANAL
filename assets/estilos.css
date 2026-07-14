@@ -800,3 +800,220 @@ EFECTOS
     }
 
 }
+/*=========================================
+LOGO BLANCO
+=========================================*/
+
+.logo-box{
+
+    background:white;
+
+    padding:12px;
+
+    border-radius:14px;
+
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin-right:18px;
+
+}
+
+.logo-img{
+
+    width:250px;
+
+    height:auto;
+
+}
+
+/*=========================================
+HEADER
+=========================================*/
+
+.header{
+
+    height:90px;
+
+}
+
+.logo-titulo{
+
+    font-size:31px;
+
+    font-weight:700;
+
+}
+
+.logo-subtitulo{
+
+    color:#DADADA;
+
+    font-size:15px;
+
+}
+
+/*=========================================
+LINEA DORADA
+=========================================*/
+
+.linea-dorada{
+
+    position:fixed;
+
+    top:90px;
+
+    left:0;
+
+    right:0;
+
+    height:4px;
+
+    background:#C9A227;
+
+    z-index:9998;
+
+}
+
+/*=========================================
+SIDEBAR
+=========================================*/
+
+.sidebar{
+
+    top:94px;
+
+    width:260px;
+
+    background:#173C73;
+
+    overflow-y:auto;
+
+}
+
+.menu-item{
+
+    height:58px;
+
+    border-radius:12px;
+
+    margin:6px 12px;
+
+    padding-left:20px;
+
+}
+
+.menu-item:hover{
+
+    background:#224D88;
+
+}
+
+.menu-item i{
+
+    width:28px;
+
+    text-align:center;
+
+}
+
+/*=========================================
+BODY
+=========================================*/
+
+.body{
+
+    margin-top:94px;
+
+    margin-left:260px;
+
+    height:calc(100vh - 94px);
+
+    background:#F4F6F9;
+
+}
+
+/*=========================================
+CONTENIDO
+=========================================*/
+
+.contenido{
+
+    padding:40px;
+
+}
+
+/*=========================================
+TITULOS
+=========================================*/
+
+.titulo{
+
+    font-size:54px;
+
+    color:#173C73;
+
+    margin-bottom:15px;
+
+}
+
+.subtitulo{
+
+    font-size:24px;
+
+    color:#5E6878;
+
+}
+
+/*=========================================
+FONDO
+=========================================*/
+
+body{
+
+    background:#EEF2F7;
+
+}
+
+.body{
+
+    background:#EEF2F7;
+
+}
+
+/*=========================================
+SCROLL
+=========================================*/
+
+.sidebar::-webkit-scrollbar{
+
+    width:7px;
+
+}
+
+.sidebar::-webkit-scrollbar-thumb{
+
+    background:#315791;
+
+    border-radius:25px;
+
+}
+
+.contenido::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+.contenido::-webkit-scrollbar-thumb{
+
+    background:#B8C2CC;
+
+    border-radius:30px;
+
+}
