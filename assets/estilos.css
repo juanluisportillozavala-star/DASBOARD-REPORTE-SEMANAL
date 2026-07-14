@@ -1,323 +1,237 @@
 /*
-==========================================================
+=========================================================
 SISTEMA GERENCIAL LIDERZA
-Archivo: assets/estilos.css
-Versión 1.0
-==========================================================
+=========================================================
+ESTILOS GENERALES
 */
-
-:root{
-    --azul:#0B2D5B;
-    --azul-claro:#123E7A;
-    --dorado:#C9A227;
-    --gris:#F4F6F9;
-    --gris2:#E5E7EB;
-    --texto:#1F2937;
-    --blanco:#FFFFFF;
-    --verde:#22C55E;
-    --rojo:#EF4444;
-    --radio:14px;
-    --sombra:0 4px 15px rgba(0,0,0,.08);
-}
 
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:Segoe UI,Arial,sans-serif;
+}
+
+html{
+
+    height:100%;
+
 }
 
 body{
-    background:var(--gris);
-    color:var(--texto);
-}
 
-/* HEADER */
+    height:100%;
 
-.header{
-    height:70px;
-    background:var(--azul);
-    color:white;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:0 30px;
-    box-shadow:var(--sombra);
-}
+    background:#F4F6F9;
 
-.logo{
-    display:flex;
-    align-items:center;
-    gap:15px;
-}
+    font-family:
+    "Segoe UI",
+    Arial,
+    sans-serif;
 
-.logo img{
-    height:45px;
-}
-
-.logo h2{
-    font-size:24px;
-    font-weight:700;
-}
-
-/* SIDEBAR */
-
-.sidebar{
-    position:fixed;
-    left:0;
-    top:70px;
-    width:240px;
-    bottom:0;
-    background:var(--azul);
-    padding:20px;
-}
-
-.sidebar a{
-    display:block;
-    text-decoration:none;
-    color:white;
-    padding:14px;
-    margin-bottom:8px;
-    border-radius:10px;
-    transition:.25s;
-    font-weight:600;
-}
-
-.sidebar a:hover{
-    background:var(--dorado);
-    color:var(--azul);
-}
-
-.sidebar .activo{
-    background:white;
-    color:var(--azul);
-}
-
-/* CONTENIDO */
-
-.contenido{
-    margin-left:260px;
-    margin-top:90px;
-    padding:25px;
-}
-
-.titulo{
-    font-size:32px;
-    color:var(--azul);
-    font-weight:700;
-    margin-bottom:5px;
-}
-
-.subtitulo{
-    color:#6B7280;
-    margin-bottom:30px;
-}
-
-/* TARJETAS */
-
-.card{
-    background:white;
-    border-radius:var(--radio);
-    padding:20px;
-    box-shadow:var(--sombra);
-    margin-bottom:20px;
-}
-
-.card h4{
-    color:var(--azul);
-    margin-bottom:12px;
-}
-
-.kpi{
-    background:white;
-    border-radius:var(--radio);
-    box-shadow:var(--sombra);
-    text-align:center;
-    padding:20px;
-    transition:.2s;
-}
-
-.kpi:hover{
-    transform:translateY(-4px);
-}
-
-.kpi h2{
-    color:var(--azul);
-    margin-top:10px;
-}
-
-.kpi p{
-    color:#6B7280;
-}
-
-/* BOTONES */
-
-.btn-principal{
-    background:var(--azul);
-    color:white;
-    border:none;
-    border-radius:10px;
-    padding:12px 22px;
-    font-weight:700;
-    cursor:pointer;
-}
-
-.btn-principal:hover{
-    background:var(--azul-claro);
-}
-
-.btn-secundario{
-    background:var(--dorado);
-    color:white;
-    border:none;
-    border-radius:10px;
-    padding:12px 22px;
-    cursor:pointer;
-}
-
-/* INPUTS */
-
-input,
-select{
-    width:100%;
-    border:1px solid var(--gris2);
-    border-radius:10px;
-    padding:10px;
-    margin-top:6px;
-}
-
-/* UPLOAD */
-
-.upload-box{
-    border:2px dashed var(--dorado);
-    border-radius:14px;
-    background:white;
-    padding:35px;
-    text-align:center;
-    transition:.2s;
-}
-
-.upload-box:hover{
-    background:#FFFDF6;
-}
-
-/* TABLAS */
-
-table{
-    width:100%;
-    border-collapse:collapse;
-}
-
-th{
-    background:var(--azul);
-    color:white;
-    padding:12px;
-}
-
-td{
-    padding:10px;
-    border-bottom:1px solid var(--gris2);
-}
-
-tr:hover{
-    background:#F8FAFC;
-}
-
-/* DASH DATATABLE */
-
-.dash-table-container .dash-spreadsheet-container{
-    border-radius:12px;
     overflow:hidden;
-}
-
-/* GRAFICAS */
-
-.graph-card{
-    background:white;
-    border-radius:14px;
-    padding:20px;
-    box-shadow:var(--sombra);
-}
-
-/* FOOTER */
-
-.footer{
-    text-align:center;
-    color:#6B7280;
-    padding:20px;
-}
-
-/* RESPONSIVE */
-
-@media(max-width:992px){
-
-.sidebar{
-    width:70px;
-}
-
-.sidebar a{
-    text-align:center;
-    font-size:12px;
-}
-
-.contenido{
-    margin-left:90px;
-}
 
 }
 
-@media(max-width:768px){
+#react-entry-point{
+
+    height:100%;
+
+}
+
+._dash-undo-redo{
+
+    display:none;
+
+}
+
+/*======================================================
+HEADER
+======================================================*/
 
 .header{
-    flex-direction:column;
-    height:auto;
-    padding:15px;
+
+    position:fixed;
+
+    top:0;
+
+    left:0;
+
+    right:0;
+
+    height:78px;
+
+    background:#173C73;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:0 28px;
+
+    z-index:9999;
+
+    box-shadow:
+        0 3px 10px rgba(0,0,0,.18);
+
 }
 
-.sidebar{
-    display:none;
+/*======================================================
+LOGO
+======================================================*/
+
+.header-logo{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:18px;
+
 }
 
-.contenido{
-    margin:20px;
-}
+.logo-img{
+
+    height:52px;
+
+    width:auto;
 
 }
-/*=========================================================
+
+.logo-titulo{
+
+    color:white;
+
+    font-size:29px;
+
+    font-weight:700;
+
+}
+
+.logo-subtitulo{
+
+    color:#d6d6d6;
+
+    font-size:14px;
+
+}
+
+/*======================================================
+USUARIO
+======================================================*/
+
+.header-user{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+}
+
+.usuario{
+
+    color:white;
+
+    font-size:16px;
+
+    font-weight:600;
+
+}
+
+.puesto{
+
+    color:#d5d5d5;
+
+}
+
+.avatar{
+
+    width:46px;
+
+    height:46px;
+
+    border-radius:50%;
+
+    background:#C9A227;
+
+    color:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-weight:bold;
+
+    font-size:18px;
+
+}
+
+/*======================================================
 SIDEBAR
-=========================================================*/
+======================================================*/
 
 .sidebar{
 
     position:fixed;
 
-    top:70px;
+    top:78px;
 
     left:0;
 
-    width:240px;
+    width:250px;
 
     bottom:0;
 
-    background:#0B2D5B;
-
-    padding:25px 15px;
+    background:#173C73;
 
     overflow-y:auto;
 
+    box-shadow:
+        2px 0 8px rgba(0,0,0,.12);
+
 }
+
+/* Scroll bonito */
+
+.sidebar::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+.sidebar::-webkit-scrollbar-thumb{
+
+    background:#315791;
+
+    border-radius:20px;
+
+}
+/*======================================================
+MENU
+======================================================*/
 
 .menu-titulo{
 
-    color:white;
+    color:#C9D4E8;
 
     font-size:13px;
 
     letter-spacing:2px;
 
-    margin-bottom:25px;
+    font-weight:600;
 
-    opacity:.7;
+    padding:28px 22px 15px;
+
+}
+
+.menu-link{
+
+    text-decoration:none;
 
 }
 
@@ -327,101 +241,562 @@ SIDEBAR
 
     align-items:center;
 
-    gap:15px;
-
-    padding:15px;
+    gap:16px;
 
     color:white;
 
-    border-radius:12px;
+    font-size:18px;
 
-    margin-bottom:8px;
+    padding:16px 24px;
+
+    transition:.25s;
 
     cursor:pointer;
 
-    transition:.25s;
+    border-left:4px solid transparent;
 
 }
 
 .menu-item:hover{
 
-    background:#123E7A;
+    background:#204A86;
+
+    border-left:4px solid #D4AF37;
 
 }
 
-.menu-activo{
-
-    background:white;
-
-    color:#0B2D5B;
-
-    font-weight:bold;
-
-}
-
-.menu-icono{
+.menu-item i{
 
     font-size:22px;
 
-}
-
-.menu-texto{
-
-    font-size:15px;
+    width:30px;
 
 }
-/*=========================================================
-CONTENIDO PRINCIPAL
-=========================================================*/
+
+/*======================================================
+BODY
+======================================================*/
+
+.body{
+
+    margin-top:78px;
+
+    margin-left:250px;
+
+    height:calc(100vh - 78px);
+
+    overflow:hidden;
+
+    background:#F4F6F9;
+
+}
+
+/*======================================================
+CONTENIDO
+======================================================*/
 
 .contenido{
 
-    margin-left:260px;
+    padding:35px;
 
-    margin-top:90px;
+    height:100%;
 
-    padding:30px;
-
-    min-height:100vh;
-
-    background:#F5F7FA;
+    overflow-y:auto;
 
 }
 
+/* Scroll */
+
+.contenido::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+.contenido::-webkit-scrollbar-thumb{
+
+    background:#B8C2CC;
+
+    border-radius:20px;
+
+}
+
+.contenido::-webkit-scrollbar-track{
+
+    background:#F4F6F9;
+
+}
+
+/*======================================================
+TITULOS
+======================================================*/
+
+.titulo{
+
+    color:#173C73;
+
+    font-size:42px;
+
+    font-weight:700;
+
+    margin-bottom:8px;
+
+}
+
+.subtitulo{
+
+    color:#6E7B91;
+
+    font-size:20px;
+
+    margin-bottom:35px;
+
+}
+
+/*======================================================
+TARJETAS KPI
+======================================================*/
+
 .kpi{
 
+    border:none;
+
+    border-radius:18px;
+
+    box-shadow:0 4px 18px rgba(0,0,0,.08);
+
+    transition:.30s;
+
+    padding:10px;
+
     background:white;
-
-    border-radius:15px;
-
-    padding:25px;
-
-    text-align:center;
-
-    box-shadow:0 4px 12px rgba(0,0,0,.08);
-
-    transition:.25s;
 
 }
 
 .kpi:hover{
 
-    transform:translateY(-5px);
+    transform:translateY(-6px);
+
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+
+}
+
+.kpi h6{
+
+    color:#6E7B91;
+
+    font-size:18px;
+
+    margin-bottom:15px;
 
 }
 
 .kpi h2{
 
-    color:#0B2D5B;
+    color:#173C73;
 
-    font-size:22px;
+    font-size:34px;
+
+    font-weight:700;
 
 }
 
-.kpi p{
+/*======================================================
+CARDS
+======================================================*/
 
-    color:#6B7280;
+.card{
 
-    margin-top:8px;
+    border:none !important;
+
+    border-radius:18px !important;
+
+    box-shadow:0 5px 18px rgba(0,0,0,.08);
+
+}
+
+/*======================================================
+BOTONES
+======================================================*/
+
+.btn{
+
+    border-radius:10px !important;
+
+    font-weight:600;
+
+}
+
+.btn-primary{
+
+    background:#173C73 !important;
+
+    border:none !important;
+
+}
+
+.btn-primary:hover{
+
+    background:#204A86 !important;
+
+}
+
+.btn-success{
+
+    border:none !important;
+
+}
+
+/*======================================================
+TABLAS
+======================================================*/
+
+table{
+
+    border-radius:15px;
+
+    overflow:hidden;
+
+}
+
+thead{
+
+    background:#173C73;
+
+    color:white;
+
+}
+
+/*======================================================
+INPUTS
+======================================================*/
+
+input,
+select{
+
+    border-radius:10px !important;
+
+}
+
+/*======================================================
+GRAFICAS
+======================================================*/
+
+.js-plotly-plot{
+
+    border-radius:18px;
+
+    background:white;
+
+    padding:10px;
+
+    box-shadow:0 4px 18px rgba(0,0,0,.08);
+
+}
+/*======================================================
+ANIMACIONES
+======================================================*/
+
+*{
+
+    transition:
+        background .25s,
+        color .25s,
+        box-shadow .25s,
+        transform .25s;
+
+}
+
+/*======================================================
+MENU ACTIVO
+======================================================*/
+
+.menu-item-activo{
+
+    background:#204A86;
+
+    border-left:4px solid #D4AF37;
+
+    color:white;
+
+}
+
+.menu-item-activo i{
+
+    color:#D4AF37;
+
+}
+
+/*======================================================
+TARJETAS PREMIUM
+======================================================*/
+
+.card-premium{
+
+    background:white;
+
+    border-radius:18px;
+
+    box-shadow:
+        0 8px 24px rgba(0,0,0,.08);
+
+    padding:25px;
+
+    margin-bottom:25px;
+
+}
+
+.card-premium:hover{
+
+    transform:translateY(-3px);
+
+    box-shadow:
+        0 12px 28px rgba(0,0,0,.12);
+
+}
+
+/*======================================================
+SEPARADORES
+======================================================*/
+
+hr{
+
+    border:none;
+
+    border-top:1px solid #E6E8EC;
+
+    margin:18px 0;
+
+}
+
+/*======================================================
+TARJETAS KPI PREMIUM
+======================================================*/
+
+.kpi{
+
+    min-height:160px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    text-align:center;
+
+}
+
+.kpi h2{
+
+    margin-top:12px;
+
+}
+
+.kpi:hover{
+
+    border-top:5px solid #D4AF37;
+
+}
+
+/*======================================================
+TABLAS
+======================================================*/
+
+table{
+
+    width:100%;
+
+    background:white;
+
+    border-collapse:collapse;
+
+}
+
+table td{
+
+    padding:12px;
+
+}
+
+table th{
+
+    padding:14px;
+
+}
+
+/*======================================================
+PLOTLY
+======================================================*/
+
+.js-plotly-plot{
+
+    margin-top:10px;
+
+}
+
+/*======================================================
+FOOTER
+======================================================*/
+
+.footer{
+
+    text-align:center;
+
+    color:#7C8897;
+
+    margin-top:40px;
+
+    padding:25px;
+
+}
+
+/*======================================================
+SCROLL GENERAL
+======================================================*/
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+    height:10px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#EEF2F7;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#B6C2D0;
+
+    border-radius:30px;
+
+}
+
+::-webkit-scrollbar-thumb:hover{
+
+    background:#8EA4BD;
+
+}
+
+/*======================================================
+RESPONSIVE
+======================================================*/
+
+@media(max-width:1200px){
+
+    .sidebar{
+
+        width:210px;
+
+    }
+
+    .body{
+
+        margin-left:210px;
+
+    }
+
+}
+
+@media(max-width:900px){
+
+    .sidebar{
+
+        width:75px;
+
+    }
+
+    .body{
+
+        margin-left:75px;
+
+    }
+
+    .menu-item span{
+
+        display:none;
+
+    }
+
+    .menu-titulo{
+
+        display:none;
+
+    }
+
+    .logo-titulo{
+
+        font-size:22px;
+
+    }
+
+    .logo-subtitulo{
+
+        display:none;
+
+    }
+
+}
+
+@media(max-width:650px){
+
+    .header{
+
+        padding:0 15px;
+
+    }
+
+    .logo-img{
+
+        height:40px;
+
+    }
+
+    .usuario{
+
+        display:none;
+
+    }
+
+    .puesto{
+
+        display:none;
+
+    }
+
+}
+
+/*======================================================
+EFECTOS
+======================================================*/
+
+.contenido{
+
+    animation:fadeIn .35s ease;
+
+}
+
+@keyframes fadeIn{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(10px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
 
 }
