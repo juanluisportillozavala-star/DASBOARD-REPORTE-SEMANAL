@@ -1,20 +1,14 @@
 """
-=========================================================
-router_callbacks.py
-=========================================================
-Callbacks de navegación del Sistema Gerencial Liderza.
+ROUTER CALLBACKS
 """
 
 from dash import Input, Output
 
+from layouts.dashboard import crear_dashboard
 from layouts.router import crear_router
 
 
 def registrar_router_callbacks(app):
-
-    # =====================================================
-    # CAMBIO DE PÁGINAS
-    # =====================================================
 
     @app.callback(
 
@@ -23,16 +17,11 @@ def registrar_router_callbacks(app):
         Input("url", "pathname")
 
     )
+
     def cambiar_pagina(pathname):
 
-        if pathname is None:
+        if pathname in [None, "/", "/dashboard"]:
 
-            return crear_router("dashboard")
+            return crear_dashboard()
 
-        pagina = pathname.replace("/", "").lower()
-
-        if pagina == "":
-
-            pagina = "dashboard"
-
-        return crear_router(pagina)
+        return crear_router(pathname)

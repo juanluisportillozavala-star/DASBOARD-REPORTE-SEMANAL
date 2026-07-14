@@ -2,11 +2,10 @@
 LAYOUT PRINCIPAL
 """
 
-from dash import html
+from dash import html, dcc
 
 from layouts.header import crear_header
 from layouts.sidebar import crear_sidebar
-from layouts.router import crear_router
 
 
 def crear_principal():
@@ -15,29 +14,38 @@ def crear_principal():
 
         children=[
 
-            # ==========================
+            # ====================================
+            # Detecta la URL
+            # ====================================
+
+            dcc.Location(
+                id="url",
+                refresh=False
+            ),
+
+            # ====================================
             # HEADER
-            # ==========================
+            # ====================================
 
             crear_header(),
 
-            # ==========================
+            # ====================================
             # LINEA DORADA
-            # ==========================
+            # ====================================
 
             html.Div(
                 className="linea-dorada"
             ),
 
-            # ==========================
+            # ====================================
             # SIDEBAR
-            # ==========================
+            # ====================================
 
             crear_sidebar(),
 
-            # ==========================
+            # ====================================
             # CONTENIDO
-            # ==========================
+            # ====================================
 
             html.Div(
 
@@ -47,13 +55,9 @@ def crear_principal():
 
                     html.Div(
 
-                        className="contenido",
+                        id="contenido-principal",
 
-                        children=[
-
-                            crear_router()
-
-                        ]
+                        className="contenido"
 
                     )
 

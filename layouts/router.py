@@ -11,10 +11,10 @@ from layouts.dashboard import crear_dashboard
 
 
 # =========================================================
-# PÁGINAS TEMPORALES
+# PLANTILLA TEMPORAL PARA MÓDULOS
 # =========================================================
 
-def pagina_construccion(nombre):
+def pagina_temporal(titulo):
 
     return html.Div(
 
@@ -22,39 +22,38 @@ def pagina_construccion(nombre):
 
         children=[
 
-            html.H2(
-
-                nombre,
-
+            html.H1(
+                titulo,
                 className="titulo"
+            ),
 
+            html.P(
+                "Módulo en desarrollo.",
+                className="subtitulo"
             ),
 
             html.Hr(),
 
-            html.H4(
+            html.Br(),
 
-                "🚧 Módulo en construcción",
-
+            html.H3(
+                "🚧 Próximamente",
                 style={
-
-                    "color":"#173C73"
-
+                    "color": "#173C73"
                 }
-
             ),
 
             html.Br(),
 
             html.P(
 
-                f"El módulo '{nombre}' estará disponible en una próxima versión.",
+                "Este módulo será desarrollado en las siguientes etapas del proyecto.",
 
                 style={
 
-                    "fontSize":"18px",
+                    "fontSize": "18px",
 
-                    "color":"#666"
+                    "color": "#666"
 
                 }
 
@@ -69,38 +68,58 @@ def pagina_construccion(nombre):
 # ROUTER
 # =========================================================
 
-def crear_router(pathname="/dashboard"):
+def crear_router(pathname):
 
-    if pathname in ["/", "/dashboard"]:
+    if pathname in ["/", "/dashboard", None]:
 
         return crear_dashboard()
 
     elif pathname == "/ventas":
 
-        return pagina_construccion("Ventas")
+        return pagina_temporal("Ventas")
 
     elif pathname == "/ingresos":
 
-        return pagina_construccion("Ingresos")
+        return pagina_temporal("Ingresos")
 
     elif pathname == "/cartera":
 
-        return pagina_construccion("Cartera")
+        return pagina_temporal("Cartera")
 
     elif pathname == "/inventario":
 
-        return pagina_construccion("Inventario")
+        return pagina_temporal("Inventario")
 
     elif pathname == "/saldo-proveedor":
 
-        return pagina_construccion("Saldo Proveedor")
+        return pagina_temporal("Saldo Proveedor")
 
     elif pathname == "/reportes":
 
-        return pagina_construccion("Reportes")
+        return pagina_temporal("Reportes")
 
     elif pathname == "/configuracion":
 
-        return pagina_construccion("Configuración")
+        return pagina_temporal("Configuración")
 
-    return pagina_construccion("Página no encontrada")
+    else:
+
+        return html.Div(
+
+            className="card-premium",
+
+            children=[
+
+                html.H1(
+                    "404",
+                    className="titulo"
+                ),
+
+                html.P(
+                    "Página no encontrada.",
+                    className="subtitulo"
+                )
+
+            ]
+
+        )
