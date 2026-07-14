@@ -4,18 +4,15 @@ CALLBACKS DEL MÓDULO VENTAS
 =========================================================
 """
 
-from dash import Input, Output, State
-from dash import dash_table
-from dash import html
-
+from dash import Input, Output, State, html
 from ventas.procesamiento import leer_archivos
 
 
 def registrar_callbacks_ventas(app):
 
-    # ===================================================
-    # Nombre Catálogo
-    # ===================================================
+    # ======================================================
+    # Mostrar nombre del Catálogo
+    # ======================================================
 
     @app.callback(
 
@@ -28,14 +25,26 @@ def registrar_callbacks_ventas(app):
 
         if nombre is None:
 
-            return "Ningún archivo seleccionado."
+            return [
 
-        return f"✅ {nombre}"
+                html.I(className="fas fa-file-excel me-2"),
+
+                " Ningún archivo seleccionado."
+
+            ]
+
+        return [
+
+            html.I(className="fas fa-circle-check me-2"),
+
+            nombre
+
+        ]
 
 
-    # ===================================================
-    # Nombre BD
-    # ===================================================
+    # ======================================================
+    # Mostrar nombre BD Ventas
+    # ======================================================
 
     @app.callback(
 
@@ -48,18 +57,30 @@ def registrar_callbacks_ventas(app):
 
         if nombre is None:
 
-            return "Ningún archivo seleccionado."
+            return [
 
-        return f"✅ {nombre}"
+                html.I(className="fas fa-file-excel me-2"),
+
+                " Ningún archivo seleccionado."
+
+            ]
+
+        return [
+
+            html.I(className="fas fa-circle-check me-2"),
+
+            nombre
+
+        ]
 
 
-    # ===================================================
-    # Procesar
-    # ===================================================
+    # ======================================================
+    # Procesar información
+    # ======================================================
 
     @app.callback(
 
-        Output("vista-previa", "children"),
+        Output("estado-proceso", "children"),
 
         Input("btn-procesar", "n_clicks"),
 
@@ -71,66 +92,110 @@ def registrar_callbacks_ventas(app):
 
     )
 
-    def procesar(n, catalogo, ventas):
+    def procesar_archivos(click, catalogo, ventas):
 
-        if catalogo is None or ventas is None:
+        if catalogo is None:
 
             return html.Div(
 
-                "Debe cargar ambos archivos.",
+                "❌ Debe seleccionar el archivo Catálogo.",
 
                 style={
 
-                    "color":"red",
+                    "color": "red",
 
-                    "fontWeight":"bold"
+                    "fontWeight": "bold"
 
                 }
 
             )
 
-        df_catalogo, df_ventas = leer_archivos(
+        if ventas is None:
 
-            catalogo,
+            return html.Div(
 
-            ventas
+                "❌ Debe seleccionar el archivo BD Ventas.",
 
-        )
+                style={
 
-        return html.Div(
+                    "color": "red",
 
-            [
+                    "fontWeight": "bold"
 
-                html.H4("Vista previa BD Ventas"),
+                }
 
-                dash_table.DataTable(
+            )
 
-                    data=df_ventas.head(10).to_dict("records"),
+        try:
 
-                    columns=[
+            df_catalogo, df_ventas = leer_archivos(
 
-                        {
+                catalogo,
 
-                            "name":i,
+                ventas
 
-                            "id":i
+            )
+
+            return html.Div(
+
+                [
+
+                    html.P("✅ Catálogo leído correctamente"),
+
+                    html.P("✅ BD Ventas leída correctamente"),
+
+                    html.P(
+
+                        f"📄 Registros encontrados: {len(df_ventas):,}"
+
+                    ),
+
+                    html.P(
+
+                        f"📦 Productos del catálogo: {len(df_catalogo):,}"
+
+                    ),
+
+                    html.Br(),
+
+                    html.B(
+
+                        "Proceso terminado correctamente.",
+
+                        style={
+
+                            "color": "#198754"
 
                         }
 
-                        for i in df_ventas.columns
+                    )
 
-                    ],
+                ]
 
-                    page_size=10,
+            )
 
-                    style_table={
+        except Exception as e:
 
-                        "overflowX":"auto"
+            return html.Div(
 
-                    }
+                [
 
-                )
+                    html.P(
 
-            ]
+                        "❌ Error al procesar los archivos.",
 
-        )
+                        style={
+
+                            "color": "red",
+
+                            "fontWeight": "bold"
+
+                        }
+
+                    ),
+
+                    html.P(str(e))
+
+                ]
+
+            )

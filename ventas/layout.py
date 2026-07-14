@@ -16,7 +16,7 @@ def crear_layout_ventas():
         children=[
 
             # =====================================
-            # TÍTULOS
+            # TÍTULO
             # =====================================
 
             html.H1(
@@ -25,23 +25,23 @@ def crear_layout_ventas():
             ),
 
             html.P(
-                "Carga y procesamiento del reporte de ventas.",
+                "Carga y procesamiento del reporte semanal de ventas.",
                 className="subtitulo"
             ),
 
             html.Br(),
 
             # =====================================
-            # TARJETAS
+            # CARGA DE ARCHIVOS
             # =====================================
 
             dbc.Row(
 
                 [
 
-                    # =====================================
+                    # ===============================
                     # CATÁLOGO
-                    # =====================================
+                    # ===============================
 
                     dbc.Col(
 
@@ -114,9 +114,9 @@ def crear_layout_ventas():
 
                     ),
 
-                    # =====================================
+                    # ===============================
                     # BD VENTAS
-                    # =====================================
+                    # ===============================
 
                     dbc.Col(
 
@@ -195,6 +195,10 @@ def crear_layout_ventas():
 
             html.Br(),
 
+            # =====================================
+            # BOTÓN PROCESAR
+            # =====================================
+
             dbc.Button(
 
                 [
@@ -217,11 +221,64 @@ def crear_layout_ventas():
 
             ),
 
-            html.Hr(),
+            html.Br(),
+            html.Br(),
 
-            html.Div(
+            # =====================================
+            # ESTADO DEL PROCESO
+            # =====================================
 
-                id="vista-previa"
+            dbc.Card(
+
+                dbc.CardBody(
+
+                    [
+
+                        html.H4(
+
+                            [
+
+                                html.I(
+                                    className="fas fa-circle-info me-2"
+                                ),
+
+                                "Estado del procesamiento"
+
+                            ]
+
+                        ),
+
+                        html.Hr(),
+
+                        html.Div(
+
+                            id="estado-proceso",
+
+                            children=[
+
+                                html.P(
+
+                                    "Esperando que seleccione los archivos para comenzar.",
+
+                                    style={
+
+                                        "fontSize": "18px",
+
+                                        "color": "#6c757d"
+
+                                    }
+
+                                )
+
+                            ]
+
+                        )
+
+                    ]
+
+                ),
+
+                className="card-premium"
 
             )
 
