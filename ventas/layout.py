@@ -29,13 +29,19 @@ def crear_layout_ventas():
                 className="subtitulo"
             ),
 
+            html.Br(),
+
             # =====================================
-            # TARJETAS DE CARGA
+            # TARJETAS
             # =====================================
 
             dbc.Row(
 
                 [
+
+                    # =====================================
+                    # CATÁLOGO
+                    # =====================================
 
                     dbc.Col(
 
@@ -46,7 +52,7 @@ def crear_layout_ventas():
                                 [
 
                                     html.H4(
-                                        "Catálogo",
+                                        "📁 Catálogo",
                                         className="mb-3"
                                     ),
 
@@ -54,21 +60,25 @@ def crear_layout_ventas():
 
                                         id="upload-catalogo",
 
-                                        children=html.Div(
+                                        multiple=False,
+
+                                        children=dbc.Button(
 
                                             [
 
-                                                "Arrastra el archivo aquí o ",
+                                                html.I(
+                                                    className="fas fa-folder-open me-2"
+                                                ),
 
-                                                html.A("Selecciona un archivo")
+                                                "Seleccionar Catálogo"
 
-                                            ]
+                                            ],
 
-                                        ),
+                                            color="primary",
 
-                                        className="upload-box",
+                                            className="w-100"
 
-                                        multiple=False
+                                        )
 
                                     ),
 
@@ -78,7 +88,15 @@ def crear_layout_ventas():
 
                                         id="nombre-catalogo",
 
-                                        children="Ningún archivo seleccionado.",
+                                        children=[
+
+                                            html.I(
+                                                className="fas fa-file-excel me-2"
+                                            ),
+
+                                            " Ningún archivo seleccionado."
+
+                                        ],
 
                                         className="archivo-seleccionado"
 
@@ -96,6 +114,10 @@ def crear_layout_ventas():
 
                     ),
 
+                    # =====================================
+                    # BD VENTAS
+                    # =====================================
+
                     dbc.Col(
 
                         dbc.Card(
@@ -105,7 +127,7 @@ def crear_layout_ventas():
                                 [
 
                                     html.H4(
-                                        "BD Ventas",
+                                        "📊 BD Ventas",
                                         className="mb-3"
                                     ),
 
@@ -113,21 +135,25 @@ def crear_layout_ventas():
 
                                         id="upload-ventas",
 
-                                        children=html.Div(
+                                        multiple=False,
+
+                                        children=dbc.Button(
 
                                             [
 
-                                                "Arrastra el archivo aquí o ",
+                                                html.I(
+                                                    className="fas fa-folder-open me-2"
+                                                ),
 
-                                                html.A("Selecciona un archivo")
+                                                "Seleccionar BD Ventas"
 
-                                            ]
+                                            ],
 
-                                        ),
+                                            color="primary",
 
-                                        className="upload-box",
+                                            className="w-100"
 
-                                        multiple=False
+                                        )
 
                                     ),
 
@@ -137,7 +163,15 @@ def crear_layout_ventas():
 
                                         id="nombre-ventas",
 
-                                        children="Ningún archivo seleccionado.",
+                                        children=[
+
+                                            html.I(
+                                                className="fas fa-file-excel me-2"
+                                            ),
+
+                                            " Ningún archivo seleccionado."
+
+                                        ],
 
                                         className="archivo-seleccionado"
 
@@ -163,29 +197,27 @@ def crear_layout_ventas():
 
             dbc.Button(
 
-                "Procesar",
+                [
+
+                    html.I(
+                        className="fas fa-gears me-2"
+                    ),
+
+                    "Procesar Información"
+
+                ],
 
                 id="btn-procesar",
 
                 color="primary",
 
-                size="lg"
+                size="lg",
+
+                className="px-5"
 
             ),
 
             html.Hr(),
-
-            html.H3(
-
-                "Vista previa",
-
-                style={
-
-                    "color":"#173C73"
-
-                }
-
-            ),
 
             html.Div(
 
