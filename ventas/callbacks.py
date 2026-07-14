@@ -1,228 +1,299 @@
 """
 =========================================================
-CALLBACKS DEL MÓDULO VENTAS
+MÓDULO VENTAS
 =========================================================
+Layout principal del módulo de Ventas
 """
 
-from dash import Input, Output, State, html
+from dash import html, dcc
+import dash_bootstrap_components as dbc
 
-from ventas.procesamiento import leer_archivos
 
+def crear_layout_ventas():
 
-def registrar_callbacks_ventas(app):
+    return html.Div(
 
-    # =====================================================
-    # Mostrar nombre Catálogo
-    # =====================================================
+        children=[
 
-    @app.callback(
+            # =====================================================
+            # MEMORIA DEL DASHBOARD
+            # =====================================================
 
-        Output("nombre-catalogo", "children"),
+            dcc.Store(
+                id="store-bd-ventas"
+            ),
 
-        Input("upload-catalogo", "filename")
+            dcc.Store(
+                id="store-kpis"
+            ),
 
-    )
-    def mostrar_catalogo(nombre):
+            # =====================================================
+            # TÍTULO
+            # =====================================================
 
-        if nombre is None:
+            html.H1(
+                "Ventas",
+                className="titulo"
+            ),
 
-            return [
+            html.P(
+                "Carga y procesamiento del reporte semanal de ventas.",
+                className="subtitulo"
+            ),
 
-                html.I(className="fas fa-file-excel me-2"),
+            html.Br(),
 
-                " Ningún archivo seleccionado."
+            # =====================================================
+            # CARGA DE ARCHIVOS
+            # =====================================================
 
-            ]
-
-        return [
-
-            html.I(className="fas fa-circle-check me-2"),
-
-            nombre
-
-        ]
-
-
-    # =====================================================
-    # Mostrar nombre BD Ventas
-    # =====================================================
-
-    @app.callback(
-
-        Output("nombre-ventas", "children"),
-
-        Input("upload-ventas", "filename")
-
-    )
-    def mostrar_bd(nombre):
-
-        if nombre is None:
-
-            return [
-
-                html.I(className="fas fa-file-excel me-2"),
-
-                " Ningún archivo seleccionado."
-
-            ]
-
-        return [
-
-            html.I(className="fas fa-circle-check me-2"),
-
-            nombre
-
-        ]
-
-
-    # =====================================================
-    # PROCESAR INFORMACIÓN
-    # =====================================================
-
-    @app.callback(
-
-        Output("estado-proceso", "children"),
-
-        Input("btn-procesar", "n_clicks"),
-
-        State("upload-catalogo", "contents"),
-
-        State("upload-ventas", "contents"),
-
-        prevent_initial_call=True
-
-    )
-
-    def procesar(click, catalogo, ventas):
-
-        if catalogo is None:
-
-            return html.Div(
-
-                "Debe seleccionar el archivo Catálogo.",
-
-                style={
-
-                    "color":"red",
-
-                    "fontWeight":"bold"
-
-                }
-
-            )
-
-        if ventas is None:
-
-            return html.Div(
-
-                "Debe seleccionar el archivo BD Ventas.",
-
-                style={
-
-                    "color":"red",
-
-                    "fontWeight":"bold"
-
-                }
-
-            )
-
-        try:
-
-            df_catalogo, df_ventas = leer_archivos(
-
-                catalogo,
-
-                ventas
-
-            )
-
-            productos_catalogo = len(df_catalogo)
-
-            registros = len(df_ventas)
-
-            productos_encontrados = df_ventas["Producto 2"].notna().sum()
-
-            productos_faltantes = df_ventas["Producto 2"].isna().sum()
-
-            monedas_usd = 0
-
-            if "Líneas de la orden de venta/Divisa" in df_ventas.columns:
-
-                monedas_usd = (
-
-                    df_ventas["Líneas de la orden de venta/Divisa"]
-
-                    .astype(str)
-
-                    .str.upper()
-
-                    .eq("USD")
-
-                    .sum()
-
-                )
-
-            return html.Div(
+            dbc.Row(
 
                 [
 
-                    html.H5("Proceso terminado correctamente"),
+                    # ===============================================
+                    # CATÁLOGO
+                    # ===============================================
 
-                    html.Hr(),
+                    dbc.Col(
 
-                    html.P(f"📄 Registros procesados: {registros:,}"),
+                        dbc.Card(
 
-                    html.P(f"📦 Productos en catálogo: {productos_catalogo:,}"),
+                            dbc.CardBody(
 
-                    html.P(f"✅ Productos encontrados: {productos_encontrados:,}"),
+                                [
 
-                    html.P(f"⚠ Productos sin encontrar: {productos_faltantes:,}"),
+                                    html.H4(
+                                        "📁 Catálogo",
+                                        className="mb-3"
+                                    ),
 
-                    html.P(f"💲 Registros en USD: {monedas_usd:,}"),
+                                    dcc.Upload(
 
-                    html.Br(),
+                                        id="upload-catalogo",
 
-                    html.Div(
+                                        multiple=False,
 
-                        "La base quedó lista para generar KPIs, gráficas y calendario.",
+                                        children=dbc.Button(
 
-                        style={
+                                            [
 
-                            "color":"green",
+                                                html.I(
+                                                    className="fas fa-folder-open me-2"
+                                                ),
 
-                            "fontWeight":"bold"
+                                                "Seleccionar Catálogo"
 
-                        }
+                                            ],
+
+                                            color="primary",
+
+                                            className="w-100"
+
+                                        )
+
+                                    ),
+
+                                    html.Br(),
+
+                                    html.Div(
+
+                                        id="nombre-catalogo",
+
+                                        children=[
+
+                                            html.I(
+                                                className="fas fa-file-excel me-2"
+                                            ),
+
+                                            " Ningún archivo seleccionado."
+
+                                        ],
+
+                                        className="archivo-seleccionado"
+
+                                    )
+
+                                ]
+
+                            ),
+
+                            className="card-premium"
+
+                        ),
+
+                        md=6
+
+                    ),
+
+                    # ===============================================
+                    # BD VENTAS
+                    # ===============================================
+
+                    dbc.Col(
+
+                        dbc.Card(
+
+                            dbc.CardBody(
+
+                                [
+
+                                    html.H4(
+                                        "📊 BD Ventas",
+                                        className="mb-3"
+                                    ),
+
+                                    dcc.Upload(
+
+                                        id="upload-ventas",
+
+                                        multiple=False,
+
+                                        children=dbc.Button(
+
+                                            [
+
+                                                html.I(
+                                                    className="fas fa-folder-open me-2"
+                                                ),
+
+                                                "Seleccionar BD Ventas"
+
+                                            ],
+
+                                            color="primary",
+
+                                            className="w-100"
+
+                                        )
+
+                                    ),
+
+                                    html.Br(),
+
+                                    html.Div(
+
+                                        id="nombre-ventas",
+
+                                        children=[
+
+                                            html.I(
+                                                className="fas fa-file-excel me-2"
+                                            ),
+
+                                            " Ningún archivo seleccionado."
+
+                                        ],
+
+                                        className="archivo-seleccionado"
+
+                                    )
+
+                                ]
+
+                            ),
+
+                            className="card-premium"
+
+                        ),
+
+                        md=6
 
                     )
 
                 ]
 
-            )
+            ),
 
-        except Exception as e:
+            html.Br(),
 
-            return html.Div(
+            # =====================================================
+            # BOTÓN PROCESAR
+            # =====================================================
+
+            dbc.Button(
 
                 [
 
-                    html.H5(
-
-                        "Error durante el procesamiento",
-
-                        style={
-
-                            "color":"red"
-
-                        }
-
+                    html.I(
+                        className="fas fa-gears me-2"
                     ),
 
-                    html.Hr(),
+                    "Procesar Información"
 
-                    html.Pre(str(e))
+                ],
 
-                ]
+                id="btn-procesar",
+
+                color="primary",
+
+                size="lg",
+
+                className="px-5"
+
+            ),
+
+            html.Br(),
+            html.Br(),
+
+            # =====================================================
+            # ESTADO DEL PROCESAMIENTO
+            # =====================================================
+
+            dbc.Card(
+
+                dbc.CardBody(
+
+                    [
+
+                        html.H4(
+
+                            [
+
+                                html.I(
+                                    className="fas fa-circle-info me-2"
+                                ),
+
+                                "Estado del procesamiento"
+
+                            ]
+
+                        ),
+
+                        html.Hr(),
+
+                        html.Div(
+
+                            id="estado-proceso",
+
+                            children=[
+
+                                html.P(
+
+                                    "Esperando que seleccione los archivos para comenzar.",
+
+                                    style={
+
+                                        "fontSize": "18px",
+
+                                        "color": "#6c757d"
+
+                                    }
+
+                                )
+
+                            ]
+
+                        )
+
+                    ]
+
+                ),
+
+                className="card-premium"
 
             )
+
+        ]
+
+    )
