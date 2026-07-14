@@ -1,32 +1,59 @@
 """
-============================================================
-LAYOUT DEL MÓDULO DE VENTAS
-============================================================
+=========================================================
+MÓDULO VENTAS
+=========================================================
+Layout del módulo de Ventas
 """
 
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 
-def crear_layout():
+def crear_layout_ventas():
 
     return dbc.Container(
 
-        [
+        fluid=True,
+
+        children=[
+
+            # ======================================================
+            # TITULO
+            # ======================================================
+
+            dbc.Row(
+
+                dbc.Col(
+
+                    [
+
+                        html.H2(
+
+                            "📈 Ventas",
+
+                            className="titulo"
+
+                        ),
+
+                        html.P(
+
+                            "Análisis comercial y seguimiento de ventas.",
+
+                            className="subtitulo"
+
+                        )
+
+                    ]
+
+                )
+
+            ),
 
             html.Br(),
 
-            html.H2(
-                "SISTEMA GERENCIAL LIDERZA",
-                className="titulo-principal"
-            ),
-
-            html.H5(
-                "Dashboard Comercial",
-                className="subtitulo"
-            ),
-
-            html.Hr(),
+            # ======================================================
+            # CARGA DE ARCHIVOS
+            # ======================================================
 
             dbc.Row(
 
@@ -42,19 +69,23 @@ def crear_layout():
 
                                     html.H5("Catálogo"),
 
+                                    html.Br(),
+
                                     dcc.Upload(
 
                                         id="upload-catalogo",
 
-                                        children=dbc.Button(
+                                        children=html.Div(
 
-                                            "Seleccionar Catálogo",
+                                            [
 
-                                            color="primary",
+                                                "📂 Arrastra o selecciona el archivo"
 
-                                            className="w-100"
+                                            ]
 
                                         ),
+
+                                        className="upload-box",
 
                                         multiple=False
 
@@ -80,19 +111,23 @@ def crear_layout():
 
                                     html.H5("Base de Datos"),
 
+                                    html.Br(),
+
                                     dcc.Upload(
 
                                         id="upload-bd",
 
-                                        children=dbc.Button(
+                                        children=html.Div(
 
-                                            "Seleccionar BD Ventas",
+                                            [
 
-                                            color="success",
+                                                "📂 Arrastra o selecciona el archivo"
 
-                                            className="w-100"
+                                            ]
 
                                         ),
+
+                                        className="upload-box",
 
                                         multiple=False
 
@@ -114,17 +149,9 @@ def crear_layout():
 
             html.Br(),
 
-            dbc.Alert(
-
-                "Esperando archivos...",
-
-                id="mensaje",
-
-                color="secondary"
-
-            ),
-
-            html.Br(),
+            # ======================================================
+            # KPI
+            # ======================================================
 
             dbc.Row(
 
@@ -138,15 +165,19 @@ def crear_layout():
 
                                 [
 
-                                    html.H4("$0"),
+                                    html.H6("Ventas"),
 
-                                    html.P("Venta Total")
+                                    html.H2("$0")
 
                                 ]
 
-                            )
+                            ),
 
-                        )
+                            className="kpi"
+
+                        ),
+
+                        md=3
 
                     ),
 
@@ -158,15 +189,19 @@ def crear_layout():
 
                                 [
 
-                                    html.H4("$0"),
+                                    html.H6("Utilidad"),
 
-                                    html.P("Utilidad")
+                                    html.H2("$0")
 
                                 ]
 
-                            )
+                            ),
 
-                        )
+                            className="kpi"
+
+                        ),
+
+                        md=3
 
                     ),
 
@@ -178,15 +213,19 @@ def crear_layout():
 
                                 [
 
-                                    html.H4("0"),
+                                    html.H6("Margen"),
 
-                                    html.P("Clientes")
+                                    html.H2("0%")
 
                                 ]
 
-                            )
+                            ),
 
-                        )
+                            className="kpi"
+
+                        ),
+
+                        md=3
 
                     ),
 
@@ -198,15 +237,19 @@ def crear_layout():
 
                                 [
 
-                                    html.H4("0"),
+                                    html.H6("Clientes"),
 
-                                    html.P("Productos")
+                                    html.H2("0")
 
                                 ]
 
-                            )
+                            ),
 
-                        )
+                            className="kpi"
+
+                        ),
+
+                        md=3
 
                     )
 
@@ -216,17 +259,23 @@ def crear_layout():
 
             html.Br(),
 
+            # ======================================================
+            # GRAFICA
+            # ======================================================
+
             dbc.Card(
 
                 dbc.CardBody(
 
                     [
 
-                        html.H4("Gráficas"),
+                        html.H4("Gráfica de Ventas"),
 
-                        html.P(
+                        html.Hr(),
 
-                            "Aquí aparecerán las gráficas del Dashboard."
+                        dcc.Graph(
+
+                            id="grafica-ventas"
 
                         )
 
@@ -238,17 +287,23 @@ def crear_layout():
 
             html.Br(),
 
+            # ======================================================
+            # TABLA
+            # ======================================================
+
             dbc.Card(
 
                 dbc.CardBody(
 
                     [
 
-                        html.H4("Tabla de Ventas"),
+                        html.H4("Detalle de Ventas"),
 
-                        html.P(
+                        html.Hr(),
 
-                            "Aquí aparecerá la tabla dinámica."
+                        html.Div(
+
+                            id="tabla-ventas"
 
                         )
 
@@ -256,12 +311,8 @@ def crear_layout():
 
                 )
 
-            ),
+            )
 
-            html.Br()
-
-        ],
-
-        fluid=True
+        ]
 
     )

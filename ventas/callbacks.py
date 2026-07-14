@@ -1,38 +1,91 @@
 """
-============================================================
-CALLBACKS
-============================================================
+=========================================================
+CALLBACKS VENTAS
+=========================================================
 """
 
-from dash import Input, Output
+from dash import Input, Output, callback
+from dash import html
+import plotly.graph_objects as go
 
 
 def registrar_callbacks(app):
 
+    # =====================================================
+    # GRAFICA VACÍA
+    # =====================================================
+
     @app.callback(
 
-        Output("mensaje", "children"),
+        Output("grafica-ventas", "figure"),
 
-        Input("upload-catalogo", "filename"),
-
-        Input("upload-bd", "filename")
+        Input("grafica-ventas", "id")
 
     )
+    def cargar_grafica(_):
 
-    def mostrar_archivos(catalogo, bd):
+        fig = go.Figure()
 
-        if catalogo is None and bd is None:
+        fig.update_layout(
 
-            return "Esperando archivos..."
+            title="Ventas por Mes",
 
-        texto = ""
+            template="plotly_white",
 
-        if catalogo:
+            paper_bgcolor="white",
 
-            texto += f"✅ Catálogo: {catalogo}"
+            plot_bgcolor="white",
 
-        if bd:
+            margin=dict(
 
-            texto += f" | ✅ BD: {bd}"
+                l=20,
+                r=20,
+                t=50,
+                b=20
 
-        return texto
+            ),
+
+            xaxis_title="Mes",
+
+            yaxis_title="Ventas"
+
+        )
+
+        return fig
+
+    # =====================================================
+    # TABLA VACÍA
+    # =====================================================
+
+    @app.callback(
+
+        Output("tabla-ventas", "children"),
+
+        Input("tabla-ventas", "id")
+
+    )
+    def cargar_tabla(_):
+
+        return html.Div(
+
+            [
+
+                html.Br(),
+
+                html.H5(
+
+                    "No hay información cargada.",
+
+                    style={
+
+                        "textAlign":"center",
+
+                        "color":"gray"
+
+                    }
+
+                )
+
+            ]
+
+        )
