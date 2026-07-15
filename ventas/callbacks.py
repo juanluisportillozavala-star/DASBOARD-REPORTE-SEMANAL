@@ -354,11 +354,13 @@ def registrar_callbacks_ventas(app):
 
         State("store-mes", "data"),
 
+        State("store-bd-ventas", "data"),
+
         prevent_initial_call=True
 
     )
 
-    def seleccionar_meses(_, todo_clicks, limpiar_clicks, meses_activos):
+    def seleccionar_meses(_, todo_clicks, limpiar_clicks, meses_activos, data):
 
         if ctx.triggered_id is None:
 
@@ -370,13 +372,33 @@ def registrar_callbacks_ventas(app):
 
         trigger = ctx.triggered_id
 
-        # -----------------------------
-        # Seleccionar todos los meses
-        # -----------------------------
+        # -----------------------------------------
+        # Seleccionar todos los meses CON DATOS
+        # -----------------------------------------
 
         if trigger == "seleccionar-todos-meses":
 
-            return list(range(1, 13))
+            if not data:
+
+                return no_update
+
+            df = pd.DataFrame(data)
+
+            meses_con_datos = sorted(
+
+                df["Mes"]
+
+                .dropna()
+
+                .astype(int)
+
+                .unique()
+
+                .tolist()
+
+            )
+
+            return meses_con_datos
 
         # -----------------------------
         # Limpiar meses
