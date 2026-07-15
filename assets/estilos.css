@@ -983,3 +983,12 @@ TARJETAS KPI PERSONALIZADAS
     margin-top:6px;
 
 }
+.cuadro-semana.acumulado{
+
+    background:#8DB8FF;
+
+    color:white;
+
+    border-color:#8DB8FF;
+
+}
