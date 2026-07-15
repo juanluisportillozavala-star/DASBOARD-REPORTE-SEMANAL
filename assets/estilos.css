@@ -11,22 +11,21 @@ ESTILOS GENERALES
     box-sizing:border-box;
 }
 
-html{
-
-    height:100%;
-
-}
-
+html,
 body{
 
     height:100%;
 
-    background:#F4F6F9;
-
     font-family:
-    "Segoe UI",
-    Arial,
-    sans-serif;
+        "Segoe UI",
+        Arial,
+        sans-serif;
+
+    background:#EEF2F7;
+
+}
+
+body{
 
     overflow:hidden;
 
@@ -58,7 +57,7 @@ HEADER
 
     right:0;
 
-    height:78px;
+    height:90px;
 
     background:#173C73;
 
@@ -72,8 +71,29 @@ HEADER
 
     z-index:9999;
 
-    box-shadow:
-        0 3px 10px rgba(0,0,0,.18);
+    box-shadow:0 3px 10px rgba(0,0,0,.18);
+
+}
+
+/*======================================================
+LINEA DORADA
+======================================================*/
+
+.linea-dorada{
+
+    position:fixed;
+
+    top:90px;
+
+    left:0;
+
+    right:0;
+
+    height:4px;
+
+    background:#C9A227;
+
+    z-index:9998;
 
 }
 
@@ -91,11 +111,31 @@ LOGO
 
 }
 
+.logo-box{
+
+    background:white;
+
+    padding:12px;
+
+    border-radius:14px;
+
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin-right:18px;
+
+}
+
 .logo-img{
 
-    height:52px;
+    width:170px;
 
-    width:auto;
+    height:auto;
 
 }
 
@@ -103,7 +143,7 @@ LOGO
 
     color:white;
 
-    font-size:29px;
+    font-size:31px;
 
     font-weight:700;
 
@@ -111,9 +151,9 @@ LOGO
 
 .logo-subtitulo{
 
-    color:#d6d6d6;
+    color:#DADADA;
 
-    font-size:14px;
+    font-size:15px;
 
 }
 
@@ -143,7 +183,7 @@ USUARIO
 
 .puesto{
 
-    color:#d5d5d5;
+    color:#D5D5D5;
 
 }
 
@@ -179,11 +219,11 @@ SIDEBAR
 
     position:fixed;
 
-    top:78px;
+    top:94px;
 
     left:0;
 
-    width:250px;
+    width:260px;
 
     bottom:0;
 
@@ -191,16 +231,13 @@ SIDEBAR
 
     overflow-y:auto;
 
-    box-shadow:
-        2px 0 8px rgba(0,0,0,.12);
+    box-shadow:2px 0 8px rgba(0,0,0,.12);
 
 }
 
-/* Scroll bonito */
-
 .sidebar::-webkit-scrollbar{
 
-    width:8px;
+    width:7px;
 
 }
 
@@ -208,9 +245,10 @@ SIDEBAR
 
     background:#315791;
 
-    border-radius:20px;
+    border-radius:25px;
 
 }
+
 /*======================================================
 MENU
 ======================================================*/
@@ -243,21 +281,41 @@ MENU
 
     gap:16px;
 
+    height:58px;
+
+    margin:6px 12px;
+
+    padding-left:20px;
+
     color:white;
 
     font-size:18px;
 
-    padding:16px 24px;
+    border-radius:12px;
 
     transition:.25s;
 
     cursor:pointer;
 
-    border-left:4px solid transparent;
-
 }
 
 .menu-item:hover{
+
+    background:#224D88;
+
+}
+
+.menu-item i{
+
+    width:28px;
+
+    text-align:center;
+
+    font-size:22px;
+
+}
+
+.menu-item-activo{
 
     background:#204A86;
 
@@ -265,11 +323,9 @@ MENU
 
 }
 
-.menu-item i{
+.menu-item-activo i{
 
-    font-size:22px;
-
-    width:30px;
+    color:#D4AF37;
 
 }
 
@@ -279,15 +335,15 @@ BODY
 
 .body{
 
-    margin-top:78px;
+    margin-top:94px;
 
-    margin-left:250px;
+    margin-left:260px;
 
-    height:calc(100vh - 78px);
+    height:calc(100vh - 94px);
+
+    background:#EEF2F7;
 
     overflow:hidden;
-
-    background:#F4F6F9;
 
 }
 
@@ -297,19 +353,19 @@ CONTENIDO
 
 .contenido{
 
-    padding:35px;
+    padding:40px;
 
     height:100%;
 
     overflow-y:auto;
 
-}
+    animation:fadeIn .35s ease;
 
-/* Scroll */
+}
 
 .contenido::-webkit-scrollbar{
 
-    width:10px;
+    width:8px;
 
 }
 
@@ -317,13 +373,7 @@ CONTENIDO
 
     background:#B8C2CC;
 
-    border-radius:20px;
-
-}
-
-.contenido::-webkit-scrollbar-track{
-
-    background:#F4F6F9;
+    border-radius:30px;
 
 }
 
@@ -335,86 +385,23 @@ TITULOS
 
     color:#173C73;
 
-    font-size:42px;
+    font-size:54px;
 
     font-weight:700;
-
-    margin-bottom:8px;
-
-}
-
-.subtitulo{
-
-    color:#6E7B91;
-
-    font-size:20px;
-
-    margin-bottom:35px;
-
-}
-
-/*======================================================
-TARJETAS KPI
-======================================================*/
-
-.kpi{
-
-    border:none;
-
-    border-radius:18px;
-
-    box-shadow:0 4px 18px rgba(0,0,0,.08);
-
-    transition:.30s;
-
-    padding:10px;
-
-    background:white;
-
-}
-
-.kpi:hover{
-
-    transform:translateY(-6px);
-
-    box-shadow:0 10px 25px rgba(0,0,0,.15);
-
-}
-
-.kpi h6{
-
-    color:#6E7B91;
-
-    font-size:18px;
 
     margin-bottom:15px;
 
 }
 
-.kpi h2{
+.subtitulo{
 
-    color:#173C73;
+    color:#5E6878;
 
-    font-size:34px;
+    font-size:24px;
 
-    font-weight:700;
-
-}
-
-/*======================================================
-CARDS
-======================================================*/
-
-.card{
-
-    border:none !important;
-
-    border-radius:18px !important;
-
-    box-shadow:0 5px 18px rgba(0,0,0,.08);
+    margin-bottom:35px;
 
 }
-
 /*======================================================
 BOTONES
 ======================================================*/
@@ -424,6 +411,8 @@ BOTONES
     border-radius:10px !important;
 
     font-weight:600;
+
+    transition:.20s;
 
 }
 
@@ -448,22 +437,98 @@ BOTONES
 }
 
 /*======================================================
-TABLAS
+CARDS
 ======================================================*/
 
-table{
+.card{
 
-    border-radius:15px;
+    border:none !important;
 
-    overflow:hidden;
+    border-radius:18px !important;
+
+    box-shadow:0 5px 18px rgba(0,0,0,.08);
 
 }
 
-thead{
+.card-premium{
 
-    background:#173C73;
+    background:white;
 
-    color:white;
+    border-radius:18px;
+
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
+
+    padding:25px;
+
+    margin-bottom:25px;
+
+    transition:.25s;
+
+}
+
+.card-premium:hover{
+
+    transform:translateY(-3px);
+
+    box-shadow:0 12px 28px rgba(0,0,0,.12);
+
+}
+
+/*======================================================
+KPIs
+======================================================*/
+
+.kpi{
+
+    min-height:160px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    text-align:center;
+
+    background:white;
+
+    border-radius:18px;
+
+    box-shadow:0 4px 18px rgba(0,0,0,.08);
+
+    transition:.25s;
+
+}
+
+.kpi:hover{
+
+    transform:translateY(-5px);
+
+    border-top:5px solid #D4AF37;
+
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+
+}
+
+.kpi h6{
+
+    color:#6E7B91;
+
+    font-size:18px;
+
+    margin-bottom:15px;
+
+}
+
+.kpi h2{
+
+    color:#173C73;
+
+    font-size:34px;
+
+    font-weight:700;
+
+    margin-top:12px;
 
 }
 
@@ -479,10 +544,50 @@ select{
 }
 
 /*======================================================
-GRAFICAS
+TABLAS
+======================================================*/
+
+table{
+
+    width:100%;
+
+    background:white;
+
+    border-collapse:collapse;
+
+    border-radius:15px;
+
+    overflow:hidden;
+
+}
+
+thead{
+
+    background:#173C73;
+
+    color:white;
+
+}
+
+table th{
+
+    padding:14px;
+
+}
+
+table td{
+
+    padding:12px;
+
+}
+
+/*======================================================
+PLOTLY
 ======================================================*/
 
 .js-plotly-plot{
+
+    margin-top:10px;
 
     border-radius:18px;
 
@@ -491,67 +596,6 @@ GRAFICAS
     padding:10px;
 
     box-shadow:0 4px 18px rgba(0,0,0,.08);
-
-}
-/*======================================================
-ANIMACIONES
-======================================================*/
-
-*{
-
-    transition:
-        background .25s,
-        color .25s,
-        box-shadow .25s,
-        transform .25s;
-
-}
-
-/*======================================================
-MENU ACTIVO
-======================================================*/
-
-.menu-item-activo{
-
-    background:#204A86;
-
-    border-left:4px solid #D4AF37;
-
-    color:white;
-
-}
-
-.menu-item-activo i{
-
-    color:#D4AF37;
-
-}
-
-/*======================================================
-TARJETAS PREMIUM
-======================================================*/
-
-.card-premium{
-
-    background:white;
-
-    border-radius:18px;
-
-    box-shadow:
-        0 8px 24px rgba(0,0,0,.08);
-
-    padding:25px;
-
-    margin-bottom:25px;
-
-}
-
-.card-premium:hover{
-
-    transform:translateY(-3px);
-
-    box-shadow:
-        0 12px 28px rgba(0,0,0,.12);
 
 }
 
@@ -566,72 +610,6 @@ hr{
     border-top:1px solid #E6E8EC;
 
     margin:18px 0;
-
-}
-
-/*======================================================
-TARJETAS KPI PREMIUM
-======================================================*/
-
-.kpi{
-
-    min-height:160px;
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    text-align:center;
-
-}
-
-.kpi h2{
-
-    margin-top:12px;
-
-}
-
-.kpi:hover{
-
-    border-top:5px solid #D4AF37;
-
-}
-
-/*======================================================
-TABLAS
-======================================================*/
-
-table{
-
-    width:100%;
-
-    background:white;
-
-    border-collapse:collapse;
-
-}
-
-table td{
-
-    padding:12px;
-
-}
-
-table th{
-
-    padding:14px;
-
-}
-
-/*======================================================
-PLOTLY
-======================================================*/
-
-.js-plotly-plot{
-
-    margin-top:10px;
 
 }
 
@@ -680,6 +658,40 @@ SCROLL GENERAL
 ::-webkit-scrollbar-thumb:hover{
 
     background:#8EA4BD;
+
+}
+
+/*======================================================
+ANIMACIONES
+======================================================*/
+
+*{
+
+    transition:
+        background .25s,
+        color .25s,
+        box-shadow .25s,
+        transform .25s;
+
+}
+
+@keyframes fadeIn{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(10px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
 
 }
 
@@ -753,15 +765,11 @@ RESPONSIVE
 
     .logo-img{
 
-        height:40px;
+        width:120px;
 
     }
 
-    .usuario{
-
-        display:none;
-
-    }
+    .usuario,
 
     .puesto{
 
@@ -770,373 +778,208 @@ RESPONSIVE
     }
 
 }
+/*==========================================================
+CONTROLES DEL DASHBOARD
+==========================================================*/
 
-/*======================================================
-EFECTOS
-======================================================*/
+.selector-meses{
 
-.contenido{
+    display:grid;
 
-    animation:fadeIn .35s ease;
+    grid-template-columns:repeat(6,58px);
 
-}
+    gap:10px;
 
-@keyframes fadeIn{
-
-    from{
-
-        opacity:0;
-
-        transform:translateY(10px);
-
-    }
-
-    to{
-
-        opacity:1;
-
-        transform:translateY(0);
-
-    }
+    margin-bottom:10px;
 
 }
-/*=========================================
-LOGO BLANCO
-=========================================*/
 
-.logo-box{
+.cuadro-mes{
 
-    background:white;
+    width:58px;
 
-    padding:12px;
-
-    border-radius:14px;
-
-    box-shadow:0 4px 12px rgba(0,0,0,.15);
+    height:46px;
 
     display:flex;
 
-    align-items:center;
-
     justify-content:center;
 
-    margin-right:18px;
+    align-items:center;
 
-}
+    background:#F8FAFD;
 
-.logo-img{
+    border:1px solid #D5DFEB;
 
-    width:170px;
-
-    height:auto;
-
-}
-
-/*=========================================
-HEADER
-=========================================*/
-
-.header{
-
-    height:90px;
-
-}
-
-.logo-titulo{
-
-    font-size:31px;
-
-    font-weight:700;
-
-}
-
-.logo-subtitulo{
-
-    color:#DADADA;
-
-    font-size:15px;
-
-}
-
-/*=========================================
-LINEA DORADA
-=========================================*/
-
-.linea-dorada{
-
-    position:fixed;
-
-    top:90px;
-
-    left:0;
-
-    right:0;
-
-    height:4px;
-
-    background:#C9A227;
-
-    z-index:9998;
-
-}
-
-/*=========================================
-SIDEBAR
-=========================================*/
-
-.sidebar{
-
-    top:94px;
-
-    width:260px;
-
-    background:#173C73;
-
-    overflow-y:auto;
-
-}
-
-.menu-item{
-
-    height:58px;
-
-    border-radius:12px;
-
-    margin:6px 12px;
-
-    padding-left:20px;
-
-}
-
-.menu-item:hover{
-
-    background:#224D88;
-
-}
-
-.menu-item i{
-
-    width:28px;
-
-    text-align:center;
-
-}
-
-/*=========================================
-BODY
-=========================================*/
-
-.body{
-
-    margin-top:94px;
-
-    margin-left:260px;
-
-    height:calc(100vh - 94px);
-
-    background:#F4F6F9;
-
-}
-
-/*=========================================
-CONTENIDO
-=========================================*/
-
-.contenido{
-
-    padding:40px;
-
-}
-
-/*=========================================
-TITULOS
-=========================================*/
-
-.titulo{
-
-    font-size:54px;
+    border-radius:10px;
 
     color:#173C73;
 
-    margin-bottom:15px;
+    font-size:15px;
+
+    font-weight:700;
+
+    cursor:pointer;
+
+    user-select:none;
+
+    transition:.20s;
 
 }
 
-.subtitulo{
+.cuadro-mes:hover{
 
-    font-size:24px;
+    background:#DCEBFF;
 
-    color:#5E6878;
+    border-color:#7EA5DD;
 
-}
+    transform:translateY(-2px);
 
-/*=========================================
-FONDO
-=========================================*/
-
-body{
-
-    background:#EEF2F7;
+    box-shadow:0 5px 14px rgba(0,0,0,.10);
 
 }
 
-.body{
+.cuadro-mes.activo{
 
-    background:#EEF2F7;
+    background:#173C73;
 
-}
+    color:white;
 
-/*=========================================
-SCROLL
-=========================================*/
+    border-color:#173C73;
 
-.sidebar::-webkit-scrollbar{
-
-    width:7px;
+    box-shadow:0 6px 16px rgba(23,60,115,.30);
 
 }
 
-.sidebar::-webkit-scrollbar-thumb{
-
-    background:#315791;
-
-    border-radius:25px;
-
-}
-
-.contenido::-webkit-scrollbar{
-
-    width:8px;
-
-}
-
-.contenido::-webkit-scrollbar-thumb{
-
-    background:#B8C2CC;
-
-    border-radius:30px;
-
-}
 /*==========================================================
-CONTROLES DEL DASHBOARD
+SEMANAS
 ==========================================================*/
 
 .selector-semanas{
 
     display:flex;
+
     flex-wrap:wrap;
-    gap:8px;
+
+    gap:10px;
+
+    min-height:46px;
 
 }
 
 .cuadro-semana{
 
-    width:48px;
-    height:42px;
+    width:58px;
+
+    height:46px;
 
     display:flex;
-    align-items:center;
+
     justify-content:center;
 
-    background:#EEF3FB;
+    align-items:center;
 
-    border:1px solid #C8D4E6;
+    background:#F8FAFD;
 
-    border-radius:6px;
+    border:1px solid #D5DFEB;
 
-    color:#5B6B82;
+    border-radius:10px;
 
-    font-size:16px;
-    font-weight:600;
+    color:#173C73;
+
+    font-size:15px;
+
+    font-weight:700;
 
     cursor:pointer;
-
-    transition:.18s;
 
     user-select:none;
 
-}
+    transition:.20s;
 
+}
 
 .cuadro-semana:hover{
 
-    background:#D8E7FF;
+    background:#DCEBFF;
 
-    color:#173C73;
+    border-color:#7EA5DD;
 
     transform:translateY(-2px);
 
-    box-shadow:0 4px 10px rgba(0,0,0,.10);
+    box-shadow:0 5px 14px rgba(0,0,0,.10);
 
 }
-
 
 .cuadro-semana.activo{
 
-    background:#7EA5DD;
+    background:#173C73;
 
     color:white;
 
-    border:1px solid #5D88C7;
+    border-color:#173C73;
+
+    box-shadow:0 6px 16px rgba(23,60,115,.30);
 
 }
 
+/*==========================================================
+ARCHIVOS CARGADOS
+==========================================================*/
 
-.selector-meses{
+.archivo-seleccionado{
 
-    display:flex;
+    margin-top:12px;
 
-    gap:8px;
+    padding:10px 14px;
 
-    flex-wrap:wrap;
+    background:#F8FAFD;
 
-}
+    border:1px solid #D9E2EC;
 
-
-.cuadro-mes{
-
-    width:48px;
-
-    height:42px;
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-    border-radius:6px;
-
-    background:#EEF3FB;
-
-    border:1px solid #C8D4E6;
-
-    color:#5B6B82;
-
-    font-weight:600;
-
-    cursor:pointer;
-
-    transition:.18s;
-
-}
-
-
-.cuadro-mes:hover{
-
-    background:#D8E7FF;
+    border-radius:10px;
 
     color:#173C73;
 
+    font-size:14px;
+
+    font-weight:500;
+
 }
 
+/*==========================================================
+TARJETAS KPI PERSONALIZADAS
+==========================================================*/
 
-.cuadro-mes.activo{
+.titulo-kpi{
 
-    background:#7EA5DD;
+    font-size:14px;
 
-    color:white;
+    color:#7A869A;
 
-    border:1px solid #5D88C7;
+    font-weight:600;
+
+    margin-bottom:6px;
+
+}
+
+.valor-kpi{
+
+    font-size:32px;
+
+    font-weight:700;
+
+    color:#173C73;
+
+    line-height:1.1;
+
+}
+
+.subtitulo-kpi{
+
+    font-size:13px;
+
+    color:#98A6B8;
+
+    margin-top:6px;
 
 }

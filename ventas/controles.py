@@ -5,133 +5,109 @@ CONTROLES DEL DASHBOARD
 """
 
 from dash import html
-import dash_bootstrap_components as dbc
 
 
 def crear_controles():
 
-    return dbc.Card(
+    return html.Div(
 
-        dbc.CardBody(
+        [
 
-            [
+            # =====================================================
+            # MESES
+            # =====================================================
 
-                dbc.Row(
+            html.Div(
 
-                    [
+                [
 
-                        # ==========================================
-                        # MESES
-                        # ==========================================
+                    html.H5(
 
-                        dbc.Col(
+                        "Mes",
 
-                            [
+                        style={
 
-                                html.H5(
+                            "marginBottom": "12px",
 
-                                    "Mes",
+                            "color": "#173C73",
 
-                                    className="mb-3"
+                            "fontWeight": "600"
 
-                                ),
+                        }
 
-                                dbc.ButtonGroup(
+                    ),
 
-                                    [
+                    html.Div(
 
-                                        dbc.Button(
+                        [
 
-                                            str(i),
+                            html.Div(
 
-                                            id={
-                                                "type": "btn-mes",
-                                                "index": i
-                                            },
+                                str(i),
 
-                                            color="light",
+                                id={
 
-                                            outline=True,
+                                    "type": "btn-mes",
 
-                                            className="btn-mes"
+                                    "index": i
 
-                                        )
+                                },
 
-                                        for i in range(1,7)
+                                className="cuadro-mes"
 
-                                    ],
+                            )
 
-                                    className="mb-2"
+                            for i in range(1, 13)
 
-                                ),
+                        ],
 
-                                html.Br(),
+                        className="selector-meses"
 
-                                dbc.ButtonGroup(
+                    )
 
-                                    [
+                ]
 
-                                        dbc.Button(
+            ),
 
-                                            str(i),
+            html.Br(),
 
-                                            id=f"btn-mes-{i}",
+            # =====================================================
+            # SEMANAS
+            # =====================================================
 
-                                            color="light",
+            html.Div(
 
-                                            outline=True,
+                [
 
-                                            className="btn-mes"
+                    html.H5(
 
-                                        )
+                        "Semana",
 
-                                        for i in range(7,13)
+                        style={
 
-                                    ]
+                            "marginBottom": "12px",
 
-                                )
+                            "color": "#173C73",
 
-                            ],
+                            "fontWeight": "600"
 
-                            md=5
+                        }
 
-                        ),
+                    ),
 
-                        # ==========================================
-                        # SEMANAS
-                        # ==========================================
+                    html.Div(
 
-                        dbc.Col(
+                        id="selector-semanas",
 
-                            [
+                        className="selector-semanas"
 
-                                html.H5(
+                    )
 
-                                    "Semana",
+                ]
 
-                                    className="mb-3"
+            )
 
-                                ),
-
-                                html.Div(
-
-                                    id="selector-semanas"
-
-                                )
-
-                            ],
-
-                            md=7
-
-                        )
-
-                    ]
-
-                )
-
-            ]
-
-        ),
+        ],
 
         className="card-premium"
 
