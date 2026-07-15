@@ -4,7 +4,7 @@ CALLBACKS DEL MÓDULO VENTAS
 =========================================================
 """
 
-from dash import Input, Output, State, html, ALL, ctx
+from dash import Input, Output, State, html, ALL, ctx, no_update
 import pandas as pd
 from plotly import data
 
@@ -328,7 +328,7 @@ def registrar_callbacks_ventas(app):
             return ""
 
         return crear_cards(kpis)
-    # =====================================================
+# =====================================================
 # SELECCIÓN DE MES
 # =====================================================
 
@@ -368,6 +368,14 @@ def registrar_callbacks_ventas(app):
 
         State(
 
+            "store-mes",
+
+            "data"
+
+        ),
+
+        State(
+
             "store-bd-ventas",
 
             "data"
@@ -378,39 +386,82 @@ def registrar_callbacks_ventas(app):
 
     )
 
-    def seleccionar_mes(_, data):
+    def seleccionar_mes(_, meses_seleccionados, data):
+
+        
+        import dash_bootstrap_components as dbc
 
         if data is None:
 
-            return None, [], [
+            return (
 
-                "cuadro-mes"
+                [],
 
-                for _ in range(12)
+                [],
 
-            ]
+                ["cuadro-mes" for _ in range(12)]
+
+            )
 
         if ctx.triggered_id is None:
 
-            return None, [], [
+            return (
 
-                "cuadro-mes"
+                [],
 
-                for _ in range(12)
+                [],
 
-            ]
+                ["cuadro-mes" for _ in range(12)]
+
+            )
+
+        # =============================================
+        # Mes seleccionado
+        # =============================================
 
         mes = ctx.triggered_id["index"]
 
+        if meses_seleccionados is None:
+
+            meses_seleccionados = []
+
+        # =============================================
+        # Agregar / quitar selección
+        # =============================================
+
+        if mes in meses_seleccionados:
+
+            meses_seleccionados.remove(mes)
+
+        else:
+
+            meses_seleccionados.append(mes)
+
+        meses_seleccionados = sorted(meses_seleccionados)
+
+        # =============================================
+        # Obtener semanas
+        # =============================================
+
         df = pd.DataFrame(data)
 
-        semanas = obtener_semanas(df, mes)
+        df = df[df["Mes"].isin(meses_seleccionados)]
 
-        # ---------------------------------------------
-        # BOTONES DE SEMANA
-        # ---------------------------------------------
+        semanas = (
 
-        import dash_bootstrap_components as dbc
+            df["Semana"]
+
+            .dropna()
+
+            .astype(int)
+
+            .sort_values()
+
+            .unique()
+
+            .tolist()
+
+        )
 
         botones = [
 
@@ -440,23 +491,15 @@ def registrar_callbacks_ventas(app):
 
         ]
 
-        # ---------------------------------------------
-        # COLORES DE LOS MESES
-        # ---------------------------------------------
+        # =============================================
+        # Pintar meses
+        # =============================================
 
         clases = []
 
         for i in range(1, 13):
 
-            if i < mes:
-
-                clases.append(
-
-                    "cuadro-mes acumulado"
-
-                )
-
-            elif i == mes:
+            if i in meses_seleccionados:
 
                 clases.append(
 
@@ -474,7 +517,7 @@ def registrar_callbacks_ventas(app):
 
         return (
 
-            mes,
+            meses_seleccionados,
 
             botones,
 
