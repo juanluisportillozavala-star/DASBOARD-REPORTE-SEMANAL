@@ -2,21 +2,32 @@
 =========================================================
 ANÁLISIS DEL MÓDULO DE VENTAS
 =========================================================
-Todas las métricas y KPIs del Dashboard.
 """
 
 import pandas as pd
 
 
-# =========================================================
+# ==========================================================
+# NOMBRES DE COLUMNAS
+# ==========================================================
+
+COL_CLIENTE = "Asiento contable/Nombre del partner para mostrar en la factura."
+COL_VENTA = "Crédito"
+COL_UTILIDAD = "Ut Bruta MN"
+COL_PRODUCTO = "Producto 2"
+COL_MES = "Mes"
+COL_SEMANA = "Semana"
+
+
+# ==========================================================
 # KPI PRINCIPALES
-# =========================================================
+# ==========================================================
 
 def obtener_kpis(df):
 
-    venta_total = df["Crédito"].sum()
+    venta_total = df[COL_VENTA].sum()
 
-    utilidad = df["Ut Bruta MN"].sum()
+    utilidad = df[COL_UTILIDAD].sum()
 
     margen = 0
 
@@ -24,9 +35,9 @@ def obtener_kpis(df):
 
         margen = utilidad / venta_total * 100
 
-    clientes = df["Asociado"].nunique()
+    clientes = df[COL_CLIENTE].nunique()
 
-    productos = df["Producto 2"].nunique()
+    productos = df[COL_PRODUCTO].nunique()
 
     facturas = len(df)
 
@@ -47,9 +58,9 @@ def obtener_kpis(df):
     }
 
 
-# =========================================================
+# ==========================================================
 # VENTA POR CLIENTE
-# =========================================================
+# ==========================================================
 
 def ventas_por_cliente(df):
 
@@ -57,15 +68,15 @@ def ventas_por_cliente(df):
 
         df
 
-        .groupby("Asociado", as_index=False)
+        .groupby(COL_CLIENTE, as_index=False)
 
         .agg(
 
             {
 
-                "Crédito":"sum",
+                COL_VENTA: "sum",
 
-                "Ut Bruta MN":"sum"
+                COL_UTILIDAD: "sum"
 
             }
 
@@ -73,7 +84,7 @@ def ventas_por_cliente(df):
 
         .sort_values(
 
-            "Crédito",
+            COL_VENTA,
 
             ascending=False
 
@@ -82,9 +93,9 @@ def ventas_por_cliente(df):
     )
 
 
-# =========================================================
+# ==========================================================
 # VENTA POR PRODUCTO
-# =========================================================
+# ==========================================================
 
 def ventas_por_producto(df):
 
@@ -92,15 +103,15 @@ def ventas_por_producto(df):
 
         df
 
-        .groupby("Producto 2", as_index=False)
+        .groupby(COL_PRODUCTO, as_index=False)
 
         .agg(
 
             {
 
-                "Crédito":"sum",
+                COL_VENTA: "sum",
 
-                "Ut Bruta MN":"sum"
+                COL_UTILIDAD: "sum"
 
             }
 
@@ -108,7 +119,7 @@ def ventas_por_producto(df):
 
         .sort_values(
 
-            "Crédito",
+            COL_VENTA,
 
             ascending=False
 
@@ -117,9 +128,9 @@ def ventas_por_producto(df):
     )
 
 
-# =========================================================
-# VENTAS POR MES
-# =========================================================
+# ==========================================================
+# VENTA POR MES
+# ==========================================================
 
 def ventas_por_mes(df):
 
@@ -127,13 +138,13 @@ def ventas_por_mes(df):
 
         df
 
-        .groupby("Mes", as_index=False)
+        .groupby(COL_MES, as_index=False)
 
         .agg(
 
             {
 
-                "Crédito":"sum"
+                COL_VENTA: "sum"
 
             }
 
@@ -142,9 +153,9 @@ def ventas_por_mes(df):
     )
 
 
-# =========================================================
-# VENTAS POR SEMANA
-# =========================================================
+# ==========================================================
+# VENTA POR SEMANA
+# ==========================================================
 
 def ventas_por_semana(df):
 
@@ -152,13 +163,13 @@ def ventas_por_semana(df):
 
         df
 
-        .groupby("Semana", as_index=False)
+        .groupby(COL_SEMANA, as_index=False)
 
         .agg(
 
             {
 
-                "Crédito":"sum"
+                COL_VENTA: "sum"
 
             }
 
@@ -167,18 +178,18 @@ def ventas_por_semana(df):
     )
 
 
-# =========================================================
-# TOP 10 CLIENTES
-# =========================================================
+# ==========================================================
+# TOP CLIENTES
+# ==========================================================
 
 def top_clientes(df):
 
     return ventas_por_cliente(df).head(10)
 
 
-# =========================================================
-# TOP 10 PRODUCTOS
-# =========================================================
+# ==========================================================
+# TOP PRODUCTOS
+# ==========================================================
 
 def top_productos(df):
 
