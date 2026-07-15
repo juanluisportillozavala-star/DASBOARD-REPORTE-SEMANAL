@@ -6,6 +6,7 @@ CALLBACKS DEL MÓDULO VENTAS
 
 from dash import Input, Output, State, html, ALL, ctx
 import pandas as pd
+from plotly import data
 
 from ventas.filtros import obtener_semanas
 
@@ -328,22 +329,22 @@ def registrar_callbacks_ventas(app):
 
         return crear_cards(kpis)
     # =====================================================
-    # SELECCIÓN DE MES
-    # =====================================================
+# SELECCIÓN DE MES
+# =====================================================
 
     @app.callback(
 
         Output("store-mes", "data"),
 
         Output("selector-semanas", "children"),
-        
+
         Output(
 
             {
 
-                "type":"btn-mes",
+                "type": "btn-mes",
 
-                "index":ALL
+                "index": ALL
 
             },
 
@@ -379,19 +380,83 @@ def registrar_callbacks_ventas(app):
 
     def seleccionar_mes(_, data):
 
-        if not ctx.triggered_id:
-
-            return None, ""
-
         if data is None:
 
-            return None, ""
+            return None, [], [
+
+                "cuadro-mes"
+
+                for _ in range(12)
+
+            ]
+
+        if ctx.triggered_id is None:
+
+            return None, [], [
+
+                "cuadro-mes"
+
+                for _ in range(12)
+
+            ]
 
         mes = ctx.triggered_id["index"]
+
+        df = pd.DataFrame(data)
+
+        semanas = obtener_semanas(df, mes)
+
+        # ---------------------------------------------
+        # BOTONES DE SEMANA
+        # ---------------------------------------------
+
+        import dash_bootstrap_components as dbc
+
+        botones = [
+
+            dbc.Button(
+
+                str(sem),
+
+                id={
+
+                    "type": "btn-semana",
+
+                    "index": int(sem)
+
+                },
+
+                n_clicks=0,
+
+                color="light",
+
+                outline=True,
+
+                className="cuadro-semana"
+
+            )
+
+            for sem in semanas
+
+        ]
+
+        # ---------------------------------------------
+        # COLORES DE LOS MESES
+        # ---------------------------------------------
+
         clases = []
-        for i in range(1,13):
-    
-            if i <= mes:
+
+        for i in range(1, 13):
+
+            if i < mes:
+
+                clases.append(
+
+                    "cuadro-mes acumulado"
+
+                )
+
+            elif i == mes:
 
                 clases.append(
 
@@ -407,30 +472,12 @@ def registrar_callbacks_ventas(app):
 
                 )
 
-        df = pd.DataFrame(data)
+        return (
 
-        semanas = obtener_semanas(df, mes)
+            mes,
 
-        botones = [
+            botones,
 
-            html.Button(
+            clases
 
-                str(semana),
-
-                id={
-
-                    "type": "btn-semana",
-
-                    "index": semana
-
-                },
-
-                className="cuadro-semana"
-
-            )
-
-            for semana in semanas
-
-        ]
-
-        return mes, botones
+        )

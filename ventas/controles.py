@@ -5,92 +5,104 @@ CONTROLES DEL DASHBOARD
 """
 
 from dash import html
+import dash_bootstrap_components as dbc
 
 
 def crear_controles():
 
-    return html.Div(
+    return dbc.Card(
 
-        [
+        dbc.CardBody(
 
-            # ==========================================
-            # MESES
-            # ==========================================
+            [
 
-            html.H5(
+                # ==========================================
+                # MESES
+                # ==========================================
 
-                "Mes",
+                html.H4(
 
-                className="mb-3"
+                    "Mes",
 
-            ),
+                    style={
 
-            html.Div(
+                        "color": "#173C73",
 
-                [
+                        "fontWeight": "600",
 
-                    html.Div(
+                        "marginBottom": "15px"
 
-                        str(i),
+                    }
 
-                        id={
+                ),
 
-                            "type":"btn-mes",
+                html.Div(
 
-                            "index":i
+                    [
 
-                        },
+                        dbc.Button(
 
-                        n_clicks=0,
+                            str(i),
 
-                        className="cuadro-mes"
+                            id={
 
-                    )
+                                "type": "btn-mes",
 
-                    for i in range(1,13)
+                                "index": i
 
-                ],
+                            },
 
-                className="selector-meses"
+                            n_clicks=0,
 
-            ),
-            # =====================================================
-            # SEMANAS
-            # =====================================================
+                            color="light",
 
-            html.Div(
+                            outline=True,
 
-                [
+                            className="cuadro-mes"
 
-                    html.H5(
+                        )
 
-                        "Semana",
+                        for i in range(1, 13)
 
-                        style={
+                    ],
 
-                            "marginBottom": "12px",
+                    className="selector-meses"
 
-                            "color": "#173C73",
+                ),
 
-                            "fontWeight": "600"
+                html.Br(),
 
-                        }
+                # ==========================================
+                # SEMANAS
+                # ==========================================
 
-                    ),
+                html.H4(
 
-                    html.Div(
+                    "Semana",
 
-                        id="selector-semanas",
+                    style={
 
-                        className="selector-semanas"
+                        "color": "#173C73",
 
-                    )
+                        "fontWeight": "600",
 
-                ]
+                        "marginBottom": "15px"
 
-            )
+                    }
 
-        ],
+                ),
+
+                html.Div(
+
+                    id="selector-semanas",
+
+                    className="selector-semanas"
+
+                )
+
+            ]
+
+        ),
 
         className="card-premium"
 
