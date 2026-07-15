@@ -476,9 +476,24 @@ def registrar_callbacks_ventas(app):
 
         )
 
+        # -----------------------------------------------
+        # Columnas fijas del grid de semanas. Cada semana
+        # se posiciona según su número real (1-52), así que
+        # si hay saltos (p. ej. meses no consecutivos) se ve
+        # el hueco real en vez de recorrer los botones.
+        # -----------------------------------------------
+
+        COLUMNAS_SEMANA = 13
+
         botones = []
 
         for semana in semanas:
+
+            semana_int = int(semana)
+
+            fila = (semana_int - 1) // COLUMNAS_SEMANA + 1
+
+            columna = (semana_int - 1) % COLUMNAS_SEMANA + 1
 
             botones.append(
 
@@ -490,7 +505,7 @@ def registrar_callbacks_ventas(app):
 
                         "type": "btn-semana",
 
-                        "index": int(semana)
+                        "index": semana_int
 
                     },
 
@@ -500,7 +515,15 @@ def registrar_callbacks_ventas(app):
 
                     outline=True,
 
-                    className="cuadro-semana activo"
+                    className="cuadro-semana activo",
+
+                    style={
+
+                        "gridRow": fila,
+
+                        "gridColumn": columna
+
+                    }
 
                 )
 

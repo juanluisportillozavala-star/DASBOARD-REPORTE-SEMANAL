@@ -918,11 +918,21 @@ SEMANAS
 .cuadro-semana{
 
     height:44px;
+    width:44px;
 
     border-radius:10px !important;
 
     font-weight:700;
 
+    color:#5a6472 !important;
+    border-color:#c7ccd4 !important;
+    background-color:#f4f5f7 !important;
+
+}
+
+.cuadro-semana:hover{
+    background-color:#e9ebef !important;
+    color:#2b3542 !important;
 }
 
 .cuadro-semana.activo{
