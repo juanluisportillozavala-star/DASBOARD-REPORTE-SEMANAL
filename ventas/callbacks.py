@@ -336,6 +336,20 @@ def registrar_callbacks_ventas(app):
         Output("store-mes", "data"),
 
         Output("selector-semanas", "children"),
+        
+        Output(
+
+            {
+
+                "type":"btn-mes",
+
+                "index":ALL
+
+            },
+
+            "className"
+
+        ),
 
         Input(
 
@@ -374,6 +388,24 @@ def registrar_callbacks_ventas(app):
             return None, ""
 
         mes = ctx.triggered_id["index"]
+        clases = []
+        for i in range(1,13):
+    
+            if i <= mes:
+
+                clases.append(
+
+                    "cuadro-mes activo"
+
+                )
+
+            else:
+
+                clases.append(
+
+                    "cuadro-mes"
+
+                )
 
         df = pd.DataFrame(data)
 

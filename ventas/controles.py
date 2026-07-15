@@ -13,64 +13,47 @@ def crear_controles():
 
         [
 
-            # =====================================================
+            # ==========================================
             # MESES
-            # =====================================================
+            # ==========================================
+
+            html.H5(
+
+                "Mes",
+
+                className="mb-3"
+
+            ),
 
             html.Div(
 
                 [
 
-                    html.H5(
-
-                        "Mes",
-
-                        style={
-
-                            "marginBottom": "12px",
-
-                            "color": "#173C73",
-
-                            "fontWeight": "600"
-
-                        }
-
-                    ),
-
                     html.Div(
 
-                        [
+                        str(i),
 
-                            html.Div(
+                        id={
 
-                                str(i),
+                            "type":"btn-mes",
 
-                                id={
+                            "index":i
 
-                                    "type": "btn-mes",
+                        },
 
-                                    "index": i
+                        n_clicks=0,
 
-                                },
-
-                                className="cuadro-mes"
-
-                            )
-
-                            for i in range(1, 13)
-
-                        ],
-
-                        className="selector-meses"
+                        className="cuadro-mes"
 
                     )
 
-                ]
+                    for i in range(1,13)
+
+                ],
+
+                className="selector-meses"
 
             ),
-
-            html.Br(),
-
             # =====================================================
             # SEMANAS
             # =====================================================
