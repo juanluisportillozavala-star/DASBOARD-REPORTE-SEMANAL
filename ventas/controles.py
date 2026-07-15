@@ -16,27 +16,63 @@ def crear_controles():
 
             [
 
-                # =====================================================
-                # MESES
-                # =====================================================
-
-                html.Div(
+                dbc.Row(
 
                     [
 
-                        # ---------------------------------------------
-                        # Encabezado
-                        # ---------------------------------------------
+                        # =====================================================
+                        # MESES
+                        # =====================================================
 
-                        html.Div(
+                        dbc.Col(
 
                             [
 
-                                html.H3(
+                                html.Div(
 
-                                    "Mes",
+                                    [
 
-                                    className="titulo-filtro"
+                                        html.H4(
+
+                                            "Mes",
+
+                                            className="titulo-filtro"
+
+                                        ),
+
+                                        html.Div(
+
+                                            [
+
+                                                html.I(
+
+                                                    className="fas fa-check-double filtro-icono",
+
+                                                    id="seleccionar-todos-meses",
+
+                                                    title="Seleccionar todos"
+
+                                                ),
+
+                                                html.I(
+
+                                                    className="fas fa-filter-circle-xmark filtro-icono",
+
+                                                    id="limpiar-meses",
+
+                                                    title="Limpiar selección"
+
+                                                )
+
+                                            ],
+
+                                            className="acciones-filtro"
+
+                                        )
+
+                                    ],
+
+                                    className="encabezado-filtro"
 
                                 ),
 
@@ -44,157 +80,117 @@ def crear_controles():
 
                                     [
 
-                                        html.I(
+                                        dbc.Button(
 
-                                            className="fas fa-check-double filtro-icono",
+                                            str(i),
 
-                                            id="seleccionar-todos-meses",
+                                            id={
 
-                                            title="Seleccionar todos"
+                                                "type": "btn-mes",
 
-                                        ),
+                                                "index": i
 
-                                        html.I(
+                                            },
 
-                                            className="fas fa-filter-circle-xmark filtro-icono",
+                                            n_clicks=0,
 
-                                            id="limpiar-meses",
+                                            color="light",
 
-                                            title="Limpiar selección"
+                                            outline=True,
+
+                                            className="cuadro-mes"
 
                                         )
 
+                                        for i in range(1, 13)
+
                                     ],
 
-                                    className="acciones-filtro"
+                                    id="selector-meses",
+
+                                    className="grid-meses"
 
                                 )
 
                             ],
 
-                            className="encabezado-filtro"
+                            md=3
 
                         ),
 
-                        # ---------------------------------------------
-                        # Botones de meses
-                        # ---------------------------------------------
+                        # =====================================================
+                        # SEMANAS
+                        # =====================================================
 
-                        html.Div(
-
-                            [
-
-                                dbc.Button(
-
-                                    str(i),
-
-                                    id={
-
-                                        "type": "btn-mes",
-
-                                        "index": i
-
-                                    },
-
-                                    color="light",
-
-                                    outline=True,
-
-                                    n_clicks=0,
-
-                                    className="cuadro-mes"
-
-                                )
-
-                                for i in range(1, 13)
-
-                            ],
-
-                            id="selector-meses",
-
-                            className="grid-meses"
-
-                        )
-
-                    ],
-
-                    className="bloque-filtro"
-
-                ),
-
-                html.Hr(
-
-                    className="my-4"
-
-                ),
-
-                # =====================================================
-                # SEMANAS
-                # =====================================================
-
-                html.Div(
-
-                    [
-
-                        html.Div(
+                        dbc.Col(
 
                             [
-
-                                html.H3(
-
-                                    "Semana",
-
-                                    className="titulo-filtro"
-
-                                ),
 
                                 html.Div(
 
                                     [
 
-                                        html.I(
+                                        html.H4(
 
-                                            className="fas fa-check-double filtro-icono",
+                                            "Semana",
 
-                                            id="seleccionar-todas-semanas",
-
-                                            title="Seleccionar todas"
+                                            className="titulo-filtro"
 
                                         ),
 
-                                        html.I(
+                                        html.Div(
 
-                                            className="fas fa-filter-circle-xmark filtro-icono",
+                                            [
 
-                                            id="limpiar-semanas",
+                                                html.I(
 
-                                            title="Limpiar selección"
+                                                    className="fas fa-check-double filtro-icono",
+
+                                                    id="seleccionar-todas-semanas",
+
+                                                    title="Seleccionar todas"
+
+                                                ),
+
+                                                html.I(
+
+                                                    className="fas fa-filter-circle-xmark filtro-icono",
+
+                                                    id="limpiar-semanas",
+
+                                                    title="Limpiar selección"
+
+                                                )
+
+                                            ],
+
+                                            className="acciones-filtro"
 
                                         )
 
                                     ],
 
-                                    className="acciones-filtro"
+                                    className="encabezado-filtro"
+
+                                ),
+
+                                html.Div(
+
+                                    id="selector-semanas",
+
+                                    className="grid-semanas"
 
                                 )
 
                             ],
 
-                            className="encabezado-filtro"
-
-                        ),
-
-                        html.Div(
-
-                            id="selector-semanas",
-
-                            className="grid-semanas"
+                            md=9
 
                         )
 
                     ],
 
-                    className="bloque-filtro"
+                    className="g-4"
 
                 )
 

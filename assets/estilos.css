@@ -782,12 +782,6 @@ RESPONSIVE
 CONTROLES DEL DASHBOARD
 ==========================================================*/
 
-.bloque-filtro{
-
-    margin-bottom:35px;
-
-}
-
 .encabezado-filtro{
 
     display:flex;
@@ -804,11 +798,11 @@ CONTROLES DEL DASHBOARD
 
     margin:0;
 
-    font-size:20px;
-
-    color:#173C73;
+    font-size:18px;
 
     font-weight:700;
+
+    color:#173C73;
 
 }
 
@@ -816,7 +810,7 @@ CONTROLES DEL DASHBOARD
 
     display:flex;
 
-    gap:14px;
+    gap:12px;
 
 }
 
@@ -824,7 +818,7 @@ CONTROLES DEL DASHBOARD
 
     font-size:18px;
 
-    color:#6B7280;
+    color:#6C757D;
 
     cursor:pointer;
 
@@ -841,46 +835,30 @@ CONTROLES DEL DASHBOARD
 }
 
 /*==========================================================
-GRID DE MESES
+MESES
 ==========================================================*/
 
 .grid-meses{
 
     display:grid;
 
-    grid-template-columns:repeat(6,58px);
+    grid-template-columns:repeat(3,70px);
 
     gap:12px;
+
+    justify-content:flex-start;
 
 }
 
 .cuadro-mes{
 
-    width:58px;
+    width:70px;
 
     height:44px;
 
     border-radius:10px !important;
 
-    background:#F8FAFD !important;
-
-    border:1px solid #D7E2EF !important;
-
-    color:#173C73 !important;
-
     font-weight:700;
-
-    transition:.20s;
-
-}
-
-.cuadro-mes:hover{
-
-    transform:translateY(-2px);
-
-    background:#E8F0FC !important;
-
-    border-color:#7FA4D7 !important;
 
 }
 
@@ -888,63 +866,53 @@ GRID DE MESES
 
     background:#173C73 !important;
 
+    color:white !important;
+
     border-color:#173C73 !important;
-
-    color:white !important;
-
-}
-
-.cuadro-mes.acumulado{
-
-    background:#6F97D5 !important;
-
-    color:white !important;
-
-    border-color:#6F97D5 !important;
 
 }
 
 /*==========================================================
-GRID DE SEMANAS
+SEMANAS
 ==========================================================*/
 
 .grid-semanas{
 
     display:grid;
 
-    grid-template-columns:repeat(auto-fill,58px);
+    grid-template-columns:repeat(auto-fill,minmax(70px,1fr));
 
     gap:12px;
+
+    max-height:185px;
+
+    overflow-y:auto;
+
+    padding-right:6px;
+
+}
+
+.grid-semanas::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+.grid-semanas::-webkit-scrollbar-thumb{
+
+    background:#C4CEDB;
+
+    border-radius:20px;
 
 }
 
 .cuadro-semana{
 
-    width:58px;
-
     height:44px;
 
     border-radius:10px !important;
 
-    background:#F8FAFD !important;
-
-    border:1px solid #D7E2EF !important;
-
-    color:#173C73 !important;
-
     font-weight:700;
-
-    transition:.20s;
-
-}
-
-.cuadro-semana:hover{
-
-    transform:translateY(-2px);
-
-    background:#E8F0FC !important;
-
-    border-color:#7FA4D7 !important;
 
 }
 
@@ -952,19 +920,9 @@ GRID DE SEMANAS
 
     background:#173C73 !important;
 
+    color:white !important;
+
     border-color:#173C73 !important;
-
-    color:white !important;
-
-}
-
-.cuadro-semana.acumulado{
-
-    background:#6F97D5 !important;
-
-    border-color:#6F97D5 !important;
-
-    color:white !important;
 
 }
 /*==========================================================

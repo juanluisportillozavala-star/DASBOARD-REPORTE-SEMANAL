@@ -585,3 +585,48 @@ def registrar_callbacks_ventas(app):
             clases
 
         )
+    # =====================================================
+# SELECCIONAR TODOS LOS MESES
+# =====================================================
+
+    @app.callback(
+
+        Output("store-mes", "data", allow_duplicate=True),
+
+        Input("seleccionar-todos-meses", "n_clicks"),
+
+        State("store-bd-ventas", "data"),
+
+        prevent_initial_call=True
+
+    )
+
+    def seleccionar_todos_meses(n, data):
+
+        if not n:
+
+            return no_update
+
+        if data is None:
+
+            return []
+
+        df = pd.DataFrame(data)
+
+        meses = (
+
+            df["Mes"]
+
+            .dropna()
+
+            .astype(int)
+
+            .sort_values()
+
+            .unique()
+
+            .tolist()
+
+        )
+
+        return meses
