@@ -2,11 +2,12 @@
 =========================================================
 MÓDULO VENTAS
 =========================================================
-Layout principal del módulo de Ventas
 """
 
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+
+from ventas.controles import crear_controles
 
 
 def crear_layout_ventas():
@@ -15,37 +16,59 @@ def crear_layout_ventas():
 
         children=[
 
-            # =====================================================
-            # MEMORIA DEL DASHBOARD
-            # =====================================================
+            # ==========================================
+            # STORES
+            # ==========================================
 
             dcc.Store(
+
                 id="store-bd-ventas"
+
             ),
 
             dcc.Store(
+
                 id="store-kpis"
+
             ),
 
-            # =====================================================
-            # TÍTULO
-            # =====================================================
+            dcc.Store(
+
+                id="store-mes"
+
+            ),
+
+            dcc.Store(
+
+                id="store-semana"
+
+            ),
+
+            # ==========================================
+            # TITULO
+            # ==========================================
 
             html.H1(
+
                 "Ventas",
+
                 className="titulo"
+
             ),
 
             html.P(
+
                 "Carga y procesamiento del reporte semanal de ventas.",
+
                 className="subtitulo"
+
             ),
 
             html.Br(),
 
-            # =====================================================
-            # CARGA DE ARCHIVOS
-            # =====================================================
+            # ==========================================
+            # ARCHIVOS
+            # ==========================================
 
             dbc.Row(
 
@@ -60,8 +83,11 @@ def crear_layout_ventas():
                                 [
 
                                     html.H4(
+
                                         "📁 Catálogo",
+
                                         className="mb-3"
+
                                     ),
 
                                     dcc.Upload(
@@ -75,7 +101,9 @@ def crear_layout_ventas():
                                             [
 
                                                 html.I(
+
                                                     className="fas fa-folder-open me-2"
+
                                                 ),
 
                                                 "Seleccionar Catálogo"
@@ -95,16 +123,6 @@ def crear_layout_ventas():
                                     html.Div(
 
                                         id="nombre-catalogo",
-
-                                        children=[
-
-                                            html.I(
-                                                className="fas fa-file-excel me-2"
-                                            ),
-
-                                            " Ningún archivo seleccionado."
-
-                                        ],
 
                                         className="archivo-seleccionado"
 
@@ -131,8 +149,11 @@ def crear_layout_ventas():
                                 [
 
                                     html.H4(
+
                                         "📊 BD Ventas",
+
                                         className="mb-3"
+
                                     ),
 
                                     dcc.Upload(
@@ -146,7 +167,9 @@ def crear_layout_ventas():
                                             [
 
                                                 html.I(
+
                                                     className="fas fa-folder-open me-2"
+
                                                 ),
 
                                                 "Seleccionar BD Ventas"
@@ -166,16 +189,6 @@ def crear_layout_ventas():
                                     html.Div(
 
                                         id="nombre-ventas",
-
-                                        children=[
-
-                                            html.I(
-                                                className="fas fa-file-excel me-2"
-                                            ),
-
-                                            " Ningún archivo seleccionado."
-
-                                        ],
 
                                         className="archivo-seleccionado"
 
@@ -198,10 +211,6 @@ def crear_layout_ventas():
             ),
 
             html.Br(),
-
-            # =====================================================
-            # BOTÓN
-            # =====================================================
 
             dbc.Button(
 
@@ -228,11 +237,12 @@ def crear_layout_ventas():
             ),
 
             html.Br(),
+
             html.Br(),
 
-            # =====================================================
-            # KPIs DEL DASHBOARD
-            # =====================================================
+            # ==========================================
+            # KPIs
+            # ==========================================
 
             html.Div(
 
@@ -242,9 +252,105 @@ def crear_layout_ventas():
 
             html.Br(),
 
-            # =====================================================
-            # ESTADO DEL PROCESAMIENTO
-            # =====================================================
+            # ==========================================
+            # CONTROLES
+            # ==========================================
+
+            crear_controles(),
+
+            html.Br(),
+
+            # ==========================================
+            # CALENDARIO
+            # ==========================================
+
+            dbc.Card(
+
+                dbc.CardBody(
+
+                    [
+
+                        html.H4(
+
+                            [
+
+                                html.I(
+
+                                    className="fas fa-calendar-days me-2"
+
+                                ),
+
+                                "Calendario Comercial"
+
+                            ]
+
+                        ),
+
+                        html.Hr(),
+
+                        html.Div(
+
+                            id="contenedor-calendario"
+
+                        )
+
+                    ]
+
+                ),
+
+                className="card-premium"
+
+            ),
+
+            html.Br(),
+
+            # ==========================================
+            # TABLAS
+            # ==========================================
+
+            html.Div(
+
+                id="contenedor-tablas"
+
+            ),
+
+            html.Br(),
+
+            # ==========================================
+            # GRAFICAS
+            # ==========================================
+
+            dbc.Accordion(
+
+                [
+
+                    dbc.AccordionItem(
+
+                        [
+
+                            html.Div(
+
+                                id="contenedor-graficas"
+
+                            )
+
+                        ],
+
+                        title="Ver análisis gráfico"
+
+                    )
+
+                ],
+
+                start_collapsed=True
+
+            ),
+
+            html.Br(),
+
+            # ==========================================
+            # ESTADO
+            # ==========================================
 
             dbc.Card(
 
@@ -272,25 +378,7 @@ def crear_layout_ventas():
 
                         html.Div(
 
-                            id="estado-proceso",
-
-                            children=[
-
-                                html.P(
-
-                                    "Esperando que seleccione los archivos para comenzar.",
-
-                                    style={
-
-                                        "fontSize":"18px",
-
-                                        "color":"#6c757d"
-
-                                    }
-
-                                )
-
-                            ]
+                            id="estado-proceso"
 
                         )
 

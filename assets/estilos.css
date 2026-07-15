@@ -1017,3 +1017,126 @@ SCROLL
     border-radius:30px;
 
 }
+/*==========================================================
+CONTROLES DEL DASHBOARD
+==========================================================*/
+
+.selector-semanas{
+
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+
+}
+
+.cuadro-semana{
+
+    width:48px;
+    height:42px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:#EEF3FB;
+
+    border:1px solid #C8D4E6;
+
+    border-radius:6px;
+
+    color:#5B6B82;
+
+    font-size:16px;
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:.18s;
+
+    user-select:none;
+
+}
+
+
+.cuadro-semana:hover{
+
+    background:#D8E7FF;
+
+    color:#173C73;
+
+    transform:translateY(-2px);
+
+    box-shadow:0 4px 10px rgba(0,0,0,.10);
+
+}
+
+
+.cuadro-semana.activo{
+
+    background:#7EA5DD;
+
+    color:white;
+
+    border:1px solid #5D88C7;
+
+}
+
+
+.selector-meses{
+
+    display:flex;
+
+    gap:8px;
+
+    flex-wrap:wrap;
+
+}
+
+
+.cuadro-mes{
+
+    width:48px;
+
+    height:42px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    border-radius:6px;
+
+    background:#EEF3FB;
+
+    border:1px solid #C8D4E6;
+
+    color:#5B6B82;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:.18s;
+
+}
+
+
+.cuadro-mes:hover{
+
+    background:#D8E7FF;
+
+    color:#173C73;
+
+}
+
+
+.cuadro-mes.activo{
+
+    background:#7EA5DD;
+
+    color:white;
+
+    border:1px solid #5D88C7;
+
+}
