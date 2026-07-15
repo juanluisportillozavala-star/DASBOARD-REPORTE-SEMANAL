@@ -8,7 +8,6 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 from ventas.controles import crear_controles
-from ventas.calendario import crear_calendario
 
 
 def crear_layout_ventas():
@@ -261,51 +260,6 @@ def crear_layout_ventas():
 
             html.Br(),
 
-            # ==========================================
-            # CALENDARIO
-            # ==========================================
-
-            dbc.Card(
-
-                dbc.CardBody(
-
-                    [
-
-                        html.H4(
-
-                            [
-
-                                html.I(
-
-                                    className="fas fa-calendar-days me-2"
-
-                                ),
-
-                                "Calendario Comercial"
-
-                            ]
-
-                        ),
-
-                        html.Hr(),
-
-                        html.Div(
-                            
-                            crear_calendario(),
-
-                            id="contenedor-calendario"
-
-                        )
-
-                    ]
-
-                ),
-
-                className="card-premium"
-
-            ),
-
-            html.Br(),
 
             # ==========================================
             # TABLAS

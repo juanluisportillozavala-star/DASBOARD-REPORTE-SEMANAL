@@ -1,202 +1,62 @@
 """
 =========================================================
-KPIs DASHBOARD VENTAS
+KPIs DEL DASHBOARD DE VENTAS
 =========================================================
 """
 
-from dash import html
-import dash_bootstrap_components as dbc
+
+# =========================================================
+# FORMATO MONEDA
+# =========================================================
+
+def formato_moneda(valor):
+
+    return f"${valor:,.2f}"
 
 
-# ==========================================================
-# TARJETA
-# ==========================================================
+# =========================================================
+# FORMATO PORCENTAJE
+# =========================================================
 
-def crear_tarjeta(titulo, valor, icono, color):
+def formato_porcentaje(valor):
 
-    return dbc.Card(
+    return f"{valor:.2f}%"
 
-        dbc.CardBody(
 
-            [
+# =========================================================
+# KPIs PRINCIPALES
+# =========================================================
 
-                html.Div(
+def calcular_kpis(df):
 
-                    [
+    if df is None or df.empty:
 
-                        # Icono
-                        html.Div(
+        return {
 
-                            html.I(
+            "venta_total": "$0.00",
 
-                                className=icono,
+            "utilidad_bruta": "$0.00",
 
-                                style={
-
-                                    "fontSize": "32px",
-
-                                    "color": color
-
-                                }
-
-                            ),
-
-                            style={
-
-                                "width": "70px",
-
-                                "display": "flex",
-
-                                "justifyContent": "center",
-
-                                "alignItems": "center"
-
-                            }
-
-                        ),
-
-                        # Texto
-                        html.Div(
-
-                            [
-
-                                html.Div(
-
-                                    titulo,
-
-                                    style={
-
-                                        "fontSize": "15px",
-
-                                        "color": "#7A7A7A",
-
-                                        "fontWeight": "600"
-
-                                    }
-
-                                ),
-
-                                html.H2(
-
-                                    valor,
-
-                                    style={
-
-                                        "marginTop": "8px",
-
-                                        "marginBottom": "0px",
-
-                                        "fontWeight": "bold",
-
-                                        "color": "#173C73"
-
-                                    }
-
-                                )
-
-                            ],
-
-                            style={
-
-                                "flex": "1"
-
-                            }
-
-                        )
-
-                    ],
-
-                    style={
-
-                        "display": "flex",
-
-                        "alignItems": "center"
-
-                    }
-
-                )
-
-            ]
-
-        ),
-
-        className="card-premium",
-
-        style={
-
-            "height": "125px"
+            "margen": "0.00%"
 
         }
 
-    )
+    venta_total = df["Crédito"].sum()
 
+    utilidad_bruta = df["Ut Bruta MN"].sum()
 
-# ==========================================================
-# CONTENEDOR KPIs
-# ==========================================================
+    margen = 0
 
-def crear_kpis(kpis):
+    if venta_total != 0:
 
-    return dbc.Row(
+        margen = utilidad_bruta / venta_total * 100
 
-        [
+    return {
 
-            dbc.Col(
+        "venta_total": formato_moneda(venta_total),
 
-                crear_tarjeta(
+        "utilidad_bruta": formato_moneda(utilidad_bruta),
 
-                    "Venta Total",
+        "margen": formato_porcentaje(margen)
 
-                    f"${kpis['venta_total']:,.2f}",
-
-                    "fas fa-sack-dollar",
-
-                    "#0B8F44"
-
-                ),
-
-                lg=4
-
-            ),
-
-            dbc.Col(
-
-                crear_tarjeta(
-
-                    "Utilidad Bruta",
-
-                    f"${kpis['utilidad']:,.2f}",
-
-                    "fas fa-chart-line",
-
-                    "#0A66C2"
-
-                ),
-
-                lg=4
-
-            ),
-
-            dbc.Col(
-
-                crear_tarjeta(
-
-                    "Margen Bruto",
-
-                    f"{kpis['margen']:.2f}%",
-
-                    "fas fa-percent",
-
-                    "#D4AF37"
-
-                ),
-
-                lg=4
-
-            )
-
-        ],
-
-        className="g-4"
-
-    )
+    }

@@ -7,7 +7,8 @@ CALLBACKS DEL MÓDULO VENTAS
 from dash import Input, Output, State, html
 
 from ventas.procesamiento import leer_archivos
-from ventas.analisis import obtener_kpis
+from ventas.kpis import calcular_kpis
+from ventas.cards import crear_cards
 
 
 def registrar_callbacks_ventas(app):
@@ -49,7 +50,6 @@ def registrar_callbacks_ventas(app):
 
         ]
 
-
     # =====================================================
     # NOMBRE BD VENTAS
     # =====================================================
@@ -87,7 +87,6 @@ def registrar_callbacks_ventas(app):
 
         ]
 
-
     # =====================================================
     # PROCESAR INFORMACIÓN
     # =====================================================
@@ -112,9 +111,9 @@ def registrar_callbacks_ventas(app):
 
     def procesar_archivos(n_clicks, catalogo, ventas):
 
-        # ---------------------------------------------
-        # Validaciones
-        # ---------------------------------------------
+        # ==============================================
+        # VALIDACIONES
+        # ==============================================
 
         if catalogo is None:
 
@@ -164,9 +163,9 @@ def registrar_callbacks_ventas(app):
 
             )
 
-        # ---------------------------------------------
-        # Procesamiento
-        # ---------------------------------------------
+        # ==============================================
+        # PROCESAMIENTO
+        # ==============================================
 
         try:
 
@@ -182,10 +181,10 @@ def registrar_callbacks_ventas(app):
             # KPIs
             # ==========================================
 
-            kpis = obtener_kpis(df_ventas)
+            kpis = calcular_kpis(df_ventas)
 
             # ==========================================
-            # Estado
+            # ESTADO
             # ==========================================
 
             estado = html.Div(
@@ -194,7 +193,17 @@ def registrar_callbacks_ventas(app):
 
                     html.H4(
 
-                        "Proceso completado correctamente",
+                        [
+
+                            html.I(
+
+                                className="fas fa-circle-check me-2"
+
+                            ),
+
+                            "Proceso completado correctamente"
+
+                        ],
 
                         style={
 
@@ -218,18 +227,6 @@ def registrar_callbacks_ventas(app):
 
                     ),
 
-                    html.P(
-
-                        f"👥 Clientes: {kpis['clientes']:,}"
-
-                    ),
-
-                    html.P(
-
-                        f"🧾 Facturas: {kpis['facturas']:,}"
-
-                    ),
-
                     html.Br(),
 
                     html.B(
@@ -238,7 +235,7 @@ def registrar_callbacks_ventas(app):
 
                         style={
 
-                            "color": "#0d6efd"
+                            "color": "#0D6EFD"
 
                         }
 
@@ -280,7 +277,11 @@ def registrar_callbacks_ventas(app):
 
                         html.Hr(),
 
-                        html.Pre(str(e))
+                        html.Pre(
+
+                            str(e)
+
+                        )
 
                     ]
 
@@ -291,3 +292,35 @@ def registrar_callbacks_ventas(app):
                 None
 
             )
+
+    # =====================================================
+    # ACTUALIZAR TARJETAS KPI
+    # =====================================================
+
+    @app.callback(
+
+        Output(
+
+            "contenedor-kpis",
+
+            "children"
+
+        ),
+
+        Input(
+
+            "store-kpis",
+
+            "data"
+
+        )
+
+    )
+
+    def actualizar_cards(kpis):
+
+        if kpis is None:
+
+            return ""
+
+        return crear_cards(kpis)
