@@ -8,6 +8,7 @@ from dash import Input, Output, State, html, ALL, ctx, no_update
 import pandas as pd
 from plotly import data
 
+import app
 from ventas.filtros import obtener_semanas
 
 from ventas.procesamiento import leer_archivos
@@ -329,201 +330,144 @@ def registrar_callbacks_ventas(app):
 
         return crear_cards(kpis)
 # =====================================================
-# SELECCIÓN DE MES
+# SELECCIÓN DE MESES
 # =====================================================
 
-    @app.callback(
+@app.callback(
 
-        Output("store-mes", "data"),
+    Output("store-meses", "data"),
 
-        Output("selector-semanas", "children"),
+    Output("selector-semanas", "children"),
 
-        Output(
+    Output(
+        {
+            "type": "btn-mes",
+            "index": ALL
+        },
+        "className"
+    ),
 
-            {
+    Input(
+        {
+            "type": "btn-mes",
+            "index": ALL
+        },
+        "n_clicks"
+    ),
 
-                "type": "btn-mes",
+    State("store-meses", "data"),
 
-                "index": ALL
+    State("store-bd-ventas", "data"),
 
-            },
+    prevent_initial_call=True
 
-            "className"
+)
 
-        ),
+def seleccionar_meses(_, meses_activos, data):
 
-        Input(
+    if data is None:
 
-            {
+        return [], [], ["cuadro-mes"] * 12
 
-                "type": "btn-mes",
+    if meses_activos is None:
 
-                "index": ALL
+        meses_activos = []
 
-            },
+    trigger = ctx.triggered_id
 
-            "n_clicks"
+    if trigger is None:
 
-        ),
+        return meses_activos, [], ["cuadro-mes"] * 12
 
-        State(
+    mes = trigger["index"]
 
-            "store-mes",
+    # ----------------------------------------
+    # Activa / Desactiva
+    # ----------------------------------------
 
-            "data"
+    if mes in meses_activos:
 
-        ),
+        meses_activos.remove(mes)
 
-        State(
+    else:
 
-            "store-bd-ventas",
+        meses_activos.append(mes)
 
-            "data"
+    meses_activos.sort()
 
-        ),
+    # ----------------------------------------
+    # Obtener semanas
+    # ----------------------------------------
 
-        prevent_initial_call=True
+    df = pd.DataFrame(data)
+
+    semanas = obtener_semanas(
+
+        df,
+
+        meses_activos
 
     )
 
-    def seleccionar_mes(_, meses_seleccionados, data):
+    import dash_bootstrap_components as dbc
 
-        
-        import dash_bootstrap_components as dbc
+    botones = [
 
-        if data is None:
+        dbc.Button(
 
-            return (
+            str(s),
 
-                [],
+            id={
 
-                [],
+                "type": "btn-semana",
 
-                ["cuadro-mes" for _ in range(12)]
+                "index": int(s)
+
+            },
+
+            className="cuadro-semana activo",
+
+            color="light",
+
+            outline=True,
+
+            n_clicks=0
+
+        )
+
+        for s in semanas
+
+    ]
+
+    clases = []
+
+    for i in range(1, 13):
+
+        if i in meses_activos:
+
+            clases.append(
+
+                "cuadro-mes activo"
 
             )
-
-        if ctx.triggered_id is None:
-
-            return (
-
-                [],
-
-                [],
-
-                ["cuadro-mes" for _ in range(12)]
-
-            )
-
-        # =============================================
-        # Mes seleccionado
-        # =============================================
-
-        mes = ctx.triggered_id["index"]
-
-        if meses_seleccionados is None:
-
-            meses_seleccionados = []
-
-        # =============================================
-        # Agregar / quitar selección
-        # =============================================
-
-        if mes in meses_seleccionados:
-
-            meses_seleccionados.remove(mes)
 
         else:
 
-            meses_seleccionados.append(mes)
+            clases.append(
 
-        meses_seleccionados = sorted(meses_seleccionados)
-
-        # =============================================
-        # Obtener semanas
-        # =============================================
-
-        df = pd.DataFrame(data)
-
-        df = df[df["Mes"].isin(meses_seleccionados)]
-
-        semanas = (
-
-            df["Semana"]
-
-            .dropna()
-
-            .astype(int)
-
-            .sort_values()
-
-            .unique()
-
-            .tolist()
-
-        )
-
-        botones = [
-
-            dbc.Button(
-
-                str(sem),
-
-                id={
-
-                    "type": "btn-semana",
-
-                    "index": int(sem)
-
-                },
-
-                n_clicks=0,
-
-                color="light",
-
-                outline=True,
-
-                className="cuadro-semana"
+                "cuadro-mes"
 
             )
 
-            for sem in semanas
+    return (
 
-        ]
+        meses_activos,
 
-        # =============================================
-        # Pintar meses
-        # =============================================
+        botones,
 
-        clases = []
+        clases
 
-        for i in range(1, 13):
-
-            if i in meses_seleccionados:
-
-                clases.append(
-
-                    "cuadro-mes activo"
-
-                )
-
-            else:
-
-                clases.append(
-
-                    "cuadro-mes"
-
-                )
-
-        return (
-
-            meses_seleccionados,
-
-            botones,
-
-            clases
-
-        )
+    )
 # =====================================================
 # SELECCIÓN DE SEMANAS
 # =====================================================

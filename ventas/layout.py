@@ -34,13 +34,15 @@ def crear_layout_ventas():
 
             dcc.Store(
 
-                id="store-mes"
+                id="store-mes",
+                data=[]
 
             ),
 
             dcc.Store(
 
-                id="store-semana"
+                id="store-semana",
+                data=[]
 
             ),
 

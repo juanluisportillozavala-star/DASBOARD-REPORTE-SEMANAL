@@ -16,23 +16,83 @@ def crear_controles():
 
             [
 
-                # ==========================================
-                # MESES
-                # ==========================================
+                # ======================================================
+                # MES
+                # ======================================================
 
-                html.H4(
+                dbc.Row(
 
-                    "Mes",
+                    [
 
-                    style={
+                        dbc.Col(
 
-                        "color": "#173C73",
+                            html.H3(
 
-                        "fontWeight": "600",
+                                "Mes",
 
-                        "marginBottom": "15px"
+                                style={
 
-                    }
+                                    "color": "#173C73",
+
+                                    "fontWeight": "600",
+
+                                    "marginBottom": "0"
+
+                                }
+
+                            ),
+
+                            width="auto"
+
+                        ),
+
+                        dbc.Col(
+
+                            html.Div(
+
+                                [
+
+                                    html.I(
+
+                                        className="fas fa-check-double filtro-icono",
+
+                                        id="seleccionar-todos-meses",
+
+                                        title="Seleccionar todos"
+
+                                    ),
+
+                                    html.I(
+
+                                        className="fas fa-filter-circle-xmark filtro-icono",
+
+                                        id="limpiar-meses",
+
+                                        title="Limpiar selección"
+
+                                    )
+
+                                ],
+
+                                style={
+
+                                    "display": "flex",
+
+                                    "justifyContent": "flex-end",
+
+                                    "gap": "15px"
+
+                                }
+
+                            )
+
+                        )
+
+                    ],
+
+                    align="center",
+
+                    className="mb-3"
 
                 ),
 
@@ -66,29 +126,93 @@ def crear_controles():
 
                     ],
 
-                    className="selector-meses"
+                    id="selector-meses",
+
+                    className="contenedor-meses"
 
                 ),
 
                 html.Br(),
 
-                # ==========================================
-                # SEMANAS
-                # ==========================================
+                html.Br(),
 
-                html.H4(
+                # ======================================================
+                # SEMANA
+                # ======================================================
 
-                    "Semana",
+                dbc.Row(
 
-                    style={
+                    [
 
-                        "color": "#173C73",
+                        dbc.Col(
 
-                        "fontWeight": "600",
+                            html.H3(
 
-                        "marginBottom": "15px"
+                                "Semana",
 
-                    }
+                                style={
+
+                                    "color": "#173C73",
+
+                                    "fontWeight": "600",
+
+                                    "marginBottom": "0"
+
+                                }
+
+                            ),
+
+                            width="auto"
+
+                        ),
+
+                        dbc.Col(
+
+                            html.Div(
+
+                                [
+
+                                    html.I(
+
+                                        className="fas fa-check-double filtro-icono",
+
+                                        id="seleccionar-todas-semanas",
+
+                                        title="Seleccionar todas"
+
+                                    ),
+
+                                    html.I(
+
+                                        className="fas fa-filter-circle-xmark filtro-icono",
+
+                                        id="limpiar-semanas",
+
+                                        title="Limpiar selección"
+
+                                    )
+
+                                ],
+
+                                style={
+
+                                    "display": "flex",
+
+                                    "justifyContent": "flex-end",
+
+                                    "gap": "15px"
+
+                                }
+
+                            )
+
+                        )
+
+                    ],
+
+                    align="center",
+
+                    className="mb-3"
 
                 ),
 
@@ -96,7 +220,7 @@ def crear_controles():
 
                     id="selector-semanas",
 
-                    className="selector-semanas"
+                    className="contenedor-semanas"
 
                 )
 

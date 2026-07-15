@@ -992,3 +992,22 @@ TARJETAS KPI PERSONALIZADAS
     border-color:#8DB8FF;
 
 }
+.filtro-icono{
+
+    font-size:18px;
+
+    color:#6c757d;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+}
+
+.filtro-icono:hover{
+
+    color:#173C73;
+
+    transform:scale(1.15);
+
+}

@@ -12,27 +12,20 @@ import pandas as pd
 # =========================================================
 
 def obtener_semanas(df, meses):
-
-    """
-    Devuelve todas las semanas correspondientes
-    a los meses seleccionados.
-    """
-
+    
     if df is None or len(df) == 0:
 
         return []
 
-    if meses is None:
+    if not meses:
 
         return []
 
-    if not isinstance(meses, list):
-
-        meses = [meses]
+    df = df.copy()
 
     df = df[df["Mes"].isin(meses)]
 
-    semanas = (
+    return sorted(
 
         df["Semana"]
 
@@ -40,15 +33,11 @@ def obtener_semanas(df, meses):
 
         .astype(int)
 
-        .sort_values()
-
         .unique()
 
         .tolist()
 
     )
-
-    return semanas
 
 
 # =========================================================
