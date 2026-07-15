@@ -4,7 +4,10 @@ CALLBACKS DEL MÓDULO VENTAS
 =========================================================
 """
 
-from dash import Input, Output, State, html
+from dash import Input, Output, State, html, ALL, ctx
+import pandas as pd
+
+from ventas.filtros import obtener_semanas
 
 from ventas.procesamiento import leer_archivos
 from ventas.kpis import calcular_kpis
@@ -324,3 +327,78 @@ def registrar_callbacks_ventas(app):
             return ""
 
         return crear_cards(kpis)
+    # =====================================================
+    # SELECCIÓN DE MES
+    # =====================================================
+
+    @app.callback(
+
+        Output("store-mes", "data"),
+
+        Output("selector-semanas", "children"),
+
+        Input(
+
+            {
+
+                "type": "btn-mes",
+
+                "index": ALL
+
+            },
+
+            "n_clicks"
+
+        ),
+
+        State(
+
+            "store-bd-ventas",
+
+            "data"
+
+        ),
+
+        prevent_initial_call=True
+
+    )
+
+    def seleccionar_mes(_, data):
+
+        if not ctx.triggered_id:
+
+            return None, ""
+
+        if data is None:
+
+            return None, ""
+
+        mes = ctx.triggered_id["index"]
+
+        df = pd.DataFrame(data)
+
+        semanas = obtener_semanas(df, mes)
+
+        botones = [
+
+            html.Button(
+
+                str(semana),
+
+                id={
+
+                    "type": "btn-semana",
+
+                    "index": semana
+
+                },
+
+                className="cuadro-semana"
+
+            )
+
+            for semana in semanas
+
+        ]
+
+        return mes, botones

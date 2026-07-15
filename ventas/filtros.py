@@ -7,96 +7,60 @@ FILTROS DEL DASHBOARD
 import pandas as pd
 
 
-MESES = {
+# =========================================================
+# SEMANAS DISPONIBLES
+# =========================================================
 
-    1: "Enero",
-    2: "Febrero",
-    3: "Marzo",
-    4: "Abril",
-    5: "Mayo",
-    6: "Junio",
-    7: "Julio",
-    8: "Agosto",
-    9: "Septiembre",
-    10: "Octubre",
-    11: "Noviembre",
-    12: "Diciembre"
+def obtener_semanas(df, mes):
 
-}
+    if df is None or len(df) == 0:
 
+        return []
 
-def obtener_filtros(df):
+    df = df.copy()
 
-    fecha = "Asiento contable/Fecha de factura"
+    df = df[df["Mes"] == mes]
 
-    fechas = pd.to_datetime(
+    semanas = (
 
-        df[fecha],
+        df["Semana"]
 
-        errors="coerce"
+        .dropna()
 
-    )
+        .astype(int)
 
-    meses = sorted(
+        .sort_values()
 
-        fechas.dt.month.dropna().unique()
+        .unique()
+
+        .tolist()
 
     )
 
-    años = sorted(
+    return semanas
 
-        fechas.dt.year.dropna().unique()
 
-    )
+# =========================================================
+# FILTRAR POR MES
+# =========================================================
 
-    semanas = sorted(
+def filtrar_mes(df, mes):
 
-        fechas.dt.isocalendar().week.unique()
+    if df is None:
 
-    )
+        return df
 
-    opciones_meses = [
+    return df[df["Mes"] == mes]
 
-        {
 
-            "label": MESES[m],
+# =========================================================
+# FILTRAR POR SEMANA
+# =========================================================
 
-            "value": int(m)
+def filtrar_semana(df, semana):
 
-        }
+    if df is None:
 
-        for m in meses
+        return df
 
-    ]
-
-    opciones_años = [
-
-        {
-
-            "label": str(a),
-
-            "value": int(a)
-
-        }
-
-        for a in años
-
-    ]
-
-    opciones_semanas = [
-
-        int(s)
-
-        for s in semanas
-
-    ]
-
-    return {
-
-        "meses": opciones_meses,
-
-        "años": opciones_años,
-
-        "semanas": opciones_semanas
-
-    }
+    return df[df["Semana"] == semana]

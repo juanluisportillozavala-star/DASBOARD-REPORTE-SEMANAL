@@ -1,6 +1,6 @@
 """
 =========================================================
-CONTROLES DEL DASHBOARD DE VENTAS
+CONTROLES DEL DASHBOARD
 =========================================================
 """
 
@@ -10,75 +10,84 @@ import dash_bootstrap_components as dbc
 
 def crear_controles():
 
-    meses = [
-
-        html.Div(
-
-            str(i),
-
-            id=f"mes-{i}",
-
-            className="cuadro-mes"
-
-        )
-
-        for i in range(1,13)
-
-    ]
-
     return dbc.Card(
 
         dbc.CardBody(
 
             [
 
-                html.H5(
-
-                    "Filtros",
-
-                    style={
-
-                        "color":"#173C73",
-
-                        "fontWeight":"bold"
-
-                    }
-
-                ),
-
-                html.Hr(),
-
                 dbc.Row(
 
                     [
+
+                        # ==========================================
+                        # MESES
+                        # ==========================================
 
                         dbc.Col(
 
                             [
 
-                                html.Label(
+                                html.H5(
 
                                     "Mes",
 
-                                    className="fw-bold mb-2"
+                                    className="mb-3"
 
                                 ),
 
-                                html.Div(
+                                dbc.ButtonGroup(
 
-                                    meses[:6],
+                                    [
 
-                                    className="selector-meses"
+                                        dbc.Button(
+
+                                            str(i),
+
+                                            id={
+                                                "type": "btn-mes",
+                                                "index": i
+                                            },
+
+                                            color="light",
+
+                                            outline=True,
+
+                                            className="btn-mes"
+
+                                        )
+
+                                        for i in range(1,7)
+
+                                    ],
+
+                                    className="mb-2"
 
                                 ),
 
                                 html.Br(),
 
-                                html.Div(
+                                dbc.ButtonGroup(
 
-                                    meses[6:],
+                                    [
 
-                                    className="selector-meses"
+                                        dbc.Button(
+
+                                            str(i),
+
+                                            id=f"btn-mes-{i}",
+
+                                            color="light",
+
+                                            outline=True,
+
+                                            className="btn-mes"
+
+                                        )
+
+                                        for i in range(7,13)
+
+                                    ]
 
                                 )
 
@@ -88,23 +97,25 @@ def crear_controles():
 
                         ),
 
+                        # ==========================================
+                        # SEMANAS
+                        # ==========================================
+
                         dbc.Col(
 
                             [
 
-                                html.Label(
+                                html.H5(
 
                                     "Semana",
 
-                                    className="fw-bold mb-2"
+                                    className="mb-3"
 
                                 ),
 
                                 html.Div(
 
-                                    id="selector-semanas",
-
-                                    className="selector-semanas"
+                                    id="selector-semanas"
 
                                 )
 
