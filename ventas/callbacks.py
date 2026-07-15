@@ -332,9 +332,8 @@ def registrar_callbacks_ventas(app):
     # SELECCIÓN DE MESES
     # (múltiple + "seleccionar todo" + "limpiar")
     #
-    # NOTA: se asume que en el layout existen los botones
-    # con id "btn-todo-mes" y "btn-limpiar-mes". Si tus ids
-    # son distintos, ajústalos aquí y en el layout.
+    # Los iconos "seleccionar-todos-meses" y "limpiar-meses"
+    # viven en ventas/controles.py (html.I con id propio).
     # =====================================================
 
     @app.callback(
@@ -349,9 +348,9 @@ def registrar_callbacks_ventas(app):
             "n_clicks"
         ),
 
-        Input("btn-todo-mes", "n_clicks"),
+        Input("seleccionar-todos-meses", "n_clicks"),
 
-        Input("btn-limpiar-mes", "n_clicks"),
+        Input("limpiar-meses", "n_clicks"),
 
         State("store-mes", "data"),
 
@@ -375,7 +374,7 @@ def registrar_callbacks_ventas(app):
         # Seleccionar todos los meses
         # -----------------------------
 
-        if trigger == "btn-todo-mes":
+        if trigger == "seleccionar-todos-meses":
 
             return list(range(1, 13))
 
@@ -383,7 +382,7 @@ def registrar_callbacks_ventas(app):
         # Limpiar meses
         # -----------------------------
 
-        if trigger == "btn-limpiar-mes":
+        if trigger == "limpiar-meses":
 
             return []
 
@@ -527,8 +526,8 @@ def registrar_callbacks_ventas(app):
     # (múltiple + "seleccionar todo" + "limpiar" +
     # la primera semana nunca se desmarca)
     #
-    # NOTA: se asume que en el layout existen los botones
-    # con id "btn-todo-semana" y "btn-limpiar-semana".
+    # Los iconos "seleccionar-todas-semanas" y "limpiar-semanas"
+    # viven en ventas/controles.py (html.I con id propio).
     #
     # Este callback escribe sobre "store-semana", el mismo
     # Output que usa "actualizar_meses". Por eso se usa
@@ -548,9 +547,9 @@ def registrar_callbacks_ventas(app):
             "n_clicks"
         ),
 
-        Input("btn-todo-semana", "n_clicks"),
+        Input("seleccionar-todas-semanas", "n_clicks"),
 
-        Input("btn-limpiar-semana", "n_clicks"),
+        Input("limpiar-semanas", "n_clicks"),
 
         State("store-semana", "data"),
 
@@ -602,7 +601,7 @@ def registrar_callbacks_ventas(app):
         # Seleccionar todas las semanas visibles
         # -----------------------------------
 
-        if trigger == "btn-todo-semana":
+        if trigger == "seleccionar-todas-semanas":
 
             return semanas_visibles
 
@@ -610,7 +609,7 @@ def registrar_callbacks_ventas(app):
         # Limpiar semanas (conserva la primera)
         # -----------------------------------
 
-        if trigger == "btn-limpiar-semana":
+        if trigger == "limpiar-semanas":
 
             if primera_semana is not None:
 
