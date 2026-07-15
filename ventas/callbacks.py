@@ -6,9 +6,7 @@ CALLBACKS DEL MÓDULO VENTAS
 
 from dash import Input, Output, State, html, ALL, ctx, no_update
 import pandas as pd
-from plotly import data
 
-import app
 from ventas.filtros import obtener_semanas
 
 from ventas.procesamiento import leer_archivos
@@ -335,9 +333,11 @@ def registrar_callbacks_ventas(app):
 
     @app.callback(
 
-        Output("store-meses", "data"),
+        Output("store-mes", "data"),
 
-        Output("selector-semanas", "children"),
+        Output("store-semana","data"),
+        
+        Output("selector-semanas","children"),
 
         Output(
             {
@@ -355,7 +355,7 @@ def registrar_callbacks_ventas(app):
             "n_clicks"
         ),
 
-        State("store-meses", "data"),
+        State("store-mes", "data"),
 
         State("store-bd-ventas", "data"),
 
@@ -462,6 +462,8 @@ def registrar_callbacks_ventas(app):
         return (
 
             meses_activos,
+            
+            semanas,
 
             botones,
 

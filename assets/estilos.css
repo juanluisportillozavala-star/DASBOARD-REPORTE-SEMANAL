@@ -782,15 +782,75 @@ RESPONSIVE
 CONTROLES DEL DASHBOARD
 ==========================================================*/
 
-.selector-meses{
+.bloque-filtro{
+
+    margin-bottom:35px;
+
+}
+
+.encabezado-filtro{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:18px;
+
+}
+
+.titulo-filtro{
+
+    margin:0;
+
+    font-size:20px;
+
+    color:#173C73;
+
+    font-weight:700;
+
+}
+
+.acciones-filtro{
+
+    display:flex;
+
+    gap:14px;
+
+}
+
+.filtro-icono{
+
+    font-size:18px;
+
+    color:#6B7280;
+
+    cursor:pointer;
+
+    transition:.20s;
+
+}
+
+.filtro-icono:hover{
+
+    color:#173C73;
+
+    transform:scale(1.15);
+
+}
+
+/*==========================================================
+GRID DE MESES
+==========================================================*/
+
+.grid-meses{
 
     display:grid;
 
     grid-template-columns:repeat(6,58px);
 
-    gap:10px;
-
-    margin-bottom:10px;
+    gap:12px;
 
 }
 
@@ -798,29 +858,17 @@ CONTROLES DEL DASHBOARD
 
     width:58px;
 
-    height:46px;
+    height:44px;
 
-    display:flex;
+    border-radius:10px !important;
 
-    justify-content:center;
+    background:#F8FAFD !important;
 
-    align-items:center;
+    border:1px solid #D7E2EF !important;
 
-    background:#F8FAFD;
-
-    border:1px solid #D5DFEB;
-
-    border-radius:10px;
-
-    color:#173C73;
-
-    font-size:15px;
+    color:#173C73 !important;
 
     font-weight:700;
-
-    cursor:pointer;
-
-    user-select:none;
 
     transition:.20s;
 
@@ -828,41 +876,45 @@ CONTROLES DEL DASHBOARD
 
 .cuadro-mes:hover{
 
-    background:#DCEBFF;
-
-    border-color:#7EA5DD;
-
     transform:translateY(-2px);
 
-    box-shadow:0 5px 14px rgba(0,0,0,.10);
+    background:#E8F0FC !important;
+
+    border-color:#7FA4D7 !important;
 
 }
 
 .cuadro-mes.activo{
 
-    background:#173C73;
+    background:#173C73 !important;
 
-    color:white;
+    border-color:#173C73 !important;
 
-    border-color:#173C73;
+    color:white !important;
 
-    box-shadow:0 6px 16px rgba(23,60,115,.30);
+}
+
+.cuadro-mes.acumulado{
+
+    background:#6F97D5 !important;
+
+    color:white !important;
+
+    border-color:#6F97D5 !important;
 
 }
 
 /*==========================================================
-SEMANAS
+GRID DE SEMANAS
 ==========================================================*/
 
-.selector-semanas{
+.grid-semanas{
 
-    display:flex;
+    display:grid;
 
-    flex-wrap:wrap;
+    grid-template-columns:repeat(auto-fill,58px);
 
-    gap:10px;
-
-    min-height:46px;
+    gap:12px;
 
 }
 
@@ -870,29 +922,17 @@ SEMANAS
 
     width:58px;
 
-    height:46px;
+    height:44px;
 
-    display:flex;
+    border-radius:10px !important;
 
-    justify-content:center;
+    background:#F8FAFD !important;
 
-    align-items:center;
+    border:1px solid #D7E2EF !important;
 
-    background:#F8FAFD;
-
-    border:1px solid #D5DFEB;
-
-    border-radius:10px;
-
-    color:#173C73;
-
-    font-size:15px;
+    color:#173C73 !important;
 
     font-weight:700;
-
-    cursor:pointer;
-
-    user-select:none;
 
     transition:.20s;
 
@@ -900,28 +940,33 @@ SEMANAS
 
 .cuadro-semana:hover{
 
-    background:#DCEBFF;
-
-    border-color:#7EA5DD;
-
     transform:translateY(-2px);
 
-    box-shadow:0 5px 14px rgba(0,0,0,.10);
+    background:#E8F0FC !important;
+
+    border-color:#7FA4D7 !important;
 
 }
 
 .cuadro-semana.activo{
 
-    background:#173C73;
+    background:#173C73 !important;
 
-    color:white;
+    border-color:#173C73 !important;
 
-    border-color:#173C73;
-
-    box-shadow:0 6px 16px rgba(23,60,115,.30);
+    color:white !important;
 
 }
 
+.cuadro-semana.acumulado{
+
+    background:#6F97D5 !important;
+
+    border-color:#6F97D5 !important;
+
+    color:white !important;
+
+}
 /*==========================================================
 ARCHIVOS CARGADOS
 ==========================================================*/
