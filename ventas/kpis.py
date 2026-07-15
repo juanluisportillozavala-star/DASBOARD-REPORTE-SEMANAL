@@ -1,6 +1,6 @@
 """
 =========================================================
-KPIs DEL DASHBOARD DE VENTAS
+KPIs DASHBOARD VENTAS
 =========================================================
 """
 
@@ -8,7 +8,11 @@ from dash import html
 import dash_bootstrap_components as dbc
 
 
-def tarjeta(titulo, valor, icono, color):
+# ==========================================================
+# TARJETA
+# ==========================================================
+
+def crear_tarjeta(titulo, valor, icono, color):
 
     return dbc.Card(
 
@@ -20,34 +24,38 @@ def tarjeta(titulo, valor, icono, color):
 
                     [
 
+                        # Icono
                         html.Div(
 
-                            [
+                            html.I(
 
-                                html.I(
+                                className=icono,
 
-                                    className=f"{icono} fa-2x",
+                                style={
 
-                                    style={
+                                    "fontSize": "32px",
 
-                                        "color": color
+                                    "color": color
 
-                                    }
+                                }
 
-                                )
-
-                            ],
+                            ),
 
                             style={
 
-                                "width":"60px",
+                                "width": "70px",
 
-                                "textAlign":"center"
+                                "display": "flex",
+
+                                "justifyContent": "center",
+
+                                "alignItems": "center"
 
                             }
 
                         ),
 
+                        # Texto
                         html.Div(
 
                             [
@@ -58,25 +66,29 @@ def tarjeta(titulo, valor, icono, color):
 
                                     style={
 
-                                        "fontSize":"15px",
+                                        "fontSize": "15px",
 
-                                        "color":"gray"
+                                        "color": "#7A7A7A",
+
+                                        "fontWeight": "600"
 
                                     }
 
                                 ),
 
-                                html.H3(
+                                html.H2(
 
                                     valor,
 
                                     style={
 
-                                        "margin":"0px",
+                                        "marginTop": "8px",
 
-                                        "fontWeight":"bold",
+                                        "marginBottom": "0px",
 
-                                        "color":"#173C73"
+                                        "fontWeight": "bold",
+
+                                        "color": "#173C73"
 
                                     }
 
@@ -86,7 +98,7 @@ def tarjeta(titulo, valor, icono, color):
 
                             style={
 
-                                "marginLeft":"15px"
+                                "flex": "1"
 
                             }
 
@@ -96,9 +108,9 @@ def tarjeta(titulo, valor, icono, color):
 
                     style={
 
-                        "display":"flex",
+                        "display": "flex",
 
-                        "alignItems":"center"
+                        "alignItems": "center"
 
                     }
 
@@ -108,10 +120,20 @@ def tarjeta(titulo, valor, icono, color):
 
         ),
 
-        className="card-premium"
+        className="card-premium",
+
+        style={
+
+            "height": "125px"
+
+        }
 
     )
 
+
+# ==========================================================
+# CONTENEDOR KPIs
+# ==========================================================
 
 def crear_kpis(kpis):
 
@@ -121,126 +143,60 @@ def crear_kpis(kpis):
 
             dbc.Col(
 
-                tarjeta(
+                crear_tarjeta(
 
                     "Venta Total",
 
                     f"${kpis['venta_total']:,.2f}",
 
-                    "fas fa-dollar-sign",
+                    "fas fa-sack-dollar",
 
-                    "#28a745"
+                    "#0B8F44"
 
                 ),
 
-                lg=4,
-
-                xl=2
+                lg=4
 
             ),
 
             dbc.Col(
 
-                tarjeta(
+                crear_tarjeta(
 
-                    "Utilidad",
+                    "Utilidad Bruta",
 
                     f"${kpis['utilidad']:,.2f}",
 
                     "fas fa-chart-line",
 
-                    "#0d6efd"
+                    "#0A66C2"
 
                 ),
 
-                lg=4,
-
-                xl=2
+                lg=4
 
             ),
 
             dbc.Col(
 
-                tarjeta(
+                crear_tarjeta(
 
-                    "Margen",
+                    "Margen Bruto",
 
                     f"{kpis['margen']:.2f}%",
 
                     "fas fa-percent",
 
-                    "#ffc107"
+                    "#D4AF37"
 
                 ),
 
-                lg=4,
-
-                xl=2
-
-            ),
-
-            dbc.Col(
-
-                tarjeta(
-
-                    "Clientes",
-
-                    f"{kpis['clientes']:,}",
-
-                    "fas fa-users",
-
-                    "#6f42c1"
-
-                ),
-
-                lg=4,
-
-                xl=2
-
-            ),
-
-            dbc.Col(
-
-                tarjeta(
-
-                    "Productos",
-
-                    f"{kpis['productos']:,}",
-
-                    "fas fa-box",
-
-                    "#fd7e14"
-
-                ),
-
-                lg=4,
-
-                xl=2
-
-            ),
-
-            dbc.Col(
-
-                tarjeta(
-
-                    "Facturas",
-
-                    f"{kpis['facturas']:,}",
-
-                    "fas fa-file-invoice",
-
-                    "#20c997"
-
-                ),
-
-                lg=4,
-
-                xl=2
+                lg=4
 
             )
 
         ],
 
-        className="g-3"
+        className="g-4"
 
     )

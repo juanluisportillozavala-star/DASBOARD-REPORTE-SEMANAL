@@ -51,10 +51,6 @@ def crear_layout_ventas():
 
                 [
 
-                    # ===============================================
-                    # CATÁLOGO
-                    # ===============================================
-
                     dbc.Col(
 
                         dbc.Card(
@@ -125,10 +121,6 @@ def crear_layout_ventas():
                         md=6
 
                     ),
-
-                    # ===============================================
-                    # BD VENTAS
-                    # ===============================================
 
                     dbc.Col(
 
@@ -208,7 +200,7 @@ def crear_layout_ventas():
             html.Br(),
 
             # =====================================================
-            # BOTÓN PROCESAR
+            # BOTÓN
             # =====================================================
 
             dbc.Button(
@@ -216,7 +208,9 @@ def crear_layout_ventas():
                 [
 
                     html.I(
+
                         className="fas fa-gears me-2"
+
                     ),
 
                     "Procesar Información"
@@ -237,6 +231,18 @@ def crear_layout_ventas():
             html.Br(),
 
             # =====================================================
+            # KPIs DEL DASHBOARD
+            # =====================================================
+
+            html.Div(
+
+                id="contenedor-kpis"
+
+            ),
+
+            html.Br(),
+
+            # =====================================================
             # ESTADO DEL PROCESAMIENTO
             # =====================================================
 
@@ -251,7 +257,9 @@ def crear_layout_ventas():
                             [
 
                                 html.I(
+
                                     className="fas fa-circle-info me-2"
+
                                 ),
 
                                 "Estado del procesamiento"
@@ -274,9 +282,9 @@ def crear_layout_ventas():
 
                                     style={
 
-                                        "fontSize": "18px",
+                                        "fontSize":"18px",
 
-                                        "color": "#6c757d"
+                                        "color":"#6c757d"
 
                                     }
 
