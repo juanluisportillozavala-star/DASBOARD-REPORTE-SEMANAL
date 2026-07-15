@@ -327,25 +327,19 @@ def registrar_callbacks_ventas(app):
             return ""
 
         return crear_cards(kpis)
-# =====================================================
-# SELECCIÓN DE MESES
-# =====================================================
+
+    # =====================================================
+    # SELECCIÓN DE MESES
+    # (múltiple + "seleccionar todo" + "limpiar")
+    #
+    # NOTA: se asume que en el layout existen los botones
+    # con id "btn-todo-mes" y "btn-limpiar-mes". Si tus ids
+    # son distintos, ajústalos aquí y en el layout.
+    # =====================================================
 
     @app.callback(
 
         Output("store-mes", "data"),
-
-        Output("store-semana","data"),
-        
-        Output("selector-semanas","children"),
-
-        Output(
-            {
-                "type": "btn-mes",
-                "index": ALL
-            },
-            "className"
-        ),
 
         Input(
             {
@@ -355,19 +349,21 @@ def registrar_callbacks_ventas(app):
             "n_clicks"
         ),
 
-        State("store-mes", "data"),
+        Input("btn-todo-mes", "n_clicks"),
 
-        State("store-bd-ventas", "data"),
+        Input("btn-limpiar-mes", "n_clicks"),
+
+        State("store-mes", "data"),
 
         prevent_initial_call=True
 
     )
 
-    def seleccionar_meses(_, meses_activos, data):
+    def seleccionar_meses(_, todo_clicks, limpiar_clicks, meses_activos):
 
-        if data is None:
+        if ctx.triggered_id is None:
 
-            return [], [], ["cuadro-mes"] * 12
+            return no_update
 
         if meses_activos is None:
 
@@ -375,15 +371,27 @@ def registrar_callbacks_ventas(app):
 
         trigger = ctx.triggered_id
 
-        if trigger is None:
+        # -----------------------------
+        # Seleccionar todos los meses
+        # -----------------------------
 
-            return meses_activos, [], ["cuadro-mes"] * 12
+        if trigger == "btn-todo-mes":
 
-        mes = trigger["index"]
+            return list(range(1, 13))
 
-        # ----------------------------------------
-        # Activa / Desactiva
-        # ----------------------------------------
+        # -----------------------------
+        # Limpiar meses
+        # -----------------------------
+
+        if trigger == "btn-limpiar-mes":
+
+            return []
+
+        # -----------------------------
+        # Activa / Desactiva un mes
+        # -----------------------------
+
+        mes = int(trigger["index"])
 
         if mes in meses_activos:
 
@@ -393,11 +401,49 @@ def registrar_callbacks_ventas(app):
 
             meses_activos.append(mes)
 
-        meses_activos.sort()
+        meses_activos = sorted(meses_activos)
 
-        # ----------------------------------------
-        # Obtener semanas
-        # ----------------------------------------
+        return meses_activos
+
+    # =====================================================
+    # PINTAR MESES Y GENERAR SEMANAS
+    #
+    # Al cambiar los meses activos, las semanas visibles se
+    # recalculan y se seleccionan automáticamente todas
+    # (selección automática de semanas al elegir meses).
+    # =====================================================
+
+    @app.callback(
+
+        Output("selector-semanas", "children"),
+
+        Output("store-semana", "data"),
+
+        Output(
+            {
+                "type": "btn-mes",
+                "index": ALL
+            },
+            "className"
+        ),
+
+        Input("store-mes", "data"),
+
+        State("store-bd-ventas", "data")
+
+    )
+
+    def actualizar_meses(meses_activos, data):
+
+        import dash_bootstrap_components as dbc
+
+        if data is None:
+
+            return [], [], ["cuadro-mes"] * 12
+
+        if meses_activos is None:
+
+            meses_activos = []
 
         df = pd.DataFrame(data)
 
@@ -409,35 +455,35 @@ def registrar_callbacks_ventas(app):
 
         )
 
-        import dash_bootstrap_components as dbc
+        botones = []
 
-        botones = [
+        for semana in semanas:
 
-            dbc.Button(
+            botones.append(
 
-                str(s),
+                dbc.Button(
 
-                id={
+                    str(semana),
 
-                    "type": "btn-semana",
+                    id={
 
-                    "index": int(s)
+                        "type": "btn-semana",
 
-                },
+                        "index": int(semana)
 
-                className="cuadro-semana activo",
+                    },
 
-                color="light",
+                    n_clicks=0,
 
-                outline=True,
+                    color="light",
 
-                n_clicks=0
+                    outline=True,
+
+                    className="cuadro-semana activo"
+
+                )
 
             )
-
-            for s in semanas
-
-        ]
 
         clases = []
 
@@ -459,24 +505,153 @@ def registrar_callbacks_ventas(app):
 
                 )
 
+        # -----------------------------------------
+        # Auto-selección: todas las semanas visibles
+        # quedan activas al elegir/cambiar meses
+        # -----------------------------------------
+
+        semanas_auto = sorted(semanas)
+
         return (
 
-            meses_activos,
-            
-            semanas,
-
             botones,
+
+            semanas_auto,
 
             clases
 
         )
-# =====================================================
-# SELECCIÓN DE SEMANAS
-# =====================================================
+
+    # =====================================================
+    # SELECCIÓN DE SEMANAS
+    # (múltiple + "seleccionar todo" + "limpiar" +
+    # la primera semana nunca se desmarca)
+    #
+    # NOTA: se asume que en el layout existen los botones
+    # con id "btn-todo-semana" y "btn-limpiar-semana".
+    #
+    # Este callback escribe sobre "store-semana", el mismo
+    # Output que usa "actualizar_meses". Por eso se usa
+    # allow_duplicate=True (soportado por Dash >= 2.9), sin
+    # modificar la arquitectura del resto del proyecto.
+    # =====================================================
 
     @app.callback(
 
-        Output("store-semana", "data"),
+        Output("store-semana", "data", allow_duplicate=True),
+
+        Input(
+            {
+                "type": "btn-semana",
+                "index": ALL
+            },
+            "n_clicks"
+        ),
+
+        Input("btn-todo-semana", "n_clicks"),
+
+        Input("btn-limpiar-semana", "n_clicks"),
+
+        State("store-semana", "data"),
+
+        State("store-mes", "data"),
+
+        State("store-bd-ventas", "data"),
+
+        prevent_initial_call=True
+
+    )
+
+    def seleccionar_semanas(_, todo_clicks, limpiar_clicks, semanas_activas, meses_activos, data):
+
+        if ctx.triggered_id is None:
+
+            return no_update
+
+        if data is None:
+
+            return no_update
+
+        if semanas_activas is None:
+
+            semanas_activas = []
+
+        if meses_activos is None:
+
+            meses_activos = []
+
+        df = pd.DataFrame(data)
+
+        semanas_visibles = sorted(
+
+            obtener_semanas(
+
+                df,
+
+                meses_activos
+
+            )
+
+        )
+
+        primera_semana = semanas_visibles[0] if semanas_visibles else None
+
+        trigger = ctx.triggered_id
+
+        # -----------------------------------
+        # Seleccionar todas las semanas visibles
+        # -----------------------------------
+
+        if trigger == "btn-todo-semana":
+
+            return semanas_visibles
+
+        # -----------------------------------
+        # Limpiar semanas (conserva la primera)
+        # -----------------------------------
+
+        if trigger == "btn-limpiar-semana":
+
+            if primera_semana is not None:
+
+                return [primera_semana]
+
+            return []
+
+        # -----------------------------------
+        # Activar / desactivar una semana
+        # -----------------------------------
+
+        semana = int(trigger["index"])
+
+        if semana in semanas_activas:
+
+            # La primera semana no se puede desmarcar
+
+            if semana == primera_semana:
+
+                return no_update
+
+            semanas_activas.remove(semana)
+
+        else:
+
+            semanas_activas.append(semana)
+
+        semanas_activas = sorted(semanas_activas)
+
+        return semanas_activas
+
+    # =====================================================
+    # PINTAR SEMANAS
+    #
+    # Corrección: antes se usaba ctx.states.get("store-mes.data", [])
+    # dentro de un callback donde "store-mes" NO estaba declarado
+    # como State, lo cual nunca devolvía el valor real. Ahora se
+    # declara explícitamente como State.
+    # =====================================================
+
+    @app.callback(
 
         Output(
 
@@ -492,77 +667,43 @@ def registrar_callbacks_ventas(app):
 
         ),
 
-        Input(
+        Input("store-semana", "data"),
 
-            {
+        State("store-bd-ventas", "data"),
 
-                "type": "btn-semana",
-
-                "index": ALL
-
-            },
-
-            "n_clicks"
-
-        ),
-
-        State(
-
-            "store-semana",
-
-            "data"
-
-        ),
-
-        prevent_initial_call=True
+        State("store-mes", "data")
 
     )
 
-    def seleccionar_semana(_, semanas_seleccionadas):
+    def pintar_semanas(semanas_activas, data, meses_activos):
 
-        if ctx.triggered_id is None:
+        if data is None:
 
-            return (
+            return []
 
-                [],
+        if semanas_activas is None:
 
-                []
+            semanas_activas = []
 
-            )
+        if meses_activos is None:
 
-        semana = ctx.triggered_id["index"]
+            meses_activos = []
 
-        if semanas_seleccionadas is None:
+        df = pd.DataFrame(data)
 
-            semanas_seleccionadas = []
+        semanas_visibles = obtener_semanas(
 
-        # ==========================================
-        # Agregar o quitar semana
-        # ==========================================
+            df,
 
-        if semana in semanas_seleccionadas:
+            meses_activos
 
-            semanas_seleccionadas.remove(semana)
-
-        else:
-
-            semanas_seleccionadas.append(semana)
-
-        semanas_seleccionadas = sorted(semanas_seleccionadas)
-
-        # ==========================================
-        # Pintar botones
-        # ==========================================
+        )
 
         clases = []
 
-        botones = ctx.inputs_list[0]
+        for semana in semanas_visibles:
 
-        for boton in botones:
-
-            indice = boton["id"]["index"]
-
-            if indice in semanas_seleccionadas:
+            if semana in semanas_activas:
 
                 clases.append(
 
@@ -578,55 +719,4 @@ def registrar_callbacks_ventas(app):
 
                 )
 
-        return (
-
-            semanas_seleccionadas,
-
-            clases
-
-        )
-    # =====================================================
-# SELECCIONAR TODOS LOS MESES
-# =====================================================
-
-    @app.callback(
-
-        Output("store-mes", "data", allow_duplicate=True),
-
-        Input("seleccionar-todos-meses", "n_clicks"),
-
-        State("store-bd-ventas", "data"),
-
-        prevent_initial_call=True
-
-    )
-
-    def seleccionar_todos_meses(n, data):
-
-        if not n:
-
-            return no_update
-
-        if data is None:
-
-            return []
-
-        df = pd.DataFrame(data)
-
-        meses = (
-
-            df["Mes"]
-
-            .dropna()
-
-            .astype(int)
-
-            .sort_values()
-
-            .unique()
-
-            .tolist()
-
-        )
-
-        return meses
+        return clases
