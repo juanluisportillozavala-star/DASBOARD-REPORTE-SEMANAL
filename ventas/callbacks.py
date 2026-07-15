@@ -524,3 +524,118 @@ def registrar_callbacks_ventas(app):
             clases
 
         )
+# =====================================================
+# SELECCIÓN DE SEMANAS
+# =====================================================
+
+    @app.callback(
+
+        Output("store-semana", "data"),
+
+        Output(
+
+            {
+
+                "type": "btn-semana",
+
+                "index": ALL
+
+            },
+
+            "className"
+
+        ),
+
+        Input(
+
+            {
+
+                "type": "btn-semana",
+
+                "index": ALL
+
+            },
+
+            "n_clicks"
+
+        ),
+
+        State(
+
+            "store-semana",
+
+            "data"
+
+        ),
+
+        prevent_initial_call=True
+
+    )
+
+    def seleccionar_semana(_, semanas_seleccionadas):
+
+        if ctx.triggered_id is None:
+
+            return (
+
+                [],
+
+                []
+
+            )
+
+        semana = ctx.triggered_id["index"]
+
+        if semanas_seleccionadas is None:
+
+            semanas_seleccionadas = []
+
+        # ==========================================
+        # Agregar o quitar semana
+        # ==========================================
+
+        if semana in semanas_seleccionadas:
+
+            semanas_seleccionadas.remove(semana)
+
+        else:
+
+            semanas_seleccionadas.append(semana)
+
+        semanas_seleccionadas = sorted(semanas_seleccionadas)
+
+        # ==========================================
+        # Pintar botones
+        # ==========================================
+
+        clases = []
+
+        botones = ctx.inputs_list[0]
+
+        for boton in botones:
+
+            indice = boton["id"]["index"]
+
+            if indice in semanas_seleccionadas:
+
+                clases.append(
+
+                    "cuadro-semana activo"
+
+                )
+
+            else:
+
+                clases.append(
+
+                    "cuadro-semana"
+
+                )
+
+        return (
+
+            semanas_seleccionadas,
+
+            clases
+
+        )
