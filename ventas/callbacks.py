@@ -1002,7 +1002,7 @@ def registrar_callbacks_ventas(app):
 
         tabla = top_vendedores(df)
 
-        return crear_tabla(
+        tabla_card = crear_tabla(
 
             "Top Vendedores",
 
@@ -1011,6 +1011,14 @@ def registrar_callbacks_ventas(app):
             tabla.columns.tolist()
 
         )
+
+        # Debug: además de la tarjeta, mostrar primeras filas como texto
+        debug_tabla = html.Pre(
+            tabla.head(10).to_string(),
+            style={"whiteSpace": "pre-wrap", "fontSize": "13px", "color": "#173C73", "marginTop": "12px"}
+        )
+
+        return html.Div([tabla_card, debug_tabla])
 
 
     @app.callback(
