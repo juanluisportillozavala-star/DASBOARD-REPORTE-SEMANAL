@@ -1006,76 +1006,45 @@ def registrar_callbacks_ventas(app):
                 style={"color": "red"}
 
             )
-    # ------------------------------------------
-    # FILTRAR MESES
-    # ------------------------------------------
-
-        if meses:
-
-            df = df[
-
-                df["Mes"].isin(meses)
-
-            ]
-
-    # ------------------------------------------
-    # FILTRAR SEMANAS
-    # ------------------------------------------
-
-        if semanas:
-
-            df = df[
-
-                df["Semana"].isin(semanas)
-
-            ]
-
-    # ------------------------------------------
-    # TABLA
-    # ------------------------------------------
-
-        tabla = top_vendedores(df)
-
-        tabla_card = crear_tabla(
-
-            "Top Vendedores",
-
-            tabla,
-
-            tabla.columns.tolist()
-
-        )
-
-        # Debug: además de la tarjeta, mostrar primeras filas como texto
-        debug_tabla = html.Pre(
-            tabla.head(10).to_string(),
-            style={"whiteSpace": "pre-wrap", "fontSize": "13px", "color": "#173C73", "marginTop": "12px"}
-        )
-
-        return html.Pre([tabla.head(10).to_string()])
-
-
     @app.callback(
-
-        Output("debug-store-bd-ventas", "children"),
-
-        Input("store-bd-ventas", "data")
-
+        Output("contenedor-tablas", "children"),
+        Input("store-bd-ventas", "data"),
+        Input("store-mes", "data"),
+        Input("store-semana", "data")
     )
-    def debug_store_bd_ventas(data):
-
-        if data is None:
-
-            return "store-bd-ventas: None"
+    def actualizar_tabla_vendedores(data, meses, semanas):
 
         try:
 
-            filas = len(data)
+            if data is None:
+                return html.H4("No hay datos")
 
-            primeras_cols = list(data[0].keys()) if filas > 0 else []
+            df = pd.DataFrame(data)
 
-            return f"Registros: {filas}\nColumnas ejemplo: {primeras_cols}"
+            if meses:
+                df = df[df["Mes"].isin(meses)]
+
+            if semanas:
+                df = df[df["Semana"].isin(semanas)]
+
+            tabla = top_vendedores(df)
+
+            return html.Pre(
+                tabla.head(10).to_string()
+            )
 
         except Exception as e:
 
-            return f"Error mostrando store: {e}"
+            return html.Div(
+
+                [
+
+                    html.H3("ERROR"),
+
+                    html.Pre(str(e))
+
+                ],
+
+                style={"color": "red"}
+
+            )
