@@ -6,12 +6,16 @@ CALLBACKS DEL MÓDULO VENTAS
 
 from dash import Input, Output, State, html, ALL, ctx, no_update
 import pandas as pd
+from plotly import data
 
 from ventas.filtros import obtener_semanas
 
 from ventas.procesamiento import leer_archivos
 from ventas.kpis import calcular_kpis
 from ventas.cards import crear_cards
+
+from ventas.analisis import top_vendedores
+from ventas.tablas import crear_tabla
 
 
 def registrar_callbacks_ventas(app):
@@ -911,3 +915,99 @@ def registrar_callbacks_ventas(app):
             )
 
         return clases, deshabilitados
+# =====================================================
+# TABLA TOP VENDEDORES
+# =====================================================
+
+    @app.callback(
+
+        Output(
+
+            "contenedor-tablas",
+
+            "children"
+
+        ),
+
+        Input(
+
+            "store-bd-ventas",
+
+            "data"
+
+        ),
+
+        Input(
+
+            "store-mes",
+
+            "data"
+
+        ),
+
+        Input(
+
+            "store-semana",
+
+        "data"
+
+        )
+
+
+    )
+
+    def actualizar_tabla_vendedores(
+
+        data,
+
+        meses,
+
+        semanas
+
+    ):
+
+        if data is None:
+
+            return ""
+
+        df = pd.DataFrame(data)
+
+    # ------------------------------------------
+    # FILTRAR MESES
+    # ------------------------------------------
+
+        if meses:
+
+            df = df[
+
+                df["Mes"].isin(meses)
+
+            ]
+
+    # ------------------------------------------
+    # FILTRAR SEMANAS
+    # ------------------------------------------
+
+        if semanas:
+
+            df = df[
+
+                df["Semana"].isin(semanas)
+
+            ]
+
+    # ------------------------------------------
+    # TABLA
+    # ------------------------------------------
+
+        tabla = top_vendedores(df)
+
+        return crear_tabla(
+
+            "Top Vendedores",
+
+            tabla,
+
+            tabla.columns.tolist()
+
+        )
