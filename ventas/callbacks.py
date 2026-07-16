@@ -1011,3 +1011,29 @@ def registrar_callbacks_ventas(app):
             tabla.columns.tolist()
 
         )
+
+
+    @app.callback(
+
+        Output("debug-store-bd-ventas", "children"),
+
+        Input("store-bd-ventas", "data")
+
+    )
+    def debug_store_bd_ventas(data):
+
+        if data is None:
+
+            return "store-bd-ventas: None"
+
+        try:
+
+            filas = len(data)
+
+            primeras_cols = list(data[0].keys()) if filas > 0 else []
+
+            return f"Registros: {filas}\nColumnas ejemplo: {primeras_cols}"
+
+        except Exception as e:
+
+            return f"Error mostrando store: {e}"

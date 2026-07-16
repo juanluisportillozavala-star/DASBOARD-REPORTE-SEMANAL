@@ -273,6 +273,12 @@ def crear_layout_ventas():
 
             ),
 
+            # Debug: muestra resumen corto del store de ventas
+            html.Div(
+                id="debug-store-bd-ventas",
+                style={"whiteSpace": "pre-wrap", "fontSize": "14px", "color": "#173C73"}
+            ),
+
             html.Br(),
 
             # ==========================================
