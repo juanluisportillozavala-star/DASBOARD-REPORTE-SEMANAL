@@ -1,150 +1,120 @@
 """
 =========================================================
-ANÁLISIS DEL MÓDULO DE VENTAS
+ANÁLISIS DEL DASHBOARD DE VENTAS
 =========================================================
+
+Todas las funciones de este módulo reciben un DataFrame
+ya filtrado por Mes y Semana.
+
+Regresan DataFrames listos para mostrarse en las tablas.
 """
 
 import pandas as pd
 
 
-# ==========================================================
-# NOMBRES DE COLUMNAS
-# ==========================================================
+# =========================================================
+# COLUMNAS DEL REPORTE
+# =========================================================
+
+COL_VENDEDOR = "Usuario/Vendedor"
 
 COL_CLIENTE = "Asiento contable/Nombre del partner para mostrar en la factura."
-COL_VENTA = "Crédito"
-COL_UTILIDAD = "Ut Bruta MN"
+
 COL_PRODUCTO = "Producto 2"
-COL_MES = "Mes"
-COL_SEMANA = "Semana"
+
+COL_CANTIDAD = "Líneas de la orden de venta/Cantidad facturada"
+
+COL_VENTA = "Crédito"
+
+COL_UTILIDAD = "Ut Bruta MN"
 
 
-# ==========================================================
-# KPI PRINCIPALES
-# ==========================================================
+# =========================================================
+# FORMATO GENERAL DE TABLAS
+# =========================================================
 
-def obtener_kpis(df):
+def preparar_tabla(df):
 
-    venta_total = df[COL_VENTA].sum()
+    df = df.copy()
 
-    utilidad = df[COL_UTILIDAD].sum()
+    df["Margen %"] = 0
 
-    margen = 0
+    mascara = df["Venta"] != 0
 
-    if venta_total != 0:
+    df.loc[mascara, "Margen %"] = (
 
-        margen = utilidad / venta_total * 100
+        df.loc[mascara, "Utilidad Bruta"]
 
-    clientes = df[COL_CLIENTE].nunique()
+        /
 
-    productos = df[COL_PRODUCTO].nunique()
+        df.loc[mascara, "Venta"]
 
-    facturas = len(df)
-
-    return {
-
-        "venta_total": venta_total,
-
-        "utilidad": utilidad,
-
-        "margen": margen,
-
-        "clientes": clientes,
-
-        "productos": productos,
-
-        "facturas": facturas
-
-    }
-
-
-# ==========================================================
-# VENTA POR CLIENTE
-# ==========================================================
-
-def ventas_por_cliente(df):
-
-    return (
-
-        df
-
-        .groupby(COL_CLIENTE, as_index=False)
-
-        .agg(
-
-            {
-
-                COL_VENTA: "sum",
-
-                COL_UTILIDAD: "sum"
-
-            }
-
-        )
-
-        .sort_values(
-
-            COL_VENTA,
-
-            ascending=False
-
-        )
+        * 100
 
     )
 
+    df["Utilidad Unitaria"] = 0
 
-# ==========================================================
-# VENTA POR PRODUCTO
-# ==========================================================
+    mascara = df["Cantidad"] != 0
 
-def ventas_por_producto(df):
+    df.loc[mascara, "Utilidad Unitaria"] = (
 
-    return (
+        df.loc[mascara, "Utilidad Bruta"]
 
-        df
+        /
 
-        .groupby(COL_PRODUCTO, as_index=False)
-
-        .agg(
-
-            {
-
-                COL_VENTA: "sum",
-
-                COL_UTILIDAD: "sum"
-
-            }
-
-        )
-
-        .sort_values(
-
-            COL_VENTA,
-
-            ascending=False
-
-        )
+        df.loc[mascara, "Cantidad"]
 
     )
 
+    df = df.round(
 
-# ==========================================================
-# VENTA POR MES
-# ==========================================================
+        {
 
-def ventas_por_mes(df):
+            "Cantidad":2,
 
-    return (
+            "Venta":2,
+
+            "Utilidad Bruta":2,
+
+            "Utilidad Unitaria":2,
+
+            "Margen %":2
+
+        }
+
+    )
+
+    return df
+
+
+# =========================================================
+# TOP VENDEDORES
+# =========================================================
+
+def top_vendedores(df):
+
+    tabla = (
 
         df
 
-        .groupby(COL_MES, as_index=False)
+        .groupby(
+
+            COL_VENDEDOR,
+
+            as_index=False
+
+        )
 
         .agg(
 
             {
 
-                COL_VENTA: "sum"
+                COL_CANTIDAD:"sum",
+
+                COL_VENTA:"sum",
+
+                COL_UTILIDAD:"sum"
 
             }
 
@@ -152,45 +122,247 @@ def ventas_por_mes(df):
 
     )
 
+    tabla.columns = [
 
-# ==========================================================
-# VENTA POR SEMANA
-# ==========================================================
+        "Vendedor",
 
-def ventas_por_semana(df):
+        "Cantidad",
 
-    return (
+        "Venta",
 
-        df
+        "Utilidad Bruta"
 
-        .groupby(COL_SEMANA, as_index=False)
+    ]
 
-        .agg(
+    tabla = preparar_tabla(tabla)
 
-            {
+    tabla = tabla.sort_values(
 
-                COL_VENTA: "sum"
+        "Venta",
 
-            }
-
-        )
+        ascending=False
 
     )
 
+    return tabla
 
-# ==========================================================
+
+# =========================================================
 # TOP CLIENTES
-# ==========================================================
+# =========================================================
 
 def top_clientes(df):
 
-    return ventas_por_cliente(df).head(10)
+    tabla = (
+
+        df
+
+        .groupby(
+
+            COL_CLIENTE,
+
+            as_index=False
+
+        )
+
+        .agg(
+
+            {
+
+                COL_CANTIDAD:"sum",
+
+                COL_VENTA:"sum",
+
+                COL_UTILIDAD:"sum"
+
+            }
+
+        )
+
+    )
+
+    tabla.columns = [
+
+        "Cliente",
+
+        "Cantidad",
+
+        "Venta",
+
+        "Utilidad Bruta"
+
+    ]
+
+    tabla = preparar_tabla(tabla)
+
+    tabla = tabla.sort_values(
+
+        "Venta",
+
+        ascending=False
+
+    )
+
+    return tabla
 
 
-# ==========================================================
+# =========================================================
 # TOP PRODUCTOS
-# ==========================================================
+# =========================================================
 
 def top_productos(df):
 
-    return ventas_por_producto(df).head(10)
+    tabla = (
+
+        df
+
+        .groupby(
+
+            COL_PRODUCTO,
+
+            as_index=False
+
+        )
+
+        .agg(
+
+            {
+
+                COL_CANTIDAD:"sum",
+
+                COL_VENTA:"sum",
+
+                COL_UTILIDAD:"sum"
+
+            }
+
+        )
+
+    )
+
+    tabla.columns = [
+
+        "Producto",
+
+        "Cantidad",
+
+        "Venta",
+
+        "Utilidad Bruta"
+
+    ]
+
+    tabla = preparar_tabla(tabla)
+
+    tabla = tabla.sort_values(
+
+        "Venta",
+
+        ascending=False
+
+    )
+
+    return tabla
+
+
+# =========================================================
+# TOP FAMILIAS
+# (Preparado para cuando exista la columna)
+# =========================================================
+
+def top_familias(df):
+
+    columna = "Familia"
+
+    if columna not in df.columns:
+
+        return pd.DataFrame(
+
+            columns=[
+
+                "Familia",
+
+                "Cantidad",
+
+                "Venta",
+
+                "Utilidad Bruta",
+
+                "Utilidad Unitaria",
+
+                "Margen %"
+
+            ]
+
+        )
+
+    tabla = (
+
+        df
+
+        .groupby(
+
+            columna,
+
+            as_index=False
+
+        )
+
+        .agg(
+
+            {
+
+                COL_CANTIDAD:"sum",
+
+                COL_VENTA:"sum",
+
+                COL_UTILIDAD:"sum"
+
+            }
+
+        )
+
+    )
+
+    tabla.columns = [
+
+        "Familia",
+
+        "Cantidad",
+
+        "Venta",
+
+        "Utilidad Bruta"
+
+    ]
+
+    tabla = preparar_tabla(tabla)
+
+    tabla = tabla.sort_values(
+
+        "Venta",
+
+        ascending=False
+
+    )
+
+    return tabla
+
+
+# =========================================================
+# DASHBOARD COMPLETO
+# =========================================================
+
+def obtener_tablas_dashboard(df):
+
+    return {
+
+        "vendedores":top_vendedores(df),
+
+        "productos":top_productos(df),
+
+        "clientes":top_clientes(df),
+
+        "familias":top_familias(df)
+
+    }
