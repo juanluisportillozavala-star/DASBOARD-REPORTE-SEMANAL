@@ -58,37 +58,23 @@ def crear_tabla(
 
                         id=f"tabla-{titulo.lower().replace(' ','-')}",
 
-                        columns=[
-
-                            {
-
-                                "name": c,
-
-                                "id": c
-
-                            }
-
-                            for c in columnas
-
-                        ],
+                        columns=[{"name": c, "id": c} for c in columnas],
 
                         data=dataframe.to_dict("records"),
 
-                        page_action="none",
+                        page_action="native",
+
+                        page_size=10,
 
                         sort_action="native",
 
                         filter_action="native",
 
-                        fixed_rows={
-
-                            "headers": True
-
-                        },
+                        fixed_rows={"headers": True},
 
                         style_table={
 
-                            "height": alto,
+                            "maxHeight": alto,
 
                             "overflowY": "auto",
 
@@ -126,47 +112,30 @@ def crear_tabla(
 
                             "whiteSpace": "normal",
 
-                            "height": "auto"
+                            "height": "auto",
 
                         },
 
-                        style_data={
+                        style_cell_conditional=[
+                            {
+                                "if": {"column_id": columnas[0]},
+                                "textAlign": "left",
+                                "fontWeight": "600"
+                            }
+                        ] if columnas else [],
 
-                            "backgroundColor": "white",
-
-                            "color": "#2E3A46"
-
-                        },
+                        style_data={"backgroundColor": "white", "color": "#2E3A46"},
 
                         style_data_conditional=[
+                            {"if": {"row_index": "odd"}, "backgroundColor": "#F8FAFC"},
+                            {"if": {"state": "selected"}, "backgroundColor": "#DCEBFF", "border": "1px solid #173C73"}
+                        ],
 
-                            {
+                        export_format="csv",
 
-                                "if": {
+                        export_headers="display",
 
-                                    "row_index": "odd"
-
-                                },
-
-                                "backgroundColor": "#F8FAFC"
-
-                            },
-
-                            {
-
-                                "if": {
-
-                                    "state": "selected"
-
-                                },
-
-                                "backgroundColor": "#DCEBFF",
-
-                                "border": "1px solid #173C73"
-
-                            }
-
-                        ]
+                        fill_width=True
 
                     )
 
