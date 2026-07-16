@@ -37,7 +37,7 @@ def preparar_tabla(df):
 
     df = df.copy()
 
-    df["Margen %"] = 0
+    df["Margen %"] = 0.0
 
     mascara = df["Venta"] != 0
 
@@ -53,7 +53,7 @@ def preparar_tabla(df):
 
     )
 
-    df["Utilidad Unitaria"] = 0
+    df["Utilidad Unitaria"] = 0.0
 
     mascara = df["Cantidad"] != 0
 
