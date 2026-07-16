@@ -427,18 +427,22 @@ def registrar_callbacks_ventas(app):
         return meses_activos
 
     # =====================================================
-    # PINTAR MESES Y GENERAR SEMANAS
+    # PINTAR MESES Y AUTO-SELECCIONAR SEMANAS
     #
-    # El grid de semanas ahora es FIJO (1-52), igual que el
-    # de meses (1-12): siempre se ve completo y se puede dar
-    # clic en cualquier semana, tenga o no datos. Al cambiar
-    # los meses activos solo cambia qué semanas quedan
-    # auto-seleccionadas (activas), no cuáles se muestran.
+    # Las 52 celdas de semana ahora son FIJAS y viven en el
+    # layout (ventas/controles.py), igual que los 12 meses.
+    # Por qué: si este callback las regenera cada vez que
+    # cambia el mes, Dash resetea el n_clicks de cada botón
+    # a 0, y ese reseteo se interpreta como un clic real,
+    # desmarcando semanas solas sin que el usuario las toque.
+    # Al ser estáticas, nunca se recrean y ese bug desaparece.
+    #
+    # Este callback solo pinta los meses activos y calcula
+    # qué semanas quedan auto-seleccionadas según los meses
+    # elegidos.
     # =====================================================
 
     @app.callback(
-
-        Output("selector-semanas", "children"),
 
         Output("store-semana", "data"),
 
@@ -458,63 +462,9 @@ def registrar_callbacks_ventas(app):
 
     def actualizar_meses(meses_activos, data):
 
-        import dash_bootstrap_components as dbc
-
         if meses_activos is None:
 
             meses_activos = []
-
-        # -----------------------------------------------
-        # Columnas fijas del grid de semanas. Cada semana
-        # se posiciona según su número real (1-52), igual
-        # que el grid fijo de meses (1-12).
-        # -----------------------------------------------
-
-        COLUMNAS_SEMANA = 13
-
-        TOTAL_SEMANAS = 52
-
-        botones = []
-
-        for semana_int in range(1, TOTAL_SEMANAS + 1):
-
-            fila = (semana_int - 1) // COLUMNAS_SEMANA + 1
-
-            columna = (semana_int - 1) % COLUMNAS_SEMANA + 1
-
-            botones.append(
-
-                dbc.Button(
-
-                    str(semana_int),
-
-                    id={
-
-                        "type": "btn-semana",
-
-                        "index": semana_int
-
-                    },
-
-                    n_clicks=0,
-
-                    color="light",
-
-                    outline=True,
-
-                    className="cuadro-semana",
-
-                    style={
-
-                        "gridRow": fila,
-
-                        "gridColumn": columna
-
-                    }
-
-                )
-
-            )
 
         clases = []
 
@@ -566,8 +516,6 @@ def registrar_callbacks_ventas(app):
 
         return (
 
-            botones,
-
             semanas_auto,
 
             clases
@@ -582,8 +530,14 @@ def registrar_callbacks_ventas(app):
     # Los iconos "seleccionar-todas-semanas" y "limpiar-semanas"
     # viven en ventas/controles.py (html.I con id propio).
     #
-    # Este callback escribe sobre "store-semana", el mismo
-    # Output que usa "actualizar_meses". Por eso se usa
+    # "Seleccionar todas las semanas" toma TODAS las semanas
+    # con datos en el archivo completo (sin importar el mes
+    # activo) y además marca los meses correspondientes a
+    # esas semanas, para que meses y semanas queden coherentes
+    # en pantalla.
+    #
+    # Este callback escribe sobre "store-semana" y "store-mes",
+    # los mismos Outputs que usan otros callbacks. Por eso usa
     # allow_duplicate=True (soportado por Dash >= 2.9), sin
     # modificar la arquitectura del resto del proyecto.
     # =====================================================
@@ -591,6 +545,8 @@ def registrar_callbacks_ventas(app):
     @app.callback(
 
         Output("store-semana", "data", allow_duplicate=True),
+
+        Output("store-mes", "data", allow_duplicate=True),
 
         Input(
             {
@@ -618,7 +574,7 @@ def registrar_callbacks_ventas(app):
 
         if ctx.triggered_id is None:
 
-            return no_update
+            return no_update, no_update
 
         if semanas_activas is None:
 
@@ -628,12 +584,58 @@ def registrar_callbacks_ventas(app):
 
             meses_activos = []
 
+        trigger = ctx.triggered_id
+
+        # -----------------------------------------------
+        # Seleccionar TODAS las semanas con datos (sin
+        # importar el mes activo) y marcar los meses a
+        # los que pertenecen esas semanas.
+        # -----------------------------------------------
+
+        if trigger == "seleccionar-todas-semanas":
+
+            if not data:
+
+                return no_update, no_update
+
+            df = pd.DataFrame(data)
+
+            semanas_todas = sorted(
+
+                df["Semana"]
+
+                .dropna()
+
+                .astype(int)
+
+                .unique()
+
+                .tolist()
+
+            )
+
+            meses_de_esas_semanas = sorted(
+
+                df["Mes"]
+
+                .dropna()
+
+                .astype(int)
+
+                .unique()
+
+                .tolist()
+
+            )
+
+            return semanas_todas, meses_de_esas_semanas
+
         # -----------------------------------------------
         # "Semanas visibles" (relevantes a los meses elegidos)
         # solo se pueden calcular si ya hay datos procesados.
-        # Sin datos, no hay semana "protegida" ni lista para
-        # "seleccionar todo", pero el toggle individual y
-        # "limpiar" igual funcionan (semanas siempre clickeables).
+        # Sin datos, no hay semana "protegida" pero el toggle
+        # individual y "limpiar" igual funcionan (semanas
+        # siempre clickeables).
         # -----------------------------------------------
 
         if data is None:
@@ -658,20 +660,6 @@ def registrar_callbacks_ventas(app):
 
         primera_semana = semanas_visibles[0] if semanas_visibles else None
 
-        trigger = ctx.triggered_id
-
-        # -----------------------------------
-        # Seleccionar todas las semanas visibles
-        # -----------------------------------
-
-        if trigger == "seleccionar-todas-semanas":
-
-            if data is None:
-
-                return no_update
-
-            return semanas_visibles
-
         # -----------------------------------
         # Limpiar semanas (conserva la primera)
         # -----------------------------------
@@ -680,9 +668,9 @@ def registrar_callbacks_ventas(app):
 
             if primera_semana is not None:
 
-                return [primera_semana]
+                return [primera_semana], no_update
 
-            return []
+            return [], no_update
 
         # -----------------------------------
         # Activar / desactivar una semana
@@ -696,7 +684,7 @@ def registrar_callbacks_ventas(app):
 
             if semana == primera_semana:
 
-                return no_update
+                return no_update, no_update
 
             semanas_activas.remove(semana)
 
@@ -706,7 +694,7 @@ def registrar_callbacks_ventas(app):
 
         semanas_activas = sorted(semanas_activas)
 
-        return semanas_activas
+        return semanas_activas, no_update
 
     # =====================================================
     # PINTAR SEMANAS

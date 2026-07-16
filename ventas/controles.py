@@ -176,6 +176,42 @@ def crear_controles():
 
                                 html.Div(
 
+                                    [
+
+                                        dbc.Button(
+
+                                            str(i),
+
+                                                id={
+
+                                                "type": "btn-semana",
+
+                                                "index": i
+
+                                            },
+
+                                            n_clicks=0,
+
+                                            color="light",
+
+                                            outline=True,
+
+                                            className="cuadro-semana",
+
+                                            style={
+
+                                                "gridRow": (i - 1) // 13 + 1,
+
+                                                "gridColumn": (i - 1) % 13 + 1
+
+                                            }
+
+                                        )
+
+                                        for i in range(1, 53)
+
+                                    ],
+
                                     id="selector-semanas",
 
                                     className="grid-semanas"
