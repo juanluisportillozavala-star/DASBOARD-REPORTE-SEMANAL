@@ -334,11 +334,21 @@ def registrar_callbacks_ventas(app):
     #
     # Los iconos "seleccionar-todos-meses" y "limpiar-meses"
     # viven en ventas/controles.py (html.I con id propio).
+    #
+    # Cuando el usuario toca directamente los controles de
+    # mes (clic individual, seleccionar todo o limpiar), se
+    # auto-seleccionan también las semanas de esos meses. Esa
+    # auto-selección vive AQUÍ (no en un callback separado
+    # escuchando "store-mes") para que NO se dispare cuando
+    # el mes se activa solo como efecto secundario de elegir
+    # una semana suelta (ver "seleccionar_semanas" más abajo).
     # =====================================================
 
     @app.callback(
 
         Output("store-mes", "data"),
+
+        Output("store-semana", "data"),
 
         Input(
             {
@@ -364,7 +374,7 @@ def registrar_callbacks_ventas(app):
 
         if ctx.triggered_id is None:
 
-            return no_update
+            return no_update, no_update
 
         if meses_activos is None:
 
@@ -380,7 +390,7 @@ def registrar_callbacks_ventas(app):
 
             if not data:
 
-                return no_update
+                return no_update, no_update
 
             df = pd.DataFrame(data)
 
@@ -398,15 +408,27 @@ def registrar_callbacks_ventas(app):
 
             )
 
-            return meses_con_datos
+            semanas_auto = sorted(
+
+                obtener_semanas(
+
+                    df,
+
+                    meses_con_datos
+
+                )
+
+            )
+
+            return meses_con_datos, semanas_auto
 
         # -----------------------------
-        # Limpiar meses
+        # Limpiar meses (limpia también semanas)
         # -----------------------------
 
         if trigger == "limpiar-meses":
 
-            return []
+            return [], []
 
         # -----------------------------
         # Activa / Desactiva un mes
@@ -424,27 +446,45 @@ def registrar_callbacks_ventas(app):
 
         meses_activos = sorted(meses_activos)
 
-        return meses_activos
+        if data is None:
+
+            semanas_auto = []
+
+        else:
+
+            df = pd.DataFrame(data)
+
+            semanas_auto = sorted(
+
+                obtener_semanas(
+
+                    df,
+
+                    meses_activos
+
+                )
+
+            )
+
+        return meses_activos, semanas_auto
 
     # =====================================================
-    # PINTAR MESES Y AUTO-SELECCIONAR SEMANAS
+    # PINTAR MESES
     #
-    # Las 52 celdas de semana ahora son FIJAS y viven en el
-    # layout (ventas/controles.py), igual que los 12 meses.
-    # Por qué: si este callback las regenera cada vez que
-    # cambia el mes, Dash resetea el n_clicks de cada botón
-    # a 0, y ese reseteo se interpreta como un clic real,
-    # desmarcando semanas solas sin que el usuario las toque.
-    # Al ser estáticas, nunca se recrean y ese bug desaparece.
+    # Solo pinta className activo/inactivo según store-mes.
+    # Ya no toca "store-semana": esa auto-selección ahora
+    # vive dentro de "seleccionar_meses", para que no se
+    # dispare cuando el mes se activa como efecto secundario
+    # de elegir una semana suelta.
     #
-    # Este callback solo pinta los meses activos y calcula
-    # qué semanas quedan auto-seleccionadas según los meses
-    # elegidos.
+    # Las 52 celdas de semana son FIJAS y viven en el layout
+    # (ventas/controles.py), igual que los 12 meses. Por qué:
+    # si se regeneraran cada vez que cambia el mes, Dash
+    # resetea el n_clicks de cada botón a 0, y ese reseteo se
+    # interpreta como un clic real, desmarcando semanas solas.
     # =====================================================
 
     @app.callback(
-
-        Output("store-semana", "data"),
 
         Output(
             {
@@ -454,13 +494,11 @@ def registrar_callbacks_ventas(app):
             "className"
         ),
 
-        Input("store-mes", "data"),
-
-        State("store-bd-ventas", "data")
+        Input("store-mes", "data")
 
     )
 
-    def actualizar_meses(meses_activos, data):
+    def pintar_meses(meses_activos):
 
         if meses_activos is None:
 
@@ -486,41 +524,7 @@ def registrar_callbacks_ventas(app):
 
                 )
 
-        # -----------------------------------------
-        # Auto-selección: las semanas que pertenecen
-        # a los meses elegidos quedan activas. Si no
-        # hay datos procesados o no hay meses elegidos,
-        # no se auto-selecciona ninguna (pero las 52
-        # celdas se siguen mostrando y son clickeables).
-        # -----------------------------------------
-
-        if data is None:
-
-            semanas_auto = []
-
-        else:
-
-            df = pd.DataFrame(data)
-
-            semanas_auto = sorted(
-
-                obtener_semanas(
-
-                    df,
-
-                    meses_activos
-
-                )
-
-            )
-
-        return (
-
-            semanas_auto,
-
-            clases
-
-        )
+        return clases
 
     # =====================================================
     # SELECCIÓN DE SEMANAS
@@ -661,14 +665,11 @@ def registrar_callbacks_ventas(app):
         primera_semana = semanas_visibles[0] if semanas_visibles else None
 
         # -----------------------------------
-        # Limpiar semanas (conserva la primera)
+        # Limpiar semanas: quita TODO, sin
+        # excepciones (igual que limpiar meses)
         # -----------------------------------
 
         if trigger == "limpiar-semanas":
-
-            if primera_semana is not None:
-
-                return [primera_semana], no_update
 
             return [], no_update
 
@@ -678,9 +679,13 @@ def registrar_callbacks_ventas(app):
 
         semana = int(trigger["index"])
 
+        mes_resultado = no_update
+
         if semana in semanas_activas:
 
             # La primera semana no se puede desmarcar
+            # con un clic individual (sí se puede con
+            # "limpiar", arriba)
 
             if semana == primera_semana:
 
@@ -692,9 +697,40 @@ def registrar_callbacks_ventas(app):
 
             semanas_activas.append(semana)
 
+            # -----------------------------------------------
+            # Auto-seleccionar el mes correspondiente a esta
+            # semana, si aún no está activo.
+            # -----------------------------------------------
+
+            if data is not None:
+
+                fila_semana = df[df["Semana"] == semana]
+
+                if not fila_semana.empty:
+
+                    mes_de_la_semana = int(
+
+                        fila_semana["Mes"]
+
+                        .dropna()
+
+                        .astype(int)
+
+                        .iloc[0]
+
+                    )
+
+                    if mes_de_la_semana not in meses_activos:
+
+                        mes_resultado = sorted(
+
+                            meses_activos + [mes_de_la_semana]
+
+                        )
+
         semanas_activas = sorted(semanas_activas)
 
-        return semanas_activas, no_update
+        return semanas_activas, mes_resultado
 
     # =====================================================
     # PINTAR SEMANAS
