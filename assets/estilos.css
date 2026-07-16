@@ -924,6 +924,12 @@ SEMANAS
 
     font-weight:700;
 
+    padding:0 !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+
     color:#5a6472 !important;
     border-color:#c7ccd4 !important;
     background-color:#f4f5f7 !important;
@@ -934,7 +940,6 @@ SEMANAS
     background-color:#e9ebef !important;
     color:#2b3542 !important;
 }
-
 .cuadro-semana.activo{
 
     background:#173C73 !important;
