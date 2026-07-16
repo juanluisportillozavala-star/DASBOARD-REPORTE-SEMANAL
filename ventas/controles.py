@@ -208,7 +208,7 @@ def crear_controles():
 
                                         )
 
-                                        for i in range(1, 53)
+                                        for i in range(1, 54)
 
                                     ],
 

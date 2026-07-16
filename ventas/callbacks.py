@@ -364,13 +364,15 @@ def registrar_callbacks_ventas(app):
 
         State("store-mes", "data"),
 
+        State("store-semana", "data"),
+
         State("store-bd-ventas", "data"),
 
         prevent_initial_call=True
 
     )
 
-    def seleccionar_meses(_, todo_clicks, limpiar_clicks, meses_activos, data):
+    def seleccionar_meses(_, todo_clicks, limpiar_clicks, meses_activos, semanas_activas, data):
 
         if ctx.triggered_id is None:
 
@@ -379,6 +381,10 @@ def registrar_callbacks_ventas(app):
         if meses_activos is None:
 
             meses_activos = []
+
+        if semanas_activas is None:
+
+            semanas_activas = []
 
         trigger = ctx.triggered_id
 
@@ -430,52 +436,83 @@ def registrar_callbacks_ventas(app):
 
             return [], []
 
-        # -----------------------------
-        # Activa / Desactiva un mes
-        # -----------------------------
+        # -----------------------------------------------
+        # Activa / Desactiva un mes: solo se tocan las
+        # semanas DE ESE MES, sin recalcular ni pisar la
+        # selección que ya existía en otros meses activos.
+        # -----------------------------------------------
 
         mes = int(trigger["index"])
 
-        if mes in meses_activos:
-
-            meses_activos.remove(mes)
-
-        else:
-
-            meses_activos.append(mes)
-
-        meses_activos = sorted(meses_activos)
-
         if data is None:
 
-            semanas_auto = []
+            # Sin datos no se puede saber qué semanas
+            # pertenecen a este mes; solo se togglea el mes.
 
-        else:
+            if mes in meses_activos:
 
-            df = pd.DataFrame(data)
+                meses_activos.remove(mes)
 
-            semanas_auto = sorted(
+            else:
 
-                obtener_semanas(
+                meses_activos.append(mes)
 
-                    df,
+            return sorted(meses_activos), no_update
 
-                    meses_activos
+        df = pd.DataFrame(data)
 
-                )
+        semanas_del_mes = set(
+
+            obtener_semanas(
+
+                df,
+
+                [mes]
 
             )
 
-        return meses_activos, semanas_auto
+        )
+
+        if mes in meses_activos:
+
+            # Se desactiva el mes: se quitan SOLO sus semanas
+
+            meses_activos.remove(mes)
+
+            semanas_activas = [
+
+                s for s in semanas_activas
+
+                if s not in semanas_del_mes
+
+            ]
+
+        else:
+
+            # Se activa el mes: se agregan todas sus semanas,
+            # sin tocar lo que ya estaba activo en otros meses
+
+            meses_activos.append(mes)
+
+            semanas_activas = sorted(
+
+                set(semanas_activas) | semanas_del_mes
+
+            )
+
+        meses_activos = sorted(meses_activos)
+
+        return meses_activos, semanas_activas
 
     # =====================================================
     # PINTAR MESES
     #
-    # Solo pinta className activo/inactivo según store-mes.
-    # Ya no toca "store-semana": esa auto-selección ahora
-    # vive dentro de "seleccionar_meses", para que no se
-    # dispare cuando el mes se activa como efecto secundario
-    # de elegir una semana suelta.
+    # Pinta className activo/inactivo según store-mes, y
+    # además deshabilita los meses SIN datos (no se pueden
+    # seleccionar). Ya no toca "store-semana": esa auto-
+    # selección vive dentro de "seleccionar_meses", para que
+    # no se dispare cuando el mes se activa como efecto
+    # secundario de elegir una semana suelta.
     #
     # Las 52 celdas de semana son FIJAS y viven en el layout
     # (ventas/controles.py), igual que los 12 meses. Por qué:
@@ -494,17 +531,51 @@ def registrar_callbacks_ventas(app):
             "className"
         ),
 
-        Input("store-mes", "data")
+        Output(
+            {
+                "type": "btn-mes",
+                "index": ALL
+            },
+            "disabled"
+        ),
+
+        Input("store-mes", "data"),
+
+        Input("store-bd-ventas", "data")
 
     )
 
-    def pintar_meses(meses_activos):
+    def pintar_meses(meses_activos, data):
 
         if meses_activos is None:
 
             meses_activos = []
 
+        if data is None:
+
+            meses_con_datos = set()
+
+        else:
+
+            df = pd.DataFrame(data)
+
+            meses_con_datos = set(
+
+                df["Mes"]
+
+                .dropna()
+
+                .astype(int)
+
+                .unique()
+
+                .tolist()
+
+            )
+
         clases = []
+
+        deshabilitados = []
 
         for i in range(1, 13):
 
@@ -524,7 +595,13 @@ def registrar_callbacks_ventas(app):
 
                 )
 
-        return clases
+            deshabilitados.append(
+
+                i not in meses_con_datos
+
+            )
+
+        return clases, deshabilitados
 
     # =====================================================
     # SELECCIÓN DE SEMANAS
@@ -665,13 +742,13 @@ def registrar_callbacks_ventas(app):
         primera_semana = semanas_visibles[0] if semanas_visibles else None
 
         # -----------------------------------
-        # Limpiar semanas: quita TODO, sin
-        # excepciones (igual que limpiar meses)
+        # Limpiar semanas: quita TODO (semanas
+        # Y meses), igual que limpiar meses
         # -----------------------------------
 
         if trigger == "limpiar-semanas":
 
-            return [], no_update
+            return [], []
 
         # -----------------------------------
         # Activar / desactivar una semana
@@ -735,9 +812,10 @@ def registrar_callbacks_ventas(app):
     # =====================================================
     # PINTAR SEMANAS
     #
-    # El grid de semanas ahora es fijo (1-52), así que solo
-    # se necesita "store-semana" para saber cuáles pintar
-    # como activas; ya no depende de los datos ni del mes.
+    # El grid de semanas es fijo (1-53, para cubrir años con
+    # semana ISO 53). Pinta activo/inactivo según store-semana,
+    # y deshabilita las semanas SIN datos (no se pueden
+    # seleccionar).
     # =====================================================
 
     @app.callback(
@@ -756,19 +834,59 @@ def registrar_callbacks_ventas(app):
 
         ),
 
-        Input("store-semana", "data")
+        Output(
+
+            {
+
+                "type": "btn-semana",
+
+                "index": ALL
+
+            },
+
+            "disabled"
+
+        ),
+
+        Input("store-semana", "data"),
+
+        Input("store-bd-ventas", "data")
 
     )
 
-    def pintar_semanas(semanas_activas):
+    def pintar_semanas(semanas_activas, data):
 
         if semanas_activas is None:
 
             semanas_activas = []
 
+        if data is None:
+
+            semanas_con_datos = set()
+
+        else:
+
+            df = pd.DataFrame(data)
+
+            semanas_con_datos = set(
+
+                df["Semana"]
+
+                .dropna()
+
+                .astype(int)
+
+                .unique()
+
+                .tolist()
+
+            )
+
         clases = []
 
-        for semana in range(1, 53):
+        deshabilitados = []
+
+        for semana in range(1, 54):
 
             if semana in semanas_activas:
 
@@ -786,4 +904,10 @@ def registrar_callbacks_ventas(app):
 
                 )
 
-        return clases
+            deshabilitados.append(
+
+                semana not in semanas_con_datos
+
+            )
+
+        return clases, deshabilitados
