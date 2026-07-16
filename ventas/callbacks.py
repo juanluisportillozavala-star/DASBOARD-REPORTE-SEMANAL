@@ -17,6 +17,8 @@ from ventas.cards import crear_cards
 from ventas.analisis import top_vendedores
 from ventas.tablas import crear_tabla
 
+from ventas.aggrid import crear_aggrid
+
 
 def registrar_callbacks_ventas(app):
 
@@ -920,93 +922,6 @@ def registrar_callbacks_ventas(app):
 # =====================================================
 
     @app.callback(
-
-        Output(
-
-            "contenedor-tablas",
-
-            "children"
-
-        ),
-
-        Input(
-
-            "store-bd-ventas",
-
-            "data"
-
-        ),
-
-        Input(
-
-            "store-mes",
-
-            "data"
-
-        ),
-
-        Input(
-
-            "store-semana",
-
-        "data"
-
-        )
-
-
-    )
-
-    def actualizar_tabla_vendedores(data, meses, semanas):
-    
-        try:
-
-            if data is None:
-                return html.H4("No hay datos en store-bd-ventas")
-
-            df = pd.DataFrame(data)
-
-            # Aplicar filtros
-            if meses:
-                df = df[df["Mes"].isin(meses)]
-
-            if semanas:
-                df = df[df["Semana"].isin(semanas)]
-
-            # SOLO PARA DEPURAR
-            return html.Div(
-
-                [
-
-                    html.H4("DEBUG"),
-
-                    html.P(f"Filas: {len(df)}"),
-
-                    html.P(f"Columnas: {len(df.columns)}"),
-
-                    html.Hr(),
-
-                    html.Pre("\n".join(df.columns.tolist()))
-
-                ]
-
-            )
-
-        except Exception as e:
-
-            return html.Div(
-
-                [
-
-                    html.H3("ERROR"),
-
-                    html.Pre(str(e))
-
-                ],
-
-                style={"color": "red"}
-
-            )
-    @app.callback(
         Output("contenedor-tablas", "children"),
         Input("store-bd-ventas", "data"),
         Input("store-mes", "data"),
@@ -1029,22 +944,14 @@ def registrar_callbacks_ventas(app):
 
             tabla = top_vendedores(df)
 
-            return html.Pre(
-                tabla.head(10).to_string()
-            )
+            return crear_aggrid(tabla)
 
         except Exception as e:
 
             return html.Div(
-
                 [
-
                     html.H3("ERROR"),
-
                     html.Pre(str(e))
-
                 ],
-
                 style={"color": "red"}
-
             )
