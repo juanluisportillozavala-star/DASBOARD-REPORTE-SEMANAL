@@ -16,7 +16,7 @@ import pandas as pd
 # COLUMNAS DEL REPORTE
 # =========================================================
 
-COL_VENDEDOR = "Usuario/Vendedor"
+COL_VENDEDOR = "Líneas de la orden de venta/Vendedor"
 
 COL_CLIENTE = "Asiento contable/Nombre del partner para mostrar en la factura."
 
