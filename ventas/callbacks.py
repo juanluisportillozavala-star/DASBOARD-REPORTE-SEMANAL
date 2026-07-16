@@ -1052,7 +1052,7 @@ def registrar_callbacks_ventas(app):
             style={"whiteSpace": "pre-wrap", "fontSize": "13px", "color": "#173C73", "marginTop": "12px"}
         )
 
-        return html.Div([tabla_card, debug_tabla])
+        return html.Pre([tabla.head(10).to_string()])
 
 
     @app.callback(
