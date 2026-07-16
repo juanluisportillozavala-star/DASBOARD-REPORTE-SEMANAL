@@ -429,9 +429,11 @@ def registrar_callbacks_ventas(app):
     # =====================================================
     # PINTAR MESES Y GENERAR SEMANAS
     #
-    # Al cambiar los meses activos, las semanas visibles se
-    # recalculan y se seleccionan automáticamente todas
-    # (selección automática de semanas al elegir meses).
+    # El grid de semanas ahora es FIJO (1-52), igual que el
+    # de meses (1-12): siempre se ve completo y se puede dar
+    # clic en cualquier semana, tenga o no datos. Al cambiar
+    # los meses activos solo cambia qué semanas quedan
+    # auto-seleccionadas (activas), no cuáles se muestran.
     # =====================================================
 
     @app.callback(
@@ -458,38 +460,23 @@ def registrar_callbacks_ventas(app):
 
         import dash_bootstrap_components as dbc
 
-        if data is None:
-
-            return [], [], ["cuadro-mes"] * 12
-
         if meses_activos is None:
 
             meses_activos = []
 
-        df = pd.DataFrame(data)
-
-        semanas = obtener_semanas(
-
-            df,
-
-            meses_activos
-
-        )
-
         # -----------------------------------------------
         # Columnas fijas del grid de semanas. Cada semana
-        # se posiciona según su número real (1-52), así que
-        # si hay saltos (p. ej. meses no consecutivos) se ve
-        # el hueco real en vez de recorrer los botones.
+        # se posiciona según su número real (1-52), igual
+        # que el grid fijo de meses (1-12).
         # -----------------------------------------------
 
         COLUMNAS_SEMANA = 13
 
+        TOTAL_SEMANAS = 52
+
         botones = []
 
-        for semana in semanas:
-
-            semana_int = int(semana)
+        for semana_int in range(1, TOTAL_SEMANAS + 1):
 
             fila = (semana_int - 1) // COLUMNAS_SEMANA + 1
 
@@ -499,7 +486,7 @@ def registrar_callbacks_ventas(app):
 
                 dbc.Button(
 
-                    str(semana),
+                    str(semana_int),
 
                     id={
 
@@ -515,7 +502,7 @@ def registrar_callbacks_ventas(app):
 
                     outline=True,
 
-                    className="cuadro-semana activo",
+                    className="cuadro-semana",
 
                     style={
 
@@ -550,11 +537,32 @@ def registrar_callbacks_ventas(app):
                 )
 
         # -----------------------------------------
-        # Auto-selección: todas las semanas visibles
-        # quedan activas al elegir/cambiar meses
+        # Auto-selección: las semanas que pertenecen
+        # a los meses elegidos quedan activas. Si no
+        # hay datos procesados o no hay meses elegidos,
+        # no se auto-selecciona ninguna (pero las 52
+        # celdas se siguen mostrando y son clickeables).
         # -----------------------------------------
 
-        semanas_auto = sorted(semanas)
+        if data is None:
+
+            semanas_auto = []
+
+        else:
+
+            df = pd.DataFrame(data)
+
+            semanas_auto = sorted(
+
+                obtener_semanas(
+
+                    df,
+
+                    meses_activos
+
+                )
+
+            )
 
         return (
 
@@ -612,10 +620,6 @@ def registrar_callbacks_ventas(app):
 
             return no_update
 
-        if data is None:
-
-            return no_update
-
         if semanas_activas is None:
 
             semanas_activas = []
@@ -624,19 +628,33 @@ def registrar_callbacks_ventas(app):
 
             meses_activos = []
 
-        df = pd.DataFrame(data)
+        # -----------------------------------------------
+        # "Semanas visibles" (relevantes a los meses elegidos)
+        # solo se pueden calcular si ya hay datos procesados.
+        # Sin datos, no hay semana "protegida" ni lista para
+        # "seleccionar todo", pero el toggle individual y
+        # "limpiar" igual funcionan (semanas siempre clickeables).
+        # -----------------------------------------------
 
-        semanas_visibles = sorted(
+        if data is None:
 
-            obtener_semanas(
+            semanas_visibles = []
 
-                df,
+        else:
 
-                meses_activos
+            df = pd.DataFrame(data)
+
+            semanas_visibles = sorted(
+
+                obtener_semanas(
+
+                    df,
+
+                    meses_activos
+
+                )
 
             )
-
-        )
 
         primera_semana = semanas_visibles[0] if semanas_visibles else None
 
@@ -647,6 +665,10 @@ def registrar_callbacks_ventas(app):
         # -----------------------------------
 
         if trigger == "seleccionar-todas-semanas":
+
+            if data is None:
+
+                return no_update
 
             return semanas_visibles
 
@@ -689,10 +711,9 @@ def registrar_callbacks_ventas(app):
     # =====================================================
     # PINTAR SEMANAS
     #
-    # Corrección: antes se usaba ctx.states.get("store-mes.data", [])
-    # dentro de un callback donde "store-mes" NO estaba declarado
-    # como State, lo cual nunca devolvía el valor real. Ahora se
-    # declara explícitamente como State.
+    # El grid de semanas ahora es fijo (1-52), así que solo
+    # se necesita "store-semana" para saber cuáles pintar
+    # como activas; ya no depende de los datos ni del mes.
     # =====================================================
 
     @app.callback(
@@ -711,41 +732,19 @@ def registrar_callbacks_ventas(app):
 
         ),
 
-        Input("store-semana", "data"),
-
-        State("store-bd-ventas", "data"),
-
-        State("store-mes", "data")
+        Input("store-semana", "data")
 
     )
 
-    def pintar_semanas(semanas_activas, data, meses_activos):
-
-        if data is None:
-
-            return []
+    def pintar_semanas(semanas_activas):
 
         if semanas_activas is None:
 
             semanas_activas = []
 
-        if meses_activos is None:
-
-            meses_activos = []
-
-        df = pd.DataFrame(data)
-
-        semanas_visibles = obtener_semanas(
-
-            df,
-
-            meses_activos
-
-        )
-
         clases = []
 
-        for semana in semanas_visibles:
+        for semana in range(1, 53):
 
             if semana in semanas_activas:
 
