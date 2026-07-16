@@ -956,22 +956,56 @@ def registrar_callbacks_ventas(app):
 
     )
 
-    def actualizar_tabla_vendedores(
+    def actualizar_tabla_vendedores(data, meses, semanas):
+    
+        try:
 
-        data,
+            if data is None:
+                return html.H4("No hay datos en store-bd-ventas")
 
-        meses,
+            df = pd.DataFrame(data)
 
-        semanas
+            # Aplicar filtros
+            if meses:
+                df = df[df["Mes"].isin(meses)]
 
-    ):
+            if semanas:
+                df = df[df["Semana"].isin(semanas)]
 
-        if data is None:
+            # SOLO PARA DEPURAR
+            return html.Div(
 
-            return ""
+                [
 
-        df = pd.DataFrame(data)
+                    html.H4("DEBUG"),
 
+                    html.P(f"Filas: {len(df)}"),
+
+                    html.P(f"Columnas: {len(df.columns)}"),
+
+                    html.Hr(),
+
+                    html.Pre("\n".join(df.columns.tolist()))
+
+                ]
+
+            )
+
+        except Exception as e:
+
+            return html.Div(
+
+                [
+
+                    html.H3("ERROR"),
+
+                    html.Pre(str(e))
+
+                ],
+
+                style={"color": "red"}
+
+            )
     # ------------------------------------------
     # FILTRAR MESES
     # ------------------------------------------
