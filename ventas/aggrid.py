@@ -377,7 +377,7 @@ def crear_aggrid(df, fila_total=None):
 
             "--ag-header-column-separator-color": "#2C5090",
 
-            "--ag-row-hover-color": "#FFF6DF",
+            "--ag-row-hover-color": "#0E0A00",
 
             "--ag-range-selection-border-color": "#D4AF37"
 
