@@ -26,6 +26,7 @@ visibles actualizadas (ver ejemplo de uso al final).
 """
 
 import dash_ag_grid as dag
+from dash import html
 
 
 # =========================================================
@@ -209,21 +210,23 @@ def _estilo_filas():
 
             "params.data.nivel === 0 ? "
 
-            "{fontWeight: 'bold', backgroundColor: '#173C73', color: 'white'} : "
+            "{fontWeight: 'bold', backgroundColor: '#173C73', color: '#FFFFFF'} : "
 
             "params.data.nivel === 1 ? "
 
-            "{fontWeight: 'bold', backgroundColor: '#FCE9B5'} : "
+            "{fontWeight: 'bold', backgroundColor: '#FFFFFF', color: '#173C73', "
+
+            "borderLeft: '5px solid #D4AF37'} : "
 
             "params.data.nivel === 2 ? "
 
-            "{fontWeight: '600', backgroundColor: '#FBF2D9'} : "
+            "{fontWeight: '600', backgroundColor: '#FBF3DC', color: '#173C73'} : "
 
             "(params.node.rowIndex % 2 === 0 ? "
 
-            "{backgroundColor: '#FFFFFF'} : "
+            "{backgroundColor: '#FFFFFF', color: '#3A3F44'} : "
 
-            "{backgroundColor: '#FAFBFC'})"
+            "{backgroundColor: '#FAFAF5', color: '#3A3F44'})"
 
         )
 
@@ -319,6 +322,12 @@ def crear_aggrid(df, fila_total=None):
         # OPCIONES DEL GRID (solo Community). El total fijo
         # (pinnedBottomRowData) va aquí adentro, no como kwarg
         # de nivel superior.
+        #
+        # domLayout="autoHeight": el grid crece según su propio
+        # contenido en vez de vivir en un contenedor de altura
+        # fija. Así el TOTAL GENERAL queda pegado justo debajo
+        # de la última fila, no "flotando" al fondo de un hueco
+        # de 700px cuando hay pocas filas visibles.
         # -----------------------------------------------------
 
         dashGridOptions={
@@ -333,17 +342,138 @@ def crear_aggrid(df, fila_total=None):
 
             "headerHeight": 38,
 
+            "domLayout": "autoHeight",
+
             "pinnedBottomRowData": pinned
 
         },
 
         className="ag-theme-alpine",
 
+        # -----------------------------------------------------
+        # PALETA AZUL / BLANCO / DORADO
+        #
+        # ag-theme-alpine se personaliza con variables CSS
+        # propias de AG Grid (no requieren tocar ningún .css
+        # aparte): encabezado azul marino, bordes y hover en
+        # tono dorado tenue, cuerpo blanco.
+        # -----------------------------------------------------
+
         style={
 
-            "height": "700px",
+            "width": "100%",
 
-            "width": "100%"
+            "--ag-header-background-color": "#173C73",
+
+            "--ag-header-foreground-color": "#FFFFFF",
+
+            "--ag-background-color": "#FFFFFF",
+
+            "--ag-foreground-color": "#1F2937",
+
+            "--ag-border-color": "#E7DBB0",
+
+            "--ag-header-column-separator-color": "#2C5090",
+
+            "--ag-row-hover-color": "#FFF6DF",
+
+            "--ag-range-selection-border-color": "#D4AF37"
+
+        }
+
+    )
+
+
+# =========================================================
+# ENCABEZADO "FECHA DE CORTE"
+#
+# Franja azul/dorado/blanco arriba del grid, estilo el
+# recuadro "Fecha corte / Semana" del Excel de referencia.
+# =========================================================
+
+def crear_encabezado_periodo(fecha_corte, semanas_texto):
+
+    return html.Div(
+
+        [
+
+            html.Span(
+
+                "Fecha de corte:  ",
+
+                style={
+
+                    "color": "#D4AF37",
+
+                    "fontWeight": "bold",
+
+                    "marginLeft": "24px"
+
+                }
+
+            ),
+
+            html.Span(
+
+                fecha_corte,
+
+                style={
+
+                    "color": "#FFFFFF",
+
+                    "fontWeight": "bold",
+
+                    "marginRight": "32px"
+
+                }
+
+            ),
+
+            html.Span(
+
+                "Semana(s):  ",
+
+                style={
+
+                    "color": "#D4AF37",
+
+                    "fontWeight": "bold"
+
+                }
+
+            ),
+
+            html.Span(
+
+                semanas_texto,
+
+                style={
+
+                    "color": "#FFFFFF",
+
+                    "fontWeight": "bold"
+
+                }
+
+            )
+
+        ],
+
+        style={
+
+            "backgroundColor": "#173C73",
+
+            "padding": "12px 16px",
+
+            "borderRadius": "10px 10px 0 0",
+
+            "display": "flex",
+
+            "justifyContent": "flex-end",
+
+            "flexWrap": "wrap",
+
+            "fontSize": "15px"
 
         }
 
