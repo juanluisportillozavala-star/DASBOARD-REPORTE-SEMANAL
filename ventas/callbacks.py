@@ -15,7 +15,7 @@ from ventas.cards import crear_cards
 
 from ventas.analisis import arbol_ventas, total_general_arbol, filas_visibles
 
-from ventas.aggrid import crear_aggrid
+from ventas.aggrid import crear_aggrid, crear_encabezado_periodo
 
 
 def registrar_callbacks_ventas(app):
@@ -981,11 +981,67 @@ def registrar_callbacks_ventas(app):
 
             )
 
-            return crear_aggrid(
+            # ------------------------------------------------
+            # ENCABEZADO "FECHA DE CORTE"
+            #
+            # Fecha de corte = la fecha de factura más reciente
+            # dentro de lo ya filtrado por mes/semana. Semanas
+            # = las que están activas en el filtro (o "Todas"
+            # si no hay ninguna seleccionada, que es como se
+            # interpreta "sin filtro" en el resto del proyecto).
+            # ------------------------------------------------
 
-                visibles,
+            columna_fecha = "Asiento contable/Fecha de factura"
 
-                fila_total=total
+            fecha_corte = "N/D"
+
+            if columna_fecha in df_filtrado.columns and len(df_filtrado) > 0:
+
+                fecha_max = pd.to_datetime(
+
+                    df_filtrado[columna_fecha],
+
+                    errors="coerce"
+
+                ).max()
+
+                if pd.notna(fecha_max):
+
+                    fecha_corte = fecha_max.strftime("%d/%m/%Y")
+
+            if semanas:
+
+                semanas_texto = ", ".join(
+
+                    str(s) for s in sorted(semanas)
+
+                )
+
+            else:
+
+                semanas_texto = "Todas"
+
+            return html.Div(
+
+                [
+
+                    crear_encabezado_periodo(
+
+                        fecha_corte,
+
+                        semanas_texto
+
+                    ),
+
+                    crear_aggrid(
+
+                        visibles,
+
+                        fila_total=total
+
+                    )
+
+                ]
 
             )
 
@@ -1067,3 +1123,33 @@ def registrar_callbacks_ventas(app):
             ids_expandidos.add(fila_id)
 
         return sorted(ids_expandidos)
+
+    # =====================================================
+    # DEBUG TEMPORAL — quitar cuando ya funcione el expandir
+    #
+    # Muestra en pantalla (reutiliza el Div de debug que ya
+    # tienes en el layout) exactamente qué manda el navegador
+    # en "cellClicked" al hacer clic en una fila, y el estado
+    # actual de "store-arbol-expandido". Con esto vemos si el
+    # clic llega al servidor y con qué forma exacta.
+    # =====================================================
+
+    @app.callback(
+
+        Output("debug-store-bd-ventas", "children"),
+
+        Input("tabla-ventas", "cellClicked"),
+
+        Input("store-arbol-expandido", "data")
+
+    )
+
+    def debug_arbol(celda, ids_expandidos):
+
+        return (
+
+            f"[DEBUG] cellClicked = {celda}\n"
+
+            f"[DEBUG] store-arbol-expandido = {ids_expandidos}"
+
+        )
