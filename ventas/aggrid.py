@@ -25,6 +25,8 @@ se contrae, y volver a llamar crear_aggrid() con las filas
 visibles actualizadas (ver ejemplo de uso al final).
 """
 
+from turtle import color
+
 import dash_ag_grid as dag
 from dash import html
 
@@ -379,7 +381,9 @@ def crear_aggrid(df, fila_total=None):
 
             "--ag-row-hover-color": "#E5DECB",
 
-            "--ag-range-selection-border-color": "#D4AF37"
+            "--ag-range-selection-border-color": "#D4AF37",
+            
+            "--ag-icon-color": "#050400"
 
         }
 
