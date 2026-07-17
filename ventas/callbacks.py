@@ -1035,9 +1035,14 @@ def registrar_callbacks_ventas(app):
 
             return no_update
 
-        if celda.get("colId") != "concepto":
-
-            return no_update
+        # -----------------------------------------------
+        # Antes exigíamos que el clic cayera exactamente
+        # en la columna "concepto" (celda.get("colId")).
+        # Se quita esa condición: basta con dar clic en
+        # cualquier celda de una fila que tenga hijos, es
+        # más tolerante a diferencias de nombre de esa
+        # propiedad entre versiones de dash-ag-grid.
+        # -----------------------------------------------
 
         fila = celda.get("data") or {}
 

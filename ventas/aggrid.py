@@ -49,15 +49,25 @@ def _columnas():
 
             "headerName": "Vendedor / Cliente / Producto",
 
-            "minWidth": 420,
+            "minWidth": 460,
+
+            "pinned": "left",
 
             "filter": "agTextColumnFilter",
+
+            "floatingFilter": False,
 
             "sortable": True,
 
             "cellRenderer": {
 
-                "function": "'&nbsp;'.repeat(params.data.nivel * 6) + (params.data.tieneHijos ? (params.data.expandido ? '▼ ' : '▶ ') : (params.data.nivel > 0 ? '&nbsp;&nbsp;&nbsp;' : '')) + params.value"
+                "function": "'\u00a0'.repeat(params.data.nivel * 6) + (params.data.tieneHijos ? (params.data.expandido ? '▼ ' : '▶ ') : (params.data.nivel > 0 ? '\u00a0\u00a0\u00a0' : '')) + params.value"
+
+            },
+
+            "cellStyle": {
+
+                "function": "params.data.tieneHijos ? {cursor: 'pointer'} : {}"
 
             }
 
@@ -209,7 +219,11 @@ def _estilo_filas():
 
             "{fontWeight: '600', backgroundColor: '#FBF2D9'} : "
 
-            "{}"
+            "(params.node.rowIndex % 2 === 0 ? "
+
+            "{backgroundColor: '#FFFFFF'} : "
+
+            "{backgroundColor: '#FAFBFC'})"
 
         )
 
@@ -295,7 +309,7 @@ def crear_aggrid(df, fila_total=None):
 
             "resizable": True,
 
-            "floatingFilter": True,
+            "floatingFilter": False,
 
             "editable": False
 
@@ -315,7 +329,9 @@ def crear_aggrid(df, fila_total=None):
 
             "animateRows": True,
 
-            "rowSelection": {"mode": "singleRow"},
+            "rowHeight": 34,
+
+            "headerHeight": 38,
 
             "pinnedBottomRowData": pinned
 
