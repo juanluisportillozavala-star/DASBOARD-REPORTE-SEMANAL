@@ -6,16 +6,14 @@ CALLBACKS DEL MÓDULO VENTAS
 
 from dash import Input, Output, State, html, ALL, ctx, no_update
 import pandas as pd
-from plotly import data
 
-from ventas.filtros import obtener_semanas
+from ventas.filtros import obtener_semanas, filtrar_dataframe
 
 from ventas.procesamiento import leer_archivos
 from ventas.kpis import calcular_kpis
 from ventas.cards import crear_cards
 
-from ventas.analisis import top_vendedores
-from ventas.tablas import crear_tabla
+from ventas.analisis import arbol_ventas, total_general_arbol, filas_visibles
 
 from ventas.aggrid import crear_aggrid
 
@@ -917,41 +915,150 @@ def registrar_callbacks_ventas(app):
             )
 
         return clases, deshabilitados
-# =====================================================
-# TABLA TOP VENDEDORES
-# =====================================================
+
+    # =====================================================
+    # TABLA DINÁMICA (AG GRID): Vendedor > Cliente > Producto
+    #
+    # Reconstruye el árbol completo cada vez que cambian los
+    # datos o el filtro de mes/semana, y lo recorta a las
+    # filas visibles según qué esté expandido
+    # (store-arbol-expandido). Como el grid se reconstruye
+    # entero en cada cambio, no hay riesgo de que Dash resetee
+    # algo por accidente (a diferencia de los botones de mes/
+    # semana): "cellClicked" es una prop de SOLO LECTURA que
+    # el grid reporta, no algo que nosotros mandemos nosotros.
+    # =====================================================
 
     @app.callback(
+
         Output("contenedor-tablas", "children"),
+
         Input("store-bd-ventas", "data"),
+
         Input("store-mes", "data"),
-        Input("store-semana", "data")
+
+        Input("store-semana", "data"),
+
+        Input("store-arbol-expandido", "data")
+
     )
-    def actualizar_tabla_vendedores(data, meses, semanas):
+
+    def actualizar_tabla_ventas(data, meses, semanas, ids_expandidos):
 
         try:
 
             if data is None:
-                return html.H4("No hay datos")
+
+                return html.Div(
+
+                    "Sube y procesa un archivo para ver la tabla.",
+
+                    style={"color": "#6C757D"}
+
+                )
 
             df = pd.DataFrame(data)
 
-            if meses:
-                df = df[df["Mes"].isin(meses)]
+            df_filtrado = filtrar_dataframe(
 
-            if semanas:
-                df = df[df["Semana"].isin(semanas)]
+                df,
 
-            tabla = top_vendedores(df)
+                meses=meses,
 
-            return crear_aggrid(tabla)
+                semanas=semanas
+
+            )
+
+            arbol = arbol_ventas(df_filtrado)
+
+            total = total_general_arbol(df_filtrado)
+
+            visibles = filas_visibles(
+
+                arbol,
+
+                ids_expandidos or []
+
+            )
+
+            return crear_aggrid(
+
+                visibles,
+
+                fila_total=total
+
+            )
 
         except Exception as e:
 
             return html.Div(
+
                 [
+
                     html.H3("ERROR"),
+
                     html.Pre(str(e))
+
                 ],
+
                 style={"color": "red"}
+
             )
+
+    # =====================================================
+    # EXPANDIR / CONTRAER FILAS DEL ÁRBOL
+    #
+    # Escucha el clic sobre CUALQUIER celda del grid
+    # ("cellClicked" es una prop estándar de dash-ag-grid,
+    # no requiere JS extra). Si el clic fue sobre la columna
+    # "concepto" y esa fila tiene hijos, alterna su id dentro
+    # de "store-arbol-expandido". Ese cambio dispara de nuevo
+    # el callback de arriba, que reconstruye el grid con las
+    # filas visibles actualizadas.
+    # =====================================================
+
+    @app.callback(
+
+        Output("store-arbol-expandido", "data"),
+
+        Input("tabla-ventas", "cellClicked"),
+
+        State("store-arbol-expandido", "data"),
+
+        prevent_initial_call=True
+
+    )
+
+    def alternar_expandido(celda, ids_expandidos):
+
+        if celda is None:
+
+            return no_update
+
+        if celda.get("colId") != "concepto":
+
+            return no_update
+
+        fila = celda.get("data") or {}
+
+        if not fila.get("tieneHijos"):
+
+            return no_update
+
+        fila_id = fila.get("id")
+
+        if fila_id is None:
+
+            return no_update
+
+        ids_expandidos = set(ids_expandidos or [])
+
+        if fila_id in ids_expandidos:
+
+            ids_expandidos.discard(fila_id)
+
+        else:
+
+            ids_expandidos.add(fila_id)
+
+        return sorted(ids_expandidos)

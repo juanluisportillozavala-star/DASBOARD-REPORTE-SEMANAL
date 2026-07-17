@@ -46,6 +46,13 @@ def crear_layout_ventas():
 
             ),
 
+            dcc.Store(
+
+                id="store-arbol-expandido",
+                data=[]
+
+            ),
+
             # ==========================================
             # TITULO
             # ==========================================
