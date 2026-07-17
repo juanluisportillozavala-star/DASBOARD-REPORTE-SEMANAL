@@ -50,7 +50,7 @@ def _columnas():
 
             "headerName": "Vendedor / Cliente / Producto",
 
-            "minWidth": 460,
+            "minWidth": 300,
 
             "pinned": "left",
 
