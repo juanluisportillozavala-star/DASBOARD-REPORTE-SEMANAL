@@ -68,7 +68,7 @@ def _columnas():
 
             "cellStyle": {
 
-                "function": "params.data.tieneHijos ? {cursor: 'pointer', color: 'white'} : {color: 'white'}"
+                "function": "params.data.tieneHijos ? {cursor: 'pointer'} : {}"
 
             }
 
