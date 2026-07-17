@@ -57,25 +57,7 @@ def _columnas():
 
             "cellRenderer": {
 
-                "function": """
-
-                    const nivel = params.data.nivel;
-                    const tieneHijos = params.data.tieneHijos;
-                    const expandido = params.data.expandido;
-
-                    const sangria = '&nbsp;'.repeat(nivel * 6);
-
-                    let icono = '';
-
-                    if (tieneHijos) {
-                        icono = expandido ? '▼ ' : '▶ ';
-                    } else if (nivel > 0) {
-                        icono = '&nbsp;&nbsp;&nbsp;';
-                    }
-
-                    return sangria + icono + params.value;
-
-                """
+                "function": "'&nbsp;'.repeat(params.data.nivel * 6) + (params.data.tieneHijos ? (params.data.expandido ? '▼ ' : '▶ ') : (params.data.nivel > 0 ? '&nbsp;&nbsp;&nbsp;' : '')) + params.value"
 
             }
 
@@ -213,45 +195,23 @@ def _estilo_filas():
 
     return {
 
-        "function": """
+        "function": (
 
-            if (params.data.nivel === 0) {
+            "params.data.nivel === 0 ? "
 
-                return {
+            "{fontWeight: 'bold', backgroundColor: '#173C73', color: 'white'} : "
 
-                    fontWeight: 'bold',
-                    backgroundColor: '#173C73',
-                    color: 'white'
+            "params.data.nivel === 1 ? "
 
-                };
+            "{fontWeight: 'bold', backgroundColor: '#FCE9B5'} : "
 
-            }
+            "params.data.nivel === 2 ? "
 
-            if (params.data.nivel === 1) {
+            "{fontWeight: '600', backgroundColor: '#FBF2D9'} : "
 
-                return {
+            "{}"
 
-                    fontWeight: 'bold',
-                    backgroundColor: '#FCE9B5'
-
-                };
-
-            }
-
-            if (params.data.nivel === 2) {
-
-                return {
-
-                    fontWeight: '600',
-                    backgroundColor: '#FBF2D9'
-
-                };
-
-            }
-
-            return {};
-
-        """
+        )
 
     }
 
@@ -309,7 +269,7 @@ def crear_aggrid(df, fila_total=None):
 
         getRowId={
 
-            "function": "return params.data.id;"
+            "function": "params.data.id"
 
         },
 
@@ -355,7 +315,7 @@ def crear_aggrid(df, fila_total=None):
 
             "animateRows": True,
 
-            "rowSelection": "single",
+            "rowSelection": {"mode": "singleRow"},
 
             "pinnedBottomRowData": pinned
 
