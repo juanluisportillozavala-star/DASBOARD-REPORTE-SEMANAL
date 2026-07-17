@@ -334,7 +334,7 @@ def crear_aggrid(df, fila_total=None):
 
             "pagination": True,
 
-            "paginationPageSize": 25,
+            "paginationPageSize": 100,
 
             "animateRows": True,
 
