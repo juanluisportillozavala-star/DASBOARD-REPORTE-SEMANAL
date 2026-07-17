@@ -1092,23 +1092,28 @@ def registrar_callbacks_ventas(app):
             return no_update
 
         # -----------------------------------------------
-        # Antes exigíamos que el clic cayera exactamente
-        # en la columna "concepto" (celda.get("colId")).
-        # Se quita esa condición: basta con dar clic en
-        # cualquier celda de una fila que tenga hijos, es
-        # más tolerante a diferencias de nombre de esa
-        # propiedad entre versiones de dash-ag-grid.
+        # cellClicked en esta versión NO trae "data" (se
+        # confirmó con el debug): solo trae value, colId,
+        # rowIndex, rowId y timestamp. Por eso ya no se usa
+        # celda["data"]["id"] / celda["data"]["tieneHijos"];
+        # se usa "rowId" directamente, que es el mismo id
+        # que le pusimos a cada fila en getRowId.
+        #
+        # Los ids se arman como:
+        #   "v::Vendedor"                    (nivel 1, 0 "||")
+        #   "v::Vendedor||c::Cliente"        (nivel 2, 1 "||")
+        #   "v::Vendedor||c::Cliente||p::Producto"  (nivel 3, 2 "||")
+        #
+        # Nivel 3 (producto) nunca tiene hijos que expandir.
         # -----------------------------------------------
 
-        fila = celda.get("data") or {}
+        fila_id = celda.get("rowId")
 
-        if not fila.get("tieneHijos"):
+        if fila_id is None:
 
             return no_update
 
-        fila_id = fila.get("id")
-
-        if fila_id is None:
+        if fila_id.count("||") >= 2:
 
             return no_update
 
@@ -1123,33 +1128,3 @@ def registrar_callbacks_ventas(app):
             ids_expandidos.add(fila_id)
 
         return sorted(ids_expandidos)
-
-    # =====================================================
-    # DEBUG TEMPORAL — quitar cuando ya funcione el expandir
-    #
-    # Muestra en pantalla (reutiliza el Div de debug que ya
-    # tienes en el layout) exactamente qué manda el navegador
-    # en "cellClicked" al hacer clic en una fila, y el estado
-    # actual de "store-arbol-expandido". Con esto vemos si el
-    # clic llega al servidor y con qué forma exacta.
-    # =====================================================
-
-    @app.callback(
-
-        Output("debug-store-bd-ventas", "children"),
-
-        Input("tabla-ventas", "cellClicked"),
-
-        Input("store-arbol-expandido", "data")
-
-    )
-
-    def debug_arbol(celda, ids_expandidos):
-
-        return (
-
-            f"[DEBUG] cellClicked = {celda}\n"
-
-            f"[DEBUG] store-arbol-expandido = {ids_expandidos}"
-
-        )
