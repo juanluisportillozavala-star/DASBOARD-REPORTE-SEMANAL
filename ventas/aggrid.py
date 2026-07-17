@@ -369,7 +369,7 @@ def crear_aggrid(df, fila_total=None):
 
             "--ag-background-color": "#FFFFFF",
 
-            "--ag-foreground-color": "#1F2937",
+            "--ag-foreground-color": "#FDFEFF",
 
             "--ag-border-color": "#E7DBB0",
 
