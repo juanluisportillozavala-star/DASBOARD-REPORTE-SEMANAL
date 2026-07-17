@@ -362,6 +362,8 @@ def crear_aggrid(df, fila_total=None):
         style={
 
             "width": "100%",
+            
+            "--ag-font-size": "18px",  # Ajusta este valor (ej. 14px, 16px, 18px)
 
             "--ag-header-background-color": "#173C73",
 
