@@ -364,25 +364,16 @@ def crear_aggrid(df, fila_total=None):
         style={
 
             "width": "100%",
-            
+            "height": "auto",
             "--ag-font-size": "18px",  # Ajusta este valor (ej. 14px, 16px, 18px)
-
             "--ag-header-background-color": "#173C73",
-
             "--ag-header-foreground-color": "#090000",
-
             "--ag-background-color": "#FFFFFF",
-
             "--ag-foreground-color": "#FDFEFF",
-
             "--ag-border-color": "#E7DBB0",
-
             "--ag-header-column-separator-color": "#2C5090",
-
             "--ag-row-hover-color": "#E5DECB",
-
             "--ag-range-selection-border-color": "#D4AF37",
-            
             "--ag-icon-color": "#050400"
 
         }
