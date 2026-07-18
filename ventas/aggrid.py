@@ -19,16 +19,108 @@ como válidos:
 La jerarquía viene ya armada como filas planas desde
 ventas/analisis.py (arbol_ventas). El icono ▶ / ▼ para
 expandir/contraer es solo visual (texto dentro de la celda,
-vía cellRenderer); el callback que ya tienes es quien debe
-escuchar "cellClicked", decidir si esa fila se expande o
-se contrae, y volver a llamar crear_aggrid() con las filas
-visibles actualizadas (ver ejemplo de uso al final).
+vía cellRenderer); el callback que ya tienes escucha
+"cellClicked", decidir si esa fila se expande o se contrae,
+y vuelve a llamar crear_aggrid() con las filas visibles
+actualizadas.
+
+IMPORTANTE: no hay filtro ni ordenamiento nativo de columnas.
+El ordenamiento nativo de AG Grid se quitó a propósito porque
+reordena TODAS las filas visibles juntas (vendedor, cliente y
+producto mezclados por valor), rompiendo la jerarquía. El
+orden ahora se controla desde Python con el selector "Ordenar
+por" (ver crear_encabezado_periodo), que reordena cada nivel
+por separado (vendedores entre sí, clientes dentro de cada
+vendedor, productos dentro de cada cliente) y mantiene la
+jerarquía intacta.
 """
 
-
-
 import dash_ag_grid as dag
-from dash import html
+from dash import html, dcc
+
+
+# =========================================================
+# OPCIONES DEL SELECTOR "ORDENAR POR"
+# =========================================================
+
+OPCIONES_ORDEN = [
+
+    {"label": "Venta", "value": "Venta"},
+
+    {"label": "Utilidad Bruta", "value": "Utilidad Bruta"},
+
+    {"label": "Cantidad", "value": "Cantidad"},
+
+    {"label": "Margen %", "value": "Margen %"},
+
+    {"label": "Utilidad Unitaria", "value": "Utilidad Unitaria"}
+
+]
+
+
+def crear_selector_orden():
+
+    """
+    Selector "Ordenar por" FIJO (no se regenera nunca, vive
+    una sola vez en el layout). Reemplaza el sort nativo de
+    columna de AG Grid, que mezclaba vendedor/cliente/producto
+    y rompía la jerarquía. Reordena los 3 niveles del árbol
+    por la misma métrica, manteniendo la jerarquía intacta.
+    """
+
+    return html.Div(
+
+        [
+
+            html.Span(
+
+                "Ordenar por:  ",
+
+                style={
+
+                    "color": "#173C73",
+
+                    "fontWeight": "bold",
+
+                    "marginRight": "8px"
+
+                }
+
+            ),
+
+            dcc.Dropdown(
+
+                id="selector-orden-arbol",
+
+                options=OPCIONES_ORDEN,
+
+                value="Venta",
+
+                clearable=False,
+
+                searchable=False,
+
+                style={
+
+                    "width": "220px"
+
+                }
+
+            )
+
+        ],
+
+        style={
+
+            "display": "flex",
+
+            "alignItems": "center",
+
+            "marginBottom": "12px"
+
+        }
+
+    )
 
 
 # =========================================================
@@ -56,11 +148,9 @@ def _columnas():
 
             "pinned": "left",
 
-            "filter": "agTextColumnFilter",
+            "filter": False,
 
-            "floatingFilter": False,
-
-            "sortable": True,
+            "sortable": False,
 
             "cellRenderer": {
 
@@ -88,9 +178,9 @@ def _columnas():
 
             "type": "numericColumn",
 
-            "filter": "agNumberColumnFilter",
+            "filter": False,
 
-            "sortable": True,
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -112,9 +202,9 @@ def _columnas():
 
             "type": "numericColumn",
 
-            "filter": "agNumberColumnFilter",
+            "filter": False,
 
-            "sortable": True,
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -136,9 +226,9 @@ def _columnas():
 
             "type": "numericColumn",
 
-            "filter": "agNumberColumnFilter",
+            "filter": False,
 
-            "sortable": True,
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -160,9 +250,9 @@ def _columnas():
 
             "type": "numericColumn",
 
-            "filter": "agNumberColumnFilter",
+            "filter": False,
 
-            "sortable": True,
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -184,9 +274,9 @@ def _columnas():
 
             "type": "numericColumn",
 
-            "filter": "agNumberColumnFilter",
+            "filter": False,
 
-            "sortable": True,
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -259,12 +349,8 @@ def crear_aggrid(df, fila_total=None):
         )
         from ventas.aggrid import crear_aggrid
 
-        arbol = arbol_ventas(df_filtrado)
+        arbol = arbol_ventas(df_filtrado, columna_orden=orden)
         total = total_general_arbol(df_filtrado)
-
-        # ids_expandidos: set que vive en un dcc.Store, se
-        # actualiza cuando llega un cellClicked sobre la
-        # columna "concepto" de una fila con tieneHijos=True
 
         visibles = filas_visibles(arbol, ids_expandidos)
 
@@ -300,6 +386,10 @@ def crear_aggrid(df, fila_total=None):
 
         # -----------------------------------------------------
         # CONFIGURACIÓN GENERAL DE COLUMNAS
+        #
+        # Sin filter ni sortable (ver nota al inicio del
+        # archivo): se quitó el ícono de filtro por pedido, y
+        # el sort nativo se reemplazó por el selector Python.
         # -----------------------------------------------------
 
         defaultColDef={
@@ -308,9 +398,9 @@ def crear_aggrid(df, fila_total=None):
 
             "minWidth": 130,
 
-            "sortable": True,
+            "sortable": False,
 
-            "filter": True,
+            "filter": False,
 
             "resizable": True,
 
@@ -329,7 +419,7 @@ def crear_aggrid(df, fila_total=None):
         # contenido en vez de vivir en un contenedor de altura
         # fija. Así el TOTAL GENERAL queda pegado justo debajo
         # de la última fila, no "flotando" al fondo de un hueco
-        # de 700px cuando hay pocas filas visibles.
+        # cuando hay pocas filas visibles.
         # -----------------------------------------------------
 
         dashGridOptions={
@@ -364,16 +454,27 @@ def crear_aggrid(df, fila_total=None):
         style={
 
             "width": "100%",
+
             "height": "auto",
-            "--ag-font-size": "18px",  # Ajusta este valor (ej. 14px, 16px, 18px)
+
+            "--ag-font-size": "18px",
+
             "--ag-header-background-color": "#173C73",
+
             "--ag-header-foreground-color": "#090000",
+
             "--ag-background-color": "#FFFFFF",
+
             "--ag-foreground-color": "#FDFEFF",
+
             "--ag-border-color": "#E7DBB0",
+
             "--ag-header-column-separator-color": "#2C5090",
+
             "--ag-row-hover-color": "#E5DECB",
+
             "--ag-range-selection-border-color": "#D4AF37",
+
             "--ag-icon-color": "#050400"
 
         }
@@ -384,8 +485,18 @@ def crear_aggrid(df, fila_total=None):
 # =========================================================
 # ENCABEZADO "FECHA DE CORTE"
 #
-# Franja azul/dorado/blanco arriba del grid, estilo el
-# recuadro "Fecha corte / Semana" del Excel de referencia.
+# Franja azul/dorado/blanco arriba del grid: fecha de corte
+# y semanas activas, estilo el recuadro "Fecha corte /
+# Semana" del Excel de referencia.
+#
+# El selector "Ordenar por" NO vive aquí: vive FIJO en el
+# layout (no se regenera cada vez que se reconstruye la
+# tabla), por la misma razón por la que los botones de mes/
+# semana son fijos y no se regeneran en un callback: si un
+# dcc.Dropdown se recrea con un "value" ya puesto, Dash lo
+# puede interpretar como un cambio real y disparar el
+# callback de nuevo innecesariamente (mismo riesgo que el
+# reset de n_clicks que ya resolvimos antes).
 # =========================================================
 
 def crear_encabezado_periodo(fecha_corte, semanas_texto):

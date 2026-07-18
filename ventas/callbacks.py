@@ -939,11 +939,13 @@ def registrar_callbacks_ventas(app):
 
         Input("store-semana", "data"),
 
-        Input("store-arbol-expandido", "data")
+        Input("store-arbol-expandido", "data"),
+
+        Input("store-orden-arbol", "data")
 
     )
 
-    def actualizar_tabla_ventas(data, meses, semanas, ids_expandidos):
+    def actualizar_tabla_ventas(data, meses, semanas, ids_expandidos, orden):
 
         try:
 
@@ -969,7 +971,13 @@ def registrar_callbacks_ventas(app):
 
             )
 
-            arbol = arbol_ventas(df_filtrado)
+            arbol = arbol_ventas(
+
+                df_filtrado,
+
+                columna_orden=orden or "Venta"
+
+            )
 
             total = total_general_arbol(df_filtrado)
 
@@ -1128,3 +1136,30 @@ def registrar_callbacks_ventas(app):
             ids_expandidos.add(fila_id)
 
         return sorted(ids_expandidos)
+
+    # =====================================================
+    # ORDENAR ÁRBOL DE VENTAS
+    #
+    # "selector-orden-arbol" es FIJO en el layout (no se
+    # regenera nunca), así que este callback es un simple
+    # paso directo del valor elegido a su store, sin riesgo
+    # de reset-loop.
+    # =====================================================
+
+    @app.callback(
+
+        Output("store-orden-arbol", "data"),
+
+        Input("selector-orden-arbol", "value"),
+
+        prevent_initial_call=True
+
+    )
+
+    def actualizar_orden_arbol(valor):
+
+        if valor is None:
+
+            return no_update
+
+        return valor

@@ -428,7 +428,67 @@ def _calcular_metricas(cantidad, venta, utilidad):
     return margen, utilidad_unitaria
 
 
-def arbol_ventas(df):
+def _agregar_metricas_df(df):
+
+    """
+    Igual que _calcular_metricas, pero vectorizado sobre un
+    DataFrame completo (Cantidad, Venta, Utilidad Bruta ya
+    agregadas). Se necesita ANTES de ordenar, porque ahora
+    se puede ordenar por Margen % o Utilidad Unitaria, no
+    solo por Venta/Cantidad/Utilidad Bruta.
+    """
+
+    df = df.copy()
+
+    df["Margen %"] = 0.0
+
+    mascara = df["Venta"] != 0
+
+    df.loc[mascara, "Margen %"] = (
+
+        df.loc[mascara, "Utilidad Bruta"]
+
+        /
+
+        df.loc[mascara, "Venta"]
+
+        * 100
+
+    )
+
+    df["Utilidad Unitaria"] = 0.0
+
+    mascara = df["Cantidad"] != 0
+
+    df.loc[mascara, "Utilidad Unitaria"] = (
+
+        df.loc[mascara, "Utilidad Bruta"]
+
+        /
+
+        df.loc[mascara, "Cantidad"]
+
+    )
+
+    return df
+
+
+COLUMNAS_ORDEN_VALIDAS = [
+
+    "Venta",
+
+    "Utilidad Bruta",
+
+    "Cantidad",
+
+    "Margen %",
+
+    "Utilidad Unitaria"
+
+]
+
+
+def arbol_ventas(df, columna_orden="Venta"):
 
     """
     Recibe el DataFrame CRUDO de ventas (el mismo que usan
@@ -438,6 +498,13 @@ def arbol_ventas(df):
     renombrarlo antes de llamar esta función; el renombrado
     a Vendedor/Cliente/Producto/Cantidad/Venta/Utilidad Bruta
     se hace aquí adentro.
+
+    columna_orden: por cuál métrica ordenar, de mayor a menor,
+    en LOS TRES niveles (Vendedor, Cliente dentro de cada
+    Vendedor, Producto dentro de cada Cliente). Debe ser una
+    de COLUMNAS_ORDEN_VALIDAS ("Venta", "Utilidad Bruta",
+    "Cantidad", "Margen %", "Utilidad Unitaria"); si llega
+    cualquier otro valor, se usa "Venta" por default.
 
     Regresa un DataFrame PLANO, ordenado en profundidad
     (Vendedor -> sus Clientes -> los Productos de cada
@@ -462,6 +529,10 @@ def arbol_ventas(df):
     de apoyo opcionales: total_general_arbol() y
     filas_visibles().
     """
+
+    if columna_orden not in COLUMNAS_ORDEN_VALIDAS:
+
+        columna_orden = "Venta"
 
     if df is None or len(df) == 0:
 
@@ -573,6 +644,8 @@ def arbol_ventas(df):
 
     productos[columnas_numericas] = productos[columnas_numericas].astype(float)
 
+    productos = _agregar_metricas_df(productos)
+
     clientes = (
 
         productos
@@ -601,6 +674,8 @@ def arbol_ventas(df):
 
     )
 
+    clientes = _agregar_metricas_df(clientes)
+
     vendedores = (
 
         clientes
@@ -627,13 +702,15 @@ def arbol_ventas(df):
 
         )
 
-        .sort_values(
+    )
 
-            "Venta",
+    vendedores = _agregar_metricas_df(vendedores)
 
-            ascending=False
+    vendedores = vendedores.sort_values(
 
-        )
+        columna_orden,
+
+        ascending=False
 
     )
 
@@ -648,16 +725,6 @@ def arbol_ventas(df):
         vendedor = fila_v["Vendedor"]
 
         id_vendedor = f"v::{vendedor}"
-
-        margen_v, ut_unit_v = _calcular_metricas(
-
-            fila_v["Cantidad"],
-
-            fila_v["Venta"],
-
-            fila_v["Utilidad Bruta"]
-
-        )
 
         filas.append(
 
@@ -677,9 +744,9 @@ def arbol_ventas(df):
 
                 "Utilidad Bruta": fila_v["Utilidad Bruta"],
 
-                "Margen %": margen_v,
+                "Margen %": fila_v["Margen %"],
 
-                "Utilidad Unitaria": ut_unit_v,
+                "Utilidad Unitaria": fila_v["Utilidad Unitaria"],
 
                 "tieneHijos": True,
 
@@ -695,7 +762,7 @@ def arbol_ventas(df):
 
             .sort_values(
 
-                "Venta",
+                columna_orden,
 
                 ascending=False
 
@@ -708,16 +775,6 @@ def arbol_ventas(df):
             cliente = fila_c["Cliente"]
 
             id_cliente = f"{id_vendedor}||c::{cliente}"
-
-            margen_c, ut_unit_c = _calcular_metricas(
-
-                fila_c["Cantidad"],
-
-                fila_c["Venta"],
-
-                fila_c["Utilidad Bruta"]
-
-            )
 
             filas.append(
 
@@ -737,9 +794,9 @@ def arbol_ventas(df):
 
                     "Utilidad Bruta": fila_c["Utilidad Bruta"],
 
-                    "Margen %": margen_c,
+                    "Margen %": fila_c["Margen %"],
 
-                    "Utilidad Unitaria": ut_unit_c,
+                    "Utilidad Unitaria": fila_c["Utilidad Unitaria"],
 
                     "tieneHijos": True,
 
@@ -763,7 +820,7 @@ def arbol_ventas(df):
 
                 .sort_values(
 
-                    "Venta",
+                    columna_orden,
 
                     ascending=False
 
@@ -776,16 +833,6 @@ def arbol_ventas(df):
                 producto = fila_p["Producto"]
 
                 id_producto = f"{id_cliente}||p::{producto}"
-
-                margen_p, ut_unit_p = _calcular_metricas(
-
-                    fila_p["Cantidad"],
-
-                    fila_p["Venta"],
-
-                    fila_p["Utilidad Bruta"]
-
-                )
 
                 filas.append(
 
@@ -805,9 +852,9 @@ def arbol_ventas(df):
 
                         "Utilidad Bruta": fila_p["Utilidad Bruta"],
 
-                        "Margen %": margen_p,
+                        "Margen %": fila_p["Margen %"],
 
-                        "Utilidad Unitaria": ut_unit_p,
+                        "Utilidad Unitaria": fila_p["Utilidad Unitaria"],
 
                         "tieneHijos": False,
 

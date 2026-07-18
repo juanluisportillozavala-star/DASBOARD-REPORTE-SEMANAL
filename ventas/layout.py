@@ -8,6 +8,7 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 from ventas.controles import crear_controles
+from ventas.aggrid import crear_selector_orden
 
 
 def crear_layout_ventas():
@@ -50,6 +51,13 @@ def crear_layout_ventas():
 
                 id="store-arbol-expandido",
                 data=[]
+
+            ),
+
+            dcc.Store(
+
+                id="store-orden-arbol",
+                data="Venta"
 
             ),
 
@@ -273,6 +281,8 @@ def crear_layout_ventas():
             # ==========================================
             # TABLAS
             # ==========================================
+
+            crear_selector_orden(),
 
             html.Div(
 
