@@ -939,13 +939,11 @@ def registrar_callbacks_ventas(app):
 
         Input("store-semana", "data"),
 
-        Input("store-arbol-expandido", "data"),
-
-        Input("store-orden-arbol", "data")
+        Input("store-arbol-expandido", "data")
 
     )
 
-    def actualizar_tabla_ventas(data, meses, semanas, ids_expandidos, orden):
+    def actualizar_tabla_ventas(data, meses, semanas, ids_expandidos):
 
         try:
 
@@ -971,13 +969,16 @@ def registrar_callbacks_ventas(app):
 
             )
 
-            arbol = arbol_ventas(
+            # ------------------------------------------------
+            # El orden por defecto (Venta) es solo el punto de
+            # partida antes de que el usuario haga clic en un
+            # encabezado. El clic real lo resuelve el grid en
+            # el navegador con el comparador jerárquico (ver
+            # analisis.comparador_jerarquico / aggrid._columnas)
+            # sin volver a pasar por Python.
+            # ------------------------------------------------
 
-                df_filtrado,
-
-                columna_orden=orden or "Venta"
-
-            )
+            arbol = arbol_ventas(df_filtrado)
 
             total = total_general_arbol(df_filtrado)
 
@@ -1136,30 +1137,3 @@ def registrar_callbacks_ventas(app):
             ids_expandidos.add(fila_id)
 
         return sorted(ids_expandidos)
-
-    # =====================================================
-    # ORDENAR ÁRBOL DE VENTAS
-    #
-    # "selector-orden-arbol" es FIJO en el layout (no se
-    # regenera nunca), así que este callback es un simple
-    # paso directo del valor elegido a su store, sin riesgo
-    # de reset-loop.
-    # =====================================================
-
-    @app.callback(
-
-        Output("store-orden-arbol", "data"),
-
-        Input("selector-orden-arbol", "value"),
-
-        prevent_initial_call=True
-
-    )
-
-    def actualizar_orden_arbol(valor):
-
-        if valor is None:
-
-            return no_update
-
-        return valor

@@ -388,6 +388,20 @@ def obtener_tablas_dashboard(df):
 # Vendedor, Cliente, Producto, Cantidad, Venta, Utilidad Bruta
 # =========================================================
 
+COLUMNAS_ORDEN_VALIDAS = [
+
+    "Venta",
+
+    "Utilidad Bruta",
+
+    "Cantidad",
+
+    "Margen %",
+
+    "Utilidad Unitaria"
+
+]
+
 COLUMNAS_ARBOL = [
 
     "id",
@@ -401,6 +415,10 @@ COLUMNAS_ARBOL = [
     "Utilidad Unitaria",
     "tieneHijos",
     "expandido"
+
+] + [
+
+    f"_ruta_{metrica}" for metrica in COLUMNAS_ORDEN_VALIDAS
 
 ]
 
@@ -473,19 +491,57 @@ def _agregar_metricas_df(df):
     return df
 
 
-COLUMNAS_ORDEN_VALIDAS = [
+def _agregar_rangos(df, columnas_grupo=None):
 
-    "Venta",
+    """
+    Para cada métrica ordenable, calcula el RANGO ascendente
+    (0 = valor más chico) de cada fila dentro de su grupo de
+    hermanos (columnas_grupo=None => rango global, entre TODOS
+    los vendedores; columnas_grupo=["Vendedor"] => rango entre
+    los clientes DE ESE vendedor; etc.)
 
-    "Utilidad Bruta",
+    Este rango es la pieza base de la "ruta jerárquica" que
+    arma cada fila (ver arbol_ventas): permite que un clic en
+    el encabezado de la columna ordene de mayor a menor SIN
+    romper la jerarquía, porque el orden entre hermanos nunca
+    mezcla niveles distintos.
+    """
 
-    "Cantidad",
+    df = df.copy()
 
-    "Margen %",
+    for metrica in COLUMNAS_ORDEN_VALIDAS:
 
-    "Utilidad Unitaria"
+        columna_rango = f"rango_{metrica}"
 
-]
+        if columnas_grupo:
+
+            df[columna_rango] = (
+
+                df
+
+                .groupby(columnas_grupo)[metrica]
+
+                .rank(method="first", ascending=True)
+
+            )
+
+        else:
+
+            df[columna_rango] = df[metrica].rank(
+
+                method="first",
+
+                ascending=True
+
+            )
+
+        df[columna_rango] = (
+
+            df[columna_rango].astype(int) - 1
+
+        )
+
+    return df
 
 
 def arbol_ventas(df, columna_orden="Venta"):
@@ -646,6 +702,14 @@ def arbol_ventas(df, columna_orden="Venta"):
 
     productos = _agregar_metricas_df(productos)
 
+    productos = _agregar_rangos(
+
+        productos,
+
+        columnas_grupo=["Vendedor", "Cliente"]
+
+    )
+
     clientes = (
 
         productos
@@ -675,6 +739,14 @@ def arbol_ventas(df, columna_orden="Venta"):
     )
 
     clientes = _agregar_metricas_df(clientes)
+
+    clientes = _agregar_rangos(
+
+        clientes,
+
+        columnas_grupo=["Vendedor"]
+
+    )
 
     vendedores = (
 
@@ -706,6 +778,8 @@ def arbol_ventas(df, columna_orden="Venta"):
 
     vendedores = _agregar_metricas_df(vendedores)
 
+    vendedores = _agregar_rangos(vendedores)
+
     vendedores = vendedores.sort_values(
 
         columna_orden,
@@ -725,6 +799,14 @@ def arbol_ventas(df, columna_orden="Venta"):
         vendedor = fila_v["Vendedor"]
 
         id_vendedor = f"v::{vendedor}"
+
+        rutas_v = {
+
+            metrica: [int(fila_v[f"rango_{metrica}"])]
+
+            for metrica in COLUMNAS_ORDEN_VALIDAS
+
+        }
 
         filas.append(
 
@@ -750,7 +832,15 @@ def arbol_ventas(df, columna_orden="Venta"):
 
                 "tieneHijos": True,
 
-                "expandido": False
+                "expandido": False,
+
+                **{
+
+                    f"_ruta_{metrica}": rutas_v[metrica]
+
+                    for metrica in COLUMNAS_ORDEN_VALIDAS
+
+                }
 
             }
 
@@ -776,6 +866,14 @@ def arbol_ventas(df, columna_orden="Venta"):
 
             id_cliente = f"{id_vendedor}||c::{cliente}"
 
+            rutas_c = {
+
+                metrica: rutas_v[metrica] + [int(fila_c[f"rango_{metrica}"])]
+
+                for metrica in COLUMNAS_ORDEN_VALIDAS
+
+            }
+
             filas.append(
 
                 {
@@ -800,7 +898,15 @@ def arbol_ventas(df, columna_orden="Venta"):
 
                     "tieneHijos": True,
 
-                    "expandido": False
+                    "expandido": False,
+
+                    **{
+
+                        f"_ruta_{metrica}": rutas_c[metrica]
+
+                        for metrica in COLUMNAS_ORDEN_VALIDAS
+
+                    }
 
                 }
 
@@ -834,6 +940,14 @@ def arbol_ventas(df, columna_orden="Venta"):
 
                 id_producto = f"{id_cliente}||p::{producto}"
 
+                rutas_p = {
+
+                    metrica: rutas_c[metrica] + [int(fila_p[f"rango_{metrica}"])]
+
+                    for metrica in COLUMNAS_ORDEN_VALIDAS
+
+                }
+
                 filas.append(
 
                     {
@@ -858,13 +972,75 @@ def arbol_ventas(df, columna_orden="Venta"):
 
                         "tieneHijos": False,
 
-                        "expandido": False
+                        "expandido": False,
+
+                        **{
+
+                            f"_ruta_{metrica}": rutas_p[metrica]
+
+                            for metrica in COLUMNAS_ORDEN_VALIDAS
+
+                        }
 
                     }
 
                 )
 
     return pd.DataFrame(filas, columns=COLUMNAS_ARBOL)
+
+
+def comparador_jerarquico(campo_ruta, profundidad=0, profundidad_max=3):
+
+    """
+    Genera, como texto, una expresión JS (sin sentencias: solo
+    ternarios anidados, para que dash-ag-grid la acepte como
+    función válida) que compara dos filas del árbol usando su
+    "ruta jerárquica" (campo_ruta, p.ej. "_ruta_Venta") en vez
+    del valor crudo de la columna.
+
+    Por qué: el comparator nativo de AG Grid recibe
+    (valueA, valueB, nodeA, nodeB, isDescending). Si comparamos
+    valueA/valueB directamente, se mezclan vendedor/cliente/
+    producto por valor y se rompe la jerarquía visual. Al
+    comparar la ruta [rango_vendedor, rango_cliente, rango_
+    producto] en vez del valor, un ancestro SIEMPRE queda antes
+    que sus descendientes (sin importar el sentido del clic), y
+    entre hermanos del mismo nivel sí respeta isDescending.
+    """
+
+    ref_a = f"nodeA.data['{campo_ruta}']"
+
+    ref_b = f"nodeB.data['{campo_ruta}']"
+
+    if profundidad >= profundidad_max:
+
+        return "0"
+
+    a_i = f"{ref_a}[{profundidad}]"
+
+    b_i = f"{ref_b}[{profundidad}]"
+
+    diferencia = f"(isDescending ? ({b_i} - {a_i}) : ({a_i} - {b_i}))"
+
+    siguiente_nivel = comparador_jerarquico(
+
+        campo_ruta,
+
+        profundidad + 1,
+
+        profundidad_max
+
+    )
+
+    return (
+
+        f"({ref_a}.length <= {profundidad} || {ref_b}.length <= {profundidad}) "
+
+        f"? ({ref_a}.length - {ref_b}.length) "
+
+        f": ({a_i} !== {b_i} ? {diferencia} : {siguiente_nivel})"
+
+    )
 
 
 # =========================================================

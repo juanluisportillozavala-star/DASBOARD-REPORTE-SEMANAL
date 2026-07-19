@@ -36,91 +36,9 @@ jerarquía intacta.
 """
 
 import dash_ag_grid as dag
-from dash import html, dcc
+from dash import html
 
-
-# =========================================================
-# OPCIONES DEL SELECTOR "ORDENAR POR"
-# =========================================================
-
-OPCIONES_ORDEN = [
-
-    {"label": "Venta", "value": "Venta"},
-
-    {"label": "Utilidad Bruta", "value": "Utilidad Bruta"},
-
-    {"label": "Cantidad", "value": "Cantidad"},
-
-    {"label": "Margen %", "value": "Margen %"},
-
-    {"label": "Utilidad Unitaria", "value": "Utilidad Unitaria"}
-
-]
-
-
-def crear_selector_orden():
-
-    """
-    Selector "Ordenar por" FIJO (no se regenera nunca, vive
-    una sola vez en el layout). Reemplaza el sort nativo de
-    columna de AG Grid, que mezclaba vendedor/cliente/producto
-    y rompía la jerarquía. Reordena los 3 niveles del árbol
-    por la misma métrica, manteniendo la jerarquía intacta.
-    """
-
-    return html.Div(
-
-        [
-
-            html.Span(
-
-                "Ordenar por:  ",
-
-                style={
-
-                    "color": "#173C73",
-
-                    "fontWeight": "bold",
-
-                    "marginRight": "8px"
-
-                }
-
-            ),
-
-            dcc.Dropdown(
-
-                id="selector-orden-arbol",
-
-                options=OPCIONES_ORDEN,
-
-                value="Venta",
-
-                clearable=False,
-
-                searchable=False,
-
-                style={
-
-                    "width": "220px"
-
-                }
-
-            )
-
-        ],
-
-        style={
-
-            "display": "flex",
-
-            "alignItems": "center",
-
-            "marginBottom": "12px"
-
-        }
-
-    )
+from ventas.analisis import comparador_jerarquico
 
 
 # =========================================================
@@ -168,6 +86,13 @@ def _columnas():
 
         # ---------------------------------------------
         # CANTIDAD
+        #
+        # sortable: True + comparator = comparador
+        # jerárquico. NO es el sort plano de AG Grid: el
+        # comparator compara la "ruta" [rango_vendedor,
+        # rango_cliente, rango_producto] en vez del valor
+        # crudo, así que un clic en el encabezado ordena
+        # de mayor a menor SIN mezclar niveles.
         # ---------------------------------------------
 
         {
@@ -180,7 +105,13 @@ def _columnas():
 
             "filter": False,
 
-            "sortable": False,
+            "sortable": True,
+
+            "comparator": {
+
+                "function": comparador_jerarquico("_ruta_Cantidad")
+
+            },
 
             "valueFormatter": {
 
@@ -204,7 +135,13 @@ def _columnas():
 
             "filter": False,
 
-            "sortable": False,
+            "sortable": True,
+
+            "comparator": {
+
+                "function": comparador_jerarquico("_ruta_Utilidad Unitaria")
+
+            },
 
             "valueFormatter": {
 
@@ -228,7 +165,13 @@ def _columnas():
 
             "filter": False,
 
-            "sortable": False,
+            "sortable": True,
+
+            "comparator": {
+
+                "function": comparador_jerarquico("_ruta_Venta")
+
+            },
 
             "valueFormatter": {
 
@@ -252,7 +195,13 @@ def _columnas():
 
             "filter": False,
 
-            "sortable": False,
+            "sortable": True,
+
+            "comparator": {
+
+                "function": comparador_jerarquico("_ruta_Utilidad Bruta")
+
+            },
 
             "valueFormatter": {
 
@@ -276,7 +225,13 @@ def _columnas():
 
             "filter": False,
 
-            "sortable": False,
+            "sortable": True,
+
+            "comparator": {
+
+                "function": comparador_jerarquico("_ruta_Margen %")
+
+            },
 
             "valueFormatter": {
 
@@ -489,14 +444,11 @@ def crear_aggrid(df, fila_total=None):
 # y semanas activas, estilo el recuadro "Fecha corte /
 # Semana" del Excel de referencia.
 #
-# El selector "Ordenar por" NO vive aquí: vive FIJO en el
-# layout (no se regenera cada vez que se reconstruye la
-# tabla), por la misma razón por la que los botones de mes/
-# semana son fijos y no se regeneran en un callback: si un
-# dcc.Dropdown se recrea con un "value" ya puesto, Dash lo
-# puede interpretar como un cambio real y disparar el
-# callback de nuevo innecesariamente (mismo riesgo que el
-# reset de n_clicks que ya resolvimos antes).
+# Ya no hay selector "Ordenar por": el orden ahora se hace
+# con clic nativo en el encabezado de cada columna numérica
+# (ver "comparator" en _columnas / comparador_jerarquico en
+# analisis.py), que preserva la jerarquía sin necesitar
+# ningún componente adicional.
 # =========================================================
 
 def crear_encabezado_periodo(fecha_corte, semanas_texto):
