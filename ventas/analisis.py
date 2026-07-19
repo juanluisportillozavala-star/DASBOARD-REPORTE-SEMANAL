@@ -799,44 +799,54 @@ def arbol_ventas(df, columna_orden="Venta"):
     #
     #  1. Se ordena clientes/productos UNA sola vez (no una
     #     vez por cada padre).
-    #  2. Se agrupan con groupby (una sola pasada) en vez de
-    #     filtrar con una máscara booleana repetida.
-    #  3. Se convierte a listas de dicts con to_dict("records")
-    #     en vez de iterrows(), que evita el overhead de
-    #     construir un pandas.Series por cada fila.
+    #  2. Se llama a .to_dict("records") UNA sola vez sobre
+    #     TODO el DataFrame ya ordenado (no una vez por cada
+    #     grupo chiquito: eso se probó y resultó MÁS lento,
+    #     porque to_dict tiene un costo fijo por llamada que
+    #     se multiplica por miles de grupos pequeños).
+    #  3. Se agrupan esos registros en un dict de listas con
+    #     un solo loop de Python puro (sin overhead de pandas).
     # -----------------------------------------------
 
-    clientes_por_vendedor = {
+    clientes_por_vendedor = {}
 
-        vendedor: grupo.to_dict("records")
+    for registro in (
 
-        for vendedor, grupo in (
+        clientes
 
-            clientes
+        .sort_values(columna_orden, ascending=False)
 
-            .sort_values(columna_orden, ascending=False)
+        .to_dict("records")
 
-            .groupby("Vendedor", sort=False)
+    ):
 
-        )
+        clientes_por_vendedor.setdefault(
 
-    }
+            registro["Vendedor"],
 
-    productos_por_cliente = {
+            []
 
-        llave: grupo.to_dict("records")
+        ).append(registro)
 
-        for llave, grupo in (
+    productos_por_cliente = {}
 
-            productos
+    for registro in (
 
-            .sort_values(columna_orden, ascending=False)
+        productos
 
-            .groupby(["Vendedor", "Cliente"], sort=False)
+        .sort_values(columna_orden, ascending=False)
 
-        )
+        .to_dict("records")
 
-    }
+    ):
+
+        productos_por_cliente.setdefault(
+
+            (registro["Vendedor"], registro["Cliente"]),
+
+            []
+
+        ).append(registro)
 
     filas = []
 
