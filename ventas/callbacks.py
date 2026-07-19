@@ -917,45 +917,39 @@ def registrar_callbacks_ventas(app):
         return clases, deshabilitados
 
     # =====================================================
-    # TABLA DINÁMICA (AG GRID): Vendedor > Cliente > Producto
+    # 1) CALCULAR ÁRBOL DE VENTAS (pesado)
     #
-    # Reconstruye el árbol completo cada vez que cambian los
-    # datos o el filtro de mes/semana, y lo recorta a las
-    # filas visibles según qué esté expandido
-    # (store-arbol-expandido). Como el grid se reconstruye
-    # entero en cada cambio, no hay riesgo de que Dash resetee
-    # algo por accidente (a diferencia de los botones de mes/
-    # semana): "cellClicked" es una prop de SOLO LECTURA que
-    # el grid reporta, no algo que nosotros mandemos nosotros.
+    # Solo se dispara cuando cambian los DATOS o el filtro de
+    # mes/semana — NO cuando expandes/contraes una fila. Antes
+    # todo esto (agrupar, calcular rangos, armar filas) se
+    # repetía en CADA clic de expandir, que es lo que hacía
+    # todo lento. Ahora se calcula una sola vez y se guarda en
+    # stores; expandir/contraer ya no vuelve a pasar por aquí.
     # =====================================================
 
     @app.callback(
 
-        Output("contenedor-tablas", "children"),
+        Output("store-arbol-completo", "data"),
+
+        Output("store-arbol-total", "data"),
+
+        Output("store-periodo-info", "data"),
 
         Input("store-bd-ventas", "data"),
 
         Input("store-mes", "data"),
 
-        Input("store-semana", "data"),
-
-        Input("store-arbol-expandido", "data")
+        Input("store-semana", "data")
 
     )
 
-    def actualizar_tabla_ventas(data, meses, semanas, ids_expandidos):
+    def calcular_arbol_ventas(data, meses, semanas):
+
+        if data is None:
+
+            return None, None, None
 
         try:
-
-            if data is None:
-
-                return html.Div(
-
-                    "Sube y procesa un archivo para ver la tabla.",
-
-                    style={"color": "#6C757D"}
-
-                )
 
             df = pd.DataFrame(data)
 
@@ -982,22 +976,8 @@ def registrar_callbacks_ventas(app):
 
             total = total_general_arbol(df_filtrado)
 
-            visibles = filas_visibles(
-
-                arbol,
-
-                ids_expandidos or []
-
-            )
-
             # ------------------------------------------------
             # ENCABEZADO "FECHA DE CORTE"
-            #
-            # Fecha de corte = la fecha de factura más reciente
-            # dentro de lo ya filtrado por mes/semana. Semanas
-            # = las que están activas en el filtro (o "Todas"
-            # si no hay ninguna seleccionada, que es como se
-            # interpreta "sin filtro" en el resto del proyecto).
             # ------------------------------------------------
 
             columna_fecha = "Asiento contable/Fecha de factura"
@@ -1030,15 +1010,100 @@ def registrar_callbacks_ventas(app):
 
                 semanas_texto = "Todas"
 
+            periodo_info = {
+
+                "fecha_corte": fecha_corte,
+
+                "semanas_texto": semanas_texto
+
+            }
+
+            return (
+
+                arbol.to_dict("records"),
+
+                total,
+
+                periodo_info
+
+            )
+
+        except Exception as e:
+
+            return None, None, {"error": str(e)}
+
+    # =====================================================
+    # 2) MONTAR EL GRID (una vez por árbol nuevo)
+    #
+    # Se dispara cuando el árbol se recalculó (arriba). Usa
+    # "store-arbol-expandido" como State (no Input): así NO
+    # se vuelve a montar el grid completo cuando solo cambia
+    # qué está expandido, eso lo resuelve el callback 3.
+    # =====================================================
+
+    @app.callback(
+
+        Output("contenedor-tablas", "children"),
+
+        Input("store-arbol-completo", "data"),
+
+        State("store-arbol-total", "data"),
+
+        State("store-periodo-info", "data"),
+
+        State("store-arbol-expandido", "data")
+
+    )
+
+    def montar_tabla_ventas(arbol_data, total, periodo_info, ids_expandidos):
+
+        if arbol_data is None:
+
+            return html.Div(
+
+                "Sube y procesa un archivo para ver la tabla.",
+
+                style={"color": "#6C757D"}
+
+            )
+
+        if periodo_info and periodo_info.get("error"):
+
+            return html.Div(
+
+                [
+
+                    html.H3("ERROR"),
+
+                    html.Pre(periodo_info["error"])
+
+                ],
+
+                style={"color": "red"}
+
+            )
+
+        try:
+
+            arbol = pd.DataFrame(arbol_data)
+
+            visibles = filas_visibles(
+
+                arbol,
+
+                ids_expandidos or []
+
+            )
+
             return html.Div(
 
                 [
 
                     crear_encabezado_periodo(
 
-                        fecha_corte,
+                        periodo_info["fecha_corte"],
 
-                        semanas_texto
+                        periodo_info["semanas_texto"]
 
                     ),
 
@@ -1069,6 +1134,47 @@ def registrar_callbacks_ventas(app):
                 style={"color": "red"}
 
             )
+
+    # =====================================================
+    # 3) REFRESCAR FILAS VISIBLES (ligero, en cada clic)
+    #
+    # Solo filtra el árbol YA CALCULADO según qué está
+    # expandido, y actualiza ÚNICAMENTE "rowData" del grid
+    # (no reconstruye el componente completo). AG Grid
+    # redibuja las filas sin volver a montar columnas,
+    # estilos ni funciones JS — mucho más ágil que reconstruir
+    # todo, que es lo que hacía antes en cada clic.
+    # =====================================================
+
+    @app.callback(
+
+        Output("tabla-ventas", "rowData"),
+
+        Input("store-arbol-expandido", "data"),
+
+        State("store-arbol-completo", "data"),
+
+        prevent_initial_call=True
+
+    )
+
+    def refrescar_filas_visibles(ids_expandidos, arbol_data):
+
+        if arbol_data is None:
+
+            return no_update
+
+        arbol = pd.DataFrame(arbol_data)
+
+        visibles = filas_visibles(
+
+            arbol,
+
+            ids_expandidos or []
+
+        )
+
+        return visibles.to_dict("records")
 
     # =====================================================
     # EXPANDIR / CONTRAER FILAS DEL ÁRBOL

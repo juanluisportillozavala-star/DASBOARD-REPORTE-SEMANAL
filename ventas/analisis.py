@@ -790,11 +790,57 @@ def arbol_ventas(df, columna_orden="Venta"):
 
     # -----------------------------------------------
     # Armar filas planas, en profundidad
+    #
+    # OPTIMIZACIÓN: antes, por cada vendedor se filtraba y
+    # ordenaba "clientes" desde cero, y por cada cliente se
+    # filtraba y ordenaba "productos" desde cero (además de
+    # usar .iterrows(), que es lento). Con muchos vendedores/
+    # clientes eso se nota mucho al dar clic. Ahora:
+    #
+    #  1. Se ordena clientes/productos UNA sola vez (no una
+    #     vez por cada padre).
+    #  2. Se agrupan con groupby (una sola pasada) en vez de
+    #     filtrar con una máscara booleana repetida.
+    #  3. Se convierte a listas de dicts con to_dict("records")
+    #     en vez de iterrows(), que evita el overhead de
+    #     construir un pandas.Series por cada fila.
     # -----------------------------------------------
+
+    clientes_por_vendedor = {
+
+        vendedor: grupo.to_dict("records")
+
+        for vendedor, grupo in (
+
+            clientes
+
+            .sort_values(columna_orden, ascending=False)
+
+            .groupby("Vendedor", sort=False)
+
+        )
+
+    }
+
+    productos_por_cliente = {
+
+        llave: grupo.to_dict("records")
+
+        for llave, grupo in (
+
+            productos
+
+            .sort_values(columna_orden, ascending=False)
+
+            .groupby(["Vendedor", "Cliente"], sort=False)
+
+        )
+
+    }
 
     filas = []
 
-    for _, fila_v in vendedores.iterrows():
+    for fila_v in vendedores.to_dict("records"):
 
         vendedor = fila_v["Vendedor"]
 
@@ -846,21 +892,7 @@ def arbol_ventas(df, columna_orden="Venta"):
 
         )
 
-        clientes_del_vendedor = (
-
-            clientes[clientes["Vendedor"] == vendedor]
-
-            .sort_values(
-
-                columna_orden,
-
-                ascending=False
-
-            )
-
-        )
-
-        for _, fila_c in clientes_del_vendedor.iterrows():
+        for fila_c in clientes_por_vendedor.get(vendedor, []):
 
             cliente = fila_c["Cliente"]
 
@@ -912,29 +944,7 @@ def arbol_ventas(df, columna_orden="Venta"):
 
             )
 
-            productos_del_cliente = (
-
-                productos[
-
-                    (productos["Vendedor"] == vendedor)
-
-                    &
-
-                    (productos["Cliente"] == cliente)
-
-                ]
-
-                .sort_values(
-
-                    columna_orden,
-
-                    ascending=False
-
-                )
-
-            )
-
-            for _, fila_p in productos_del_cliente.iterrows():
+            for fila_p in productos_por_cliente.get((vendedor, cliente), []):
 
                 producto = fila_p["Producto"]
 
@@ -1159,4 +1169,16 @@ def filas_visibles(df_arbol, ids_expandidos):
 
     )
 
-    return df_arbol[mascara].reset_index(drop=True)
+    resultado = df_arbol[mascara].reset_index(drop=True)
+
+    # -----------------------------------------------
+    # BUG corregido: "expandido" siempre quedaba en False
+    # en el árbol base (arbol_ventas no sabe qué está
+    # expandido), así que el ícono nunca cambiaba a ▼. Se
+    # actualiza aquí, que es donde sí se conoce el estado
+    # real de expansión.
+    # -----------------------------------------------
+
+    resultado["expandido"] = resultado["id"].isin(ids_expandidos)
+
+    return resultado

@@ -53,6 +53,27 @@ def crear_layout_ventas():
 
             ),
 
+            dcc.Store(
+
+                id="store-arbol-completo",
+                data=None
+
+            ),
+
+            dcc.Store(
+
+                id="store-arbol-total",
+                data=None
+
+            ),
+
+            dcc.Store(
+
+                id="store-periodo-info",
+                data=None
+
+            ),
+
             # ==========================================
             # TITULO
             # ==========================================
