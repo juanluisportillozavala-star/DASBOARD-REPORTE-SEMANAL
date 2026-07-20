@@ -994,7 +994,7 @@ def arbol_ventas(df, columna_orden="Venta"):
 
                 2,
 
-                "    " + str(cliente),
+                str(cliente),
 
                 fila_c["Cantidad"],
 
@@ -1034,7 +1034,7 @@ def arbol_ventas(df, columna_orden="Venta"):
 
                     3,
 
-                    "        " + str(producto),
+                    str(producto),
 
                     fila_p["Cantidad"],
 
@@ -1266,5 +1266,38 @@ def filas_visibles(df_arbol, ids_expandidos):
     # -----------------------------------------------
 
     resultado["expandido"] = resultado["id"].isin(ids_expandidos)
+
+    # -----------------------------------------------
+    # Indentación + ícono ▶/▼, HORNEADOS en el texto de
+    # "concepto" (no vía cellRenderer en JS). Por qué: si el
+    # ícono depende de leer OTRO campo aparte (como antes,
+    # vía JS), AG Grid a veces no vuelve a dibujar la celda
+    # cuando solo se actualiza "rowData" (porque el VALOR de
+    # la celda "concepto" en sí no había cambiado). Horneando
+    # el ícono directo en el texto, el valor de la celda SÍ
+    # cambia cuando cambia "expandido", así que el refresco
+    # ligero de rowData (sin reconstruir todo el grid) vuelve
+    # a funcionar bien.
+    # -----------------------------------------------
+
+    def _texto_visual(fila):
+
+        sangria = "\u00a0" * (fila["nivel"] * 6)
+
+        if fila["tieneHijos"]:
+
+            icono = "▼ " if fila["expandido"] else "▶ "
+
+        elif fila["nivel"] > 0:
+
+            icono = "\u00a0\u00a0\u00a0"
+
+        else:
+
+            icono = ""
+
+        return sangria + icono + str(fila["concepto"])
+
+    resultado["concepto"] = resultado.apply(_texto_visual, axis=1)
 
     return resultado

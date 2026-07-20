@@ -51,9 +51,14 @@ def _columnas():
 
         # ---------------------------------------------
         # CONCEPTO (Vendedor / Cliente / Producto)
-        # Indentado + ícono ▶/▼ vía cellRenderer (JS),
-        # calculado a partir de "nivel" y "tieneHijos"
-        # que ya trae cada fila desde analisis.py.
+        #
+        # Sin cellRenderer: la indentación y el ícono ▶/▼ ya
+        # vienen horneados en el propio texto desde Python
+        # (analisis.filas_visibles), no se calculan aquí. Así,
+        # cuando cambia "expandido", el VALOR de la celda
+        # cambia de verdad, y una actualización ligera de
+        # "rowData" (sin reconstruir todo el grid) sí lo
+        # redibuja bien.
         # ---------------------------------------------
 
         {
@@ -69,12 +74,6 @@ def _columnas():
             "filter": False,
 
             "sortable": False,
-
-            "cellRenderer": {
-
-                "function": "'\u00a0'.repeat(params.data.nivel * 6) + (params.data.tieneHijos ? (params.data.expandido ? '▼ ' : '▶ ') : (params.data.nivel > 0 ? '\u00a0\u00a0\u00a0' : '')) + params.value"
-
-            },
 
             "cellStyle": {
 
@@ -281,6 +280,53 @@ def _estilo_filas():
 
 
 # =========================================================
+# ALTURA DINÁMICA DEL GRID (reemplaza domLayout=autoHeight)
+#
+# Antes usaba domLayout="autoHeight": el grid crecía según su
+# contenido, SIN scroll interno propio. Eso resolvía el hueco
+# entre la última fila y el TOTAL GENERAL cuando hay pocas
+# filas, pero tenía un costo: sin scroll interno, el
+# encabezado se iba de la pantalla al hacer scroll de la
+# página, en vez de quedarse fijo arriba de la tabla.
+#
+# Ahora: la altura crece con el contenido (pocas filas = grid
+# chico, total pegado abajo). ALTO_MAXIMO es deliberadamente
+# GRANDE (~70 filas): en el uso normal se ve todo de un jalón,
+# sin scroll interno — el scroll + encabezado fijo son un
+# respaldo solo para el caso extremo de cientos de filas
+# visibles a la vez.
+#
+# Pública (no "_función") porque el callback de expandir en
+# callbacks.py también la necesita, para actualizar la altura
+# del grid ligeramente (sin reconstruir todo el componente)
+# cada vez que cambia cuántas filas están visibles.
+# =========================================================
+
+ALTO_FILA = 34
+
+ALTO_ENCABEZADO = 38
+
+ALTO_MAXIMO = 2400
+
+
+def calcular_altura_grid(cantidad_filas, hay_total=True):
+
+    alto_contenido = (
+
+        ALTO_ENCABEZADO
+
+        + (cantidad_filas * ALTO_FILA)
+
+        + (ALTO_FILA if hay_total else 0)
+
+        + 4
+
+    )
+
+    return min(alto_contenido, ALTO_MAXIMO)
+
+
+# =========================================================
 # AG GRID (100% COMMUNITY)
 # =========================================================
 
@@ -315,47 +361,7 @@ def crear_aggrid(df, fila_total=None):
 
     pinned = [fila_total] if fila_total else None
 
-    # -----------------------------------------------------
-    # ALTURA DINÁMICA CON TOPE (reemplaza domLayout=autoHeight)
-    #
-    # Antes usaba domLayout="autoHeight": el grid crecía según
-    # su contenido, SIN scroll interno propio. Eso resolvía el
-    # hueco entre la última fila y el TOTAL GENERAL cuando hay
-    # pocas filas, pero tenía un costo: sin scroll interno, el
-    # encabezado (Vendedor/Cliente/Producto, Cantidad, etc.) se
-    # iba de la pantalla al hacer scroll de la página, en vez
-    # de quedarse fijo arriba de la tabla.
-    #
-    # Ahora: la altura crece con el contenido (pocas filas =
-    # grid chico, total pegado abajo). ALTO_MAXIMO es
-    # deliberadamente GRANDE (2400px, ~70 filas): la idea es
-    # que en el uso normal (un vendedor abierto, con sus
-    # clientes y productos) TODO se vea de un jalón, sin scroll
-    # interno — el scroll interno + encabezado fijo son un
-    # respaldo solo para el caso extremo de tener cientos o
-    # miles de filas visibles a la vez (por ejemplo, todos los
-    # vendedores expandidos al mismo tiempo).
-    # -----------------------------------------------------
-
-    ALTO_FILA = 34
-
-    ALTO_ENCABEZADO = 38
-
-    ALTO_MAXIMO = 2400
-
-    alto_contenido = (
-
-        ALTO_ENCABEZADO
-
-        + (len(df) * ALTO_FILA)
-
-        + (ALTO_FILA if pinned else 0)
-
-        + 4
-
-    )
-
-    alto_grid = min(alto_contenido, ALTO_MAXIMO)
+    alto_grid = calcular_altura_grid(len(df), hay_total=bool(pinned))
 
     return dag.AgGrid(
 
@@ -421,7 +427,7 @@ def crear_aggrid(df, fila_total=None):
 
         dashGridOptions={
 
-            "animateRows": True,
+            "animateRows": False,
 
             "rowHeight": ALTO_FILA,
 
@@ -433,44 +439,51 @@ def crear_aggrid(df, fila_total=None):
 
         className="ag-theme-alpine",
 
-        # -----------------------------------------------------
-        # PALETA AZUL / BLANCO / DORADO
-        #
-        # ag-theme-alpine se personaliza con variables CSS
-        # propias de AG Grid (no requieren tocar ningún .css
-        # aparte): encabezado azul marino, bordes y hover en
-        # tono dorado tenue, cuerpo blanco.
-        # -----------------------------------------------------
-
-        style={
-
-            "width": "100%",
-
-            "height": f"{alto_grid}px",
-
-            "--ag-font-size": "18px",
-
-            "--ag-header-background-color": "#173C73",
-
-            "--ag-header-foreground-color": "#090000",
-
-            "--ag-background-color": "#FFFFFF",
-
-            "--ag-foreground-color": "#FDFEFF",
-
-            "--ag-border-color": "#E7DBB0",
-
-            "--ag-header-column-separator-color": "#2C5090",
-
-            "--ag-row-hover-color": "#E5DECB",
-
-            "--ag-range-selection-border-color": "#D4AF37",
-
-            "--ag-icon-color": "#050400"
-
-        }
+        style=estilo_grid(alto_grid)
 
     )
+
+
+# =========================================================
+# ESTILO COMPLETO DEL GRID (colores + altura)
+#
+# Pública porque el callback de expandir en callbacks.py
+# también la necesita: al actualizar SOLO "rowData" y
+# "style" (sin reconstruir el componente), hay que mandar
+# el diccionario de estilo COMPLETO, no nada más la altura
+# — "style" reemplaza todo el diccionario de golpe, así que
+# si solo se manda {"height": ...} se pierden los colores.
+# =========================================================
+
+def estilo_grid(alto_px):
+
+    return {
+
+        "width": "100%",
+
+        "height": f"{alto_px}px",
+
+        "--ag-font-size": "18px",
+
+        "--ag-header-background-color": "#173C73",
+
+        "--ag-header-foreground-color": "#090000",
+
+        "--ag-background-color": "#FFFFFF",
+
+        "--ag-foreground-color": "#FDFEFF",
+
+        "--ag-border-color": "#E7DBB0",
+
+        "--ag-header-column-separator-color": "#2C5090",
+
+        "--ag-row-hover-color": "#E5DECB",
+
+        "--ag-range-selection-border-color": "#D4AF37",
+
+        "--ag-icon-color": "#050400"
+
+    }
 
 
 # =========================================================

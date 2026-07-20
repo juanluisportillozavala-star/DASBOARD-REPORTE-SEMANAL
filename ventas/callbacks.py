@@ -15,7 +15,12 @@ from ventas.cards import crear_cards
 
 from ventas.analisis import arbol_ventas, total_general_arbol, filas_visibles
 
-from ventas.aggrid import crear_aggrid, crear_encabezado_periodo
+from ventas.aggrid import (
+    crear_aggrid,
+    crear_encabezado_periodo,
+    calcular_altura_grid,
+    estilo_grid
+)
 
 
 def registrar_callbacks_ventas(app):
@@ -1052,17 +1057,11 @@ def registrar_callbacks_ventas(app):
 
                     ),
 
-                    html.Div(
+                    crear_aggrid(
 
-                        crear_aggrid(
+                        visibles,
 
-                            visibles,
-
-                            fila_total=total
-
-                        ),
-
-                        id="grid-tabla-ventas"
+                        fila_total=total
 
                     )
 
@@ -1107,20 +1106,29 @@ def registrar_callbacks_ventas(app):
     # =====================================================
     # 2) REFRESCAR GRID AL EXPANDIR/CONTRAER (ligero)
     #
-    # Reconstruye el GRID COMPLETO (no solo "rowData"): se
-    # probó actualizar nada más "rowData" para ser más rápido,
-    # pero AG Grid no siempre volvía a dibujar bien las celdas
-    # que dependen de OTRO campo del renglón (el ícono ▶/▼
-    # depende de "expandido", no de "concepto"), y el total de
-    # abajo se veía "brincar". Reconstruir el grid completo sí
-    # se ve bien siempre. Sigue siendo rápido porque NO vuelve
-    # a calcular el árbol (arbol_ventas): solo relee lo que ya
-    # está en el store y arma el grid con eso.
+    # Actualiza SOLO "rowData" y "style" (la altura) de
+    # "tabla-ventas" directamente — ya NO reconstruye el
+    # componente completo. Antes esto causaba dos problemas:
+    # el ícono ▶/▼ no siempre se redibujaba bien (porque
+    # dependía de un campo aparte, "expandido", y no del
+    # propio valor de la celda), y reconstruir el componente
+    # entero en cada clic se sentía lento y hacía "temblar" el
+    # total al recalcular la altura de golpe.
+    #
+    # Ambos se resolvieron horneando el ícono directo en el
+    # texto de "concepto" (ver analisis.filas_visibles): ahora
+    # el VALOR de la celda sí cambia cuando cambia "expandido",
+    # así que AG Grid redibuja bien con solo actualizar
+    # "rowData" — sin reconstruir nada, sin recalcular el
+    # árbol (arbol_ventas) tampoco: solo relee lo que ya está
+    # en el store.
     # =====================================================
 
     @app.callback(
 
-        Output("grid-tabla-ventas", "children"),
+        Output("tabla-ventas", "rowData"),
+
+        Output("tabla-ventas", "style"),
 
         Input("store-arbol-expandido", "data"),
 
@@ -1136,7 +1144,7 @@ def registrar_callbacks_ventas(app):
 
         if arbol_data is None:
 
-            return no_update
+            return no_update, no_update
 
         arbol = pd.DataFrame(arbol_data)
 
@@ -1148,11 +1156,19 @@ def registrar_callbacks_ventas(app):
 
         )
 
-        return crear_aggrid(
+        alto = calcular_altura_grid(
 
-            visibles,
+            len(visibles),
 
-            fila_total=total
+            hay_total=bool(total)
+
+        )
+
+        return (
+
+            visibles.to_dict("records"),
+
+            estilo_grid(alto)
 
         )
 
