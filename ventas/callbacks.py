@@ -1052,11 +1052,17 @@ def registrar_callbacks_ventas(app):
 
                     ),
 
-                    crear_aggrid(
+                    html.Div(
 
-                        visibles,
+                        crear_aggrid(
 
-                        fila_total=total
+                            visibles,
+
+                            fila_total=total
+
+                        ),
+
+                        id="grid-tabla-ventas"
 
                     )
 
@@ -1099,29 +1105,34 @@ def registrar_callbacks_ventas(app):
             )
 
     # =====================================================
-    # 2) REFRESCAR FILAS VISIBLES (ligero, en cada clic)
+    # 2) REFRESCAR GRID AL EXPANDIR/CONTRAER (ligero)
     #
-    # Solo filtra el árbol YA CALCULADO según qué está
-    # expandido, y actualiza ÚNICAMENTE "rowData" del grid
-    # (no reconstruye el componente completo). AG Grid
-    # redibuja las filas sin volver a montar columnas,
-    # estilos ni funciones JS — mucho más ágil que reconstruir
-    # todo, que es lo que hacía antes en cada clic.
+    # Reconstruye el GRID COMPLETO (no solo "rowData"): se
+    # probó actualizar nada más "rowData" para ser más rápido,
+    # pero AG Grid no siempre volvía a dibujar bien las celdas
+    # que dependen de OTRO campo del renglón (el ícono ▶/▼
+    # depende de "expandido", no de "concepto"), y el total de
+    # abajo se veía "brincar". Reconstruir el grid completo sí
+    # se ve bien siempre. Sigue siendo rápido porque NO vuelve
+    # a calcular el árbol (arbol_ventas): solo relee lo que ya
+    # está en el store y arma el grid con eso.
     # =====================================================
 
     @app.callback(
 
-        Output("tabla-ventas", "rowData"),
+        Output("grid-tabla-ventas", "children"),
 
         Input("store-arbol-expandido", "data"),
 
         State("store-arbol-completo", "data"),
 
+        State("store-arbol-total", "data"),
+
         prevent_initial_call=True
 
     )
 
-    def refrescar_filas_visibles(ids_expandidos, arbol_data):
+    def refrescar_grid_ventas(ids_expandidos, arbol_data, total):
 
         if arbol_data is None:
 
@@ -1137,7 +1148,13 @@ def registrar_callbacks_ventas(app):
 
         )
 
-        return visibles.to_dict("records")
+        return crear_aggrid(
+
+            visibles,
+
+            fila_total=total
+
+        )
 
     # =====================================================
     # EXPANDIR / CONTRAER FILAS DEL ÁRBOL
