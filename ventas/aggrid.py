@@ -327,19 +327,21 @@ def crear_aggrid(df, fila_total=None):
     # de quedarse fijo arriba de la tabla.
     #
     # Ahora: la altura crece con el contenido (pocas filas =
-    # grid chico, total pegado abajo) PERO con un tope máximo.
-    # Al llegar al tope, el grid usa SU PROPIO scroll interno
-    # (comportamiento normal de AG Grid), y ahí el encabezado
-    # SÍ se queda fijo mientras se hace scroll de las filas,
-    # y el TOTAL GENERAL (pinned) siempre queda visible al
-    # fondo sin necesidad de bajar hasta él.
+    # grid chico, total pegado abajo). ALTO_MAXIMO es
+    # deliberadamente GRANDE (2400px, ~70 filas): la idea es
+    # que en el uso normal (un vendedor abierto, con sus
+    # clientes y productos) TODO se vea de un jalón, sin scroll
+    # interno — el scroll interno + encabezado fijo son un
+    # respaldo solo para el caso extremo de tener cientos o
+    # miles de filas visibles a la vez (por ejemplo, todos los
+    # vendedores expandidos al mismo tiempo).
     # -----------------------------------------------------
 
     ALTO_FILA = 34
 
     ALTO_ENCABEZADO = 38
 
-    ALTO_MAXIMO = 640
+    ALTO_MAXIMO = 2400
 
     alto_contenido = (
 
