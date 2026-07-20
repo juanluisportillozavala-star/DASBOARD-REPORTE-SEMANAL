@@ -917,37 +917,59 @@ def registrar_callbacks_ventas(app):
         return clases, deshabilitados
 
     # =====================================================
-    # 1) CALCULAR ÁRBOL DE VENTAS (pesado)
+    # 1) CALCULAR + MONTAR TABLA DE VENTAS
     #
-    # Solo se dispara cuando cambian los DATOS o el filtro de
-    # mes/semana — NO cuando expandes/contraes una fila. Antes
-    # todo esto (agrupar, calcular rangos, armar filas) se
-    # repetía en CADA clic de expandir, que es lo que hacía
-    # todo lento. Ahora se calcula una sola vez y se guarda en
-    # stores; expandir/contraer ya no vuelve a pasar por aquí.
+    # Se dispara cuando cambian los DATOS o el filtro de mes/
+    # semana — NO cuando expandes/contraes una fila (eso lo
+    # resuelve el callback 2, por separado y mucho más ligero).
+    #
+    # Antes esto estaba partido en dos callbacks encadenados
+    # (calcular árbol -> montar grid), lo cual funciona pero
+    # implica DOS idas y vueltas al servidor en cadena para
+    # una sola acción del usuario (cambiar el filtro). Al
+    # fusionarlos en uno solo, el cambio de mes/semana ahora
+    # es una sola ida y vuelta. El árbol y el total SIGUEN
+    # guardándose en stores, porque el callback 2 (expandir)
+    # sí los necesita para no recalcular nada.
     # =====================================================
 
     @app.callback(
+
+        Output("contenedor-tablas", "children"),
 
         Output("store-arbol-completo", "data"),
 
         Output("store-arbol-total", "data"),
 
-        Output("store-periodo-info", "data"),
-
         Input("store-bd-ventas", "data"),
 
         Input("store-mes", "data"),
 
-        Input("store-semana", "data")
+        Input("store-semana", "data"),
+
+        State("store-arbol-expandido", "data")
 
     )
 
-    def calcular_arbol_ventas(data, meses, semanas):
+    def calcular_y_montar_tabla_ventas(data, meses, semanas, ids_expandidos):
 
         if data is None:
 
-            return None, None, None
+            return (
+
+                html.Div(
+
+                    "Sube y procesa un archivo para ver la tabla.",
+
+                    style={"color": "#6C757D"}
+
+                ),
+
+                None,
+
+                None
+
+            )
 
         try:
 
@@ -1010,83 +1032,6 @@ def registrar_callbacks_ventas(app):
 
                 semanas_texto = "Todas"
 
-            periodo_info = {
-
-                "fecha_corte": fecha_corte,
-
-                "semanas_texto": semanas_texto
-
-            }
-
-            return (
-
-                arbol.to_dict("records"),
-
-                total,
-
-                periodo_info
-
-            )
-
-        except Exception as e:
-
-            return None, None, {"error": str(e)}
-
-    # =====================================================
-    # 2) MONTAR EL GRID (una vez por árbol nuevo)
-    #
-    # Se dispara cuando el árbol se recalculó (arriba). Usa
-    # "store-arbol-expandido" como State (no Input): así NO
-    # se vuelve a montar el grid completo cuando solo cambia
-    # qué está expandido, eso lo resuelve el callback 3.
-    # =====================================================
-
-    @app.callback(
-
-        Output("contenedor-tablas", "children"),
-
-        Input("store-arbol-completo", "data"),
-
-        State("store-arbol-total", "data"),
-
-        State("store-periodo-info", "data"),
-
-        State("store-arbol-expandido", "data")
-
-    )
-
-    def montar_tabla_ventas(arbol_data, total, periodo_info, ids_expandidos):
-
-        if arbol_data is None:
-
-            return html.Div(
-
-                "Sube y procesa un archivo para ver la tabla.",
-
-                style={"color": "#6C757D"}
-
-            )
-
-        if periodo_info and periodo_info.get("error"):
-
-            return html.Div(
-
-                [
-
-                    html.H3("ERROR"),
-
-                    html.Pre(periodo_info["error"])
-
-                ],
-
-                style={"color": "red"}
-
-            )
-
-        try:
-
-            arbol = pd.DataFrame(arbol_data)
-
             visibles = filas_visibles(
 
                 arbol,
@@ -1095,15 +1040,15 @@ def registrar_callbacks_ventas(app):
 
             )
 
-            return html.Div(
+            contenido = html.Div(
 
                 [
 
                     crear_encabezado_periodo(
 
-                        periodo_info["fecha_corte"],
+                        fecha_corte,
 
-                        periodo_info["semanas_texto"]
+                        semanas_texto
 
                     ),
 
@@ -1119,24 +1064,42 @@ def registrar_callbacks_ventas(app):
 
             )
 
+            return (
+
+                contenido,
+
+                arbol.to_dict("records"),
+
+                total
+
+            )
+
         except Exception as e:
 
-            return html.Div(
+            return (
 
-                [
+                html.Div(
 
-                    html.H3("ERROR"),
+                    [
 
-                    html.Pre(str(e))
+                        html.H3("ERROR"),
 
-                ],
+                        html.Pre(str(e))
 
-                style={"color": "red"}
+                    ],
+
+                    style={"color": "red"}
+
+                ),
+
+                None,
+
+                None
 
             )
 
     # =====================================================
-    # 3) REFRESCAR FILAS VISIBLES (ligero, en cada clic)
+    # 2) REFRESCAR FILAS VISIBLES (ligero, en cada clic)
     #
     # Solo filtra el árbol YA CALCULADO según qué está
     # expandido, y actualiza ÚNICAMENTE "rowData" del grid

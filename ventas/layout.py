@@ -67,13 +67,6 @@ def crear_layout_ventas():
 
             ),
 
-            dcc.Store(
-
-                id="store-periodo-info",
-                data=None
-
-            ),
-
             # ==========================================
             # TITULO
             # ==========================================

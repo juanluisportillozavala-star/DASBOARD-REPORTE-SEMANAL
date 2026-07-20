@@ -315,6 +315,46 @@ def crear_aggrid(df, fila_total=None):
 
     pinned = [fila_total] if fila_total else None
 
+    # -----------------------------------------------------
+    # ALTURA DINÁMICA CON TOPE (reemplaza domLayout=autoHeight)
+    #
+    # Antes usaba domLayout="autoHeight": el grid crecía según
+    # su contenido, SIN scroll interno propio. Eso resolvía el
+    # hueco entre la última fila y el TOTAL GENERAL cuando hay
+    # pocas filas, pero tenía un costo: sin scroll interno, el
+    # encabezado (Vendedor/Cliente/Producto, Cantidad, etc.) se
+    # iba de la pantalla al hacer scroll de la página, en vez
+    # de quedarse fijo arriba de la tabla.
+    #
+    # Ahora: la altura crece con el contenido (pocas filas =
+    # grid chico, total pegado abajo) PERO con un tope máximo.
+    # Al llegar al tope, el grid usa SU PROPIO scroll interno
+    # (comportamiento normal de AG Grid), y ahí el encabezado
+    # SÍ se queda fijo mientras se hace scroll de las filas,
+    # y el TOTAL GENERAL (pinned) siempre queda visible al
+    # fondo sin necesidad de bajar hasta él.
+    # -----------------------------------------------------
+
+    ALTO_FILA = 34
+
+    ALTO_ENCABEZADO = 38
+
+    ALTO_MAXIMO = 640
+
+    alto_contenido = (
+
+        ALTO_ENCABEZADO
+
+        + (len(df) * ALTO_FILA)
+
+        + (ALTO_FILA if pinned else 0)
+
+        + 4
+
+    )
+
+    alto_grid = min(alto_contenido, ALTO_MAXIMO)
+
     return dag.AgGrid(
 
         id="tabla-ventas",
@@ -370,26 +410,20 @@ def crear_aggrid(df, fila_total=None):
         # (pinnedBottomRowData) va aquí adentro, no como kwarg
         # de nivel superior.
         #
-        # domLayout="autoHeight": el grid crece según su propio
-        # contenido en vez de vivir en un contenedor de altura
-        # fija. Así el TOTAL GENERAL queda pegado justo debajo
-        # de la última fila, no "flotando" al fondo de un hueco
-        # cuando hay pocas filas visibles.
+        # Sin domLayout="autoHeight" y sin paginación: con
+        # altura acotada (ver alto_grid arriba), AG Grid usa su
+        # scroll interno normal, que trae encabezado fijo de
+        # fábrica — no hace falta configurar nada extra para
+        # eso.
         # -----------------------------------------------------
 
         dashGridOptions={
 
-            "pagination": True,
-
-            "paginationPageSize": 100,
-
             "animateRows": True,
 
-            "rowHeight": 34,
+            "rowHeight": ALTO_FILA,
 
-            "headerHeight": 38,
-
-            "domLayout": "autoHeight",
+            "headerHeight": ALTO_ENCABEZADO,
 
             "pinnedBottomRowData": pinned
 
@@ -410,7 +444,7 @@ def crear_aggrid(df, fila_total=None):
 
             "width": "100%",
 
-            "height": "auto",
+            "height": f"{alto_grid}px",
 
             "--ag-font-size": "18px",
 

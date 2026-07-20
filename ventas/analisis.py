@@ -848,7 +848,89 @@ def arbol_ventas(df, columna_orden="Venta"):
 
         ).append(registro)
 
-    filas = []
+    # -----------------------------------------------
+    # OPTIMIZACIÓN (la que realmente pesaba con volumen
+    # grande): antes se armaba un dict NUEVO por cada una de
+    # las ~96,000 filas, con "**{...}" para meterle las 5
+    # rutas — cada dict-comprehension + unpacking tiene su
+    # propio costo, multiplicado por 96,000 se sentía mucho
+    # (medido con cProfile: ~1.25s solo en Python puro, sin
+    # contar pandas). Ahora se llenan LISTAS por columna con
+    # .append() (mucho más barato que crear un dict por fila),
+    # y el DataFrame se arma UNA sola vez al final.
+    # -----------------------------------------------
+
+    col_id = []
+    col_parent_id = []
+    col_nivel = []
+    col_concepto = []
+    col_cantidad = []
+    col_venta = []
+    col_utilidad = []
+    col_margen = []
+    col_ut_unitaria = []
+    col_tiene_hijos = []
+    col_expandido = []
+
+    col_rutas = {
+
+        metrica: []
+
+        for metrica in COLUMNAS_ORDEN_VALIDAS
+
+    }
+
+    def _agregar_fila(
+
+        id_fila,
+
+        parent_id,
+
+        nivel,
+
+        concepto,
+
+        cantidad,
+
+        venta,
+
+        utilidad,
+
+        margen,
+
+        ut_unitaria,
+
+        tiene_hijos,
+
+        ruta
+
+    ):
+
+        col_id.append(id_fila)
+
+        col_parent_id.append(parent_id)
+
+        col_nivel.append(nivel)
+
+        col_concepto.append(concepto)
+
+        col_cantidad.append(cantidad)
+
+        col_venta.append(venta)
+
+        col_utilidad.append(utilidad)
+
+        col_margen.append(margen)
+
+        col_ut_unitaria.append(ut_unitaria)
+
+        col_tiene_hijos.append(tiene_hijos)
+
+        col_expandido.append(False)
+
+        for metrica in COLUMNAS_ORDEN_VALIDAS:
+
+            col_rutas[metrica].append(ruta[metrica])
 
     for fila_v in vendedores.to_dict("records"):
 
@@ -864,41 +946,29 @@ def arbol_ventas(df, columna_orden="Venta"):
 
         }
 
-        filas.append(
+        _agregar_fila(
 
-            {
+            id_vendedor,
 
-                "id": id_vendedor,
+            "",
 
-                "parentId": "",
+            1,
 
-                "nivel": 1,
+            str(vendedor),
 
-                "concepto": str(vendedor),
+            fila_v["Cantidad"],
 
-                "Cantidad": fila_v["Cantidad"],
+            fila_v["Venta"],
 
-                "Venta": fila_v["Venta"],
+            fila_v["Utilidad Bruta"],
 
-                "Utilidad Bruta": fila_v["Utilidad Bruta"],
+            fila_v["Margen %"],
 
-                "Margen %": fila_v["Margen %"],
+            fila_v["Utilidad Unitaria"],
 
-                "Utilidad Unitaria": fila_v["Utilidad Unitaria"],
+            True,
 
-                "tieneHijos": True,
-
-                "expandido": False,
-
-                **{
-
-                    f"_ruta_{metrica}": rutas_v[metrica]
-
-                    for metrica in COLUMNAS_ORDEN_VALIDAS
-
-                }
-
-            }
+            rutas_v
 
         )
 
@@ -916,41 +986,29 @@ def arbol_ventas(df, columna_orden="Venta"):
 
             }
 
-            filas.append(
+            _agregar_fila(
 
-                {
+                id_cliente,
 
-                    "id": id_cliente,
+                id_vendedor,
 
-                    "parentId": id_vendedor,
+                2,
 
-                    "nivel": 2,
+                "    " + str(cliente),
 
-                    "concepto": "    " + str(cliente),
+                fila_c["Cantidad"],
 
-                    "Cantidad": fila_c["Cantidad"],
+                fila_c["Venta"],
 
-                    "Venta": fila_c["Venta"],
+                fila_c["Utilidad Bruta"],
 
-                    "Utilidad Bruta": fila_c["Utilidad Bruta"],
+                fila_c["Margen %"],
 
-                    "Margen %": fila_c["Margen %"],
+                fila_c["Utilidad Unitaria"],
 
-                    "Utilidad Unitaria": fila_c["Utilidad Unitaria"],
+                True,
 
-                    "tieneHijos": True,
-
-                    "expandido": False,
-
-                    **{
-
-                        f"_ruta_{metrica}": rutas_c[metrica]
-
-                        for metrica in COLUMNAS_ORDEN_VALIDAS
-
-                    }
-
-                }
+                rutas_c
 
             )
 
@@ -968,45 +1026,63 @@ def arbol_ventas(df, columna_orden="Venta"):
 
                 }
 
-                filas.append(
+                _agregar_fila(
 
-                    {
+                    id_producto,
 
-                        "id": id_producto,
+                    id_cliente,
 
-                        "parentId": id_cliente,
+                    3,
 
-                        "nivel": 3,
+                    "        " + str(producto),
 
-                        "concepto": "        " + str(producto),
+                    fila_p["Cantidad"],
 
-                        "Cantidad": fila_p["Cantidad"],
+                    fila_p["Venta"],
 
-                        "Venta": fila_p["Venta"],
+                    fila_p["Utilidad Bruta"],
 
-                        "Utilidad Bruta": fila_p["Utilidad Bruta"],
+                    fila_p["Margen %"],
 
-                        "Margen %": fila_p["Margen %"],
+                    fila_p["Utilidad Unitaria"],
 
-                        "Utilidad Unitaria": fila_p["Utilidad Unitaria"],
+                    False,
 
-                        "tieneHijos": False,
-
-                        "expandido": False,
-
-                        **{
-
-                            f"_ruta_{metrica}": rutas_p[metrica]
-
-                            for metrica in COLUMNAS_ORDEN_VALIDAS
-
-                        }
-
-                    }
+                    rutas_p
 
                 )
 
-    return pd.DataFrame(filas, columns=COLUMNAS_ARBOL)
+    datos_columnas = {
+
+        "id": col_id,
+
+        "parentId": col_parent_id,
+
+        "nivel": col_nivel,
+
+        "concepto": col_concepto,
+
+        "Cantidad": col_cantidad,
+
+        "Venta": col_venta,
+
+        "Utilidad Bruta": col_utilidad,
+
+        "Margen %": col_margen,
+
+        "Utilidad Unitaria": col_ut_unitaria,
+
+        "tieneHijos": col_tiene_hijos,
+
+        "expandido": col_expandido
+
+    }
+
+    for metrica in COLUMNAS_ORDEN_VALIDAS:
+
+        datos_columnas[f"_ruta_{metrica}"] = col_rutas[metrica]
+
+    return pd.DataFrame(datos_columnas, columns=COLUMNAS_ARBOL)
 
 
 def comparador_jerarquico(campo_ruta, profundidad=0, profundidad_max=3):
