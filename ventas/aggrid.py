@@ -250,6 +250,20 @@ def _columnas():
 
 def _estilo_filas():
 
+    """
+    NOTA: antes las filas de producto (nivel 3) alternaban
+    color según "params.node.rowIndex % 2" (cebreado tipo
+    Excel). Se quitó a propósito: rowIndex es la posición
+    VISUAL de la fila, y esa posición se recorre para TODAS
+    las filas de abajo cada vez que se expande o contrae
+    cualquier cosa arriba — con muchas filas, eso significa
+    que potencialmente cientos de filas cambian de color de
+    golpe en cada clic, lo cual se ve como parpadeo/"temblor".
+    Ahora el color de producto es fijo, no depende de la
+    posición, así que un clic ya no le cambia el color a
+    filas que ni siquiera se movieron.
+    """
+
     return {
 
         "function": (
@@ -268,11 +282,7 @@ def _estilo_filas():
 
             "{fontWeight: '600', backgroundColor: '#FBF3DC', color: '#173C73'} : "
 
-            "(params.node.rowIndex % 2 === 0 ? "
-
-            "{backgroundColor: '#FFFFFF', color: '#3A3F44'} : "
-
-            "{backgroundColor: '#FAFAF5', color: '#3A3F44'})"
+            "{backgroundColor: '#FFFFFF', color: '#3A3F44'}"
 
         )
 
@@ -462,6 +472,8 @@ def estilo_grid(alto_px):
         "width": "100%",
 
         "height": f"{alto_px}px",
+
+        "transition": "height 0.15s ease-out",
 
         "--ag-font-size": "18px",
 
