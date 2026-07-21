@@ -18,8 +18,9 @@ from ventas.analisis import arbol_ventas, total_general_arbol, filas_visibles
 from ventas.aggrid import (
     crear_aggrid,
     crear_encabezado_periodo,
-    calcular_altura_grid,
-    estilo_grid
+    configuracion_tamano,
+    estilo_grid,
+    opciones_grid
 )
 
 
@@ -1130,6 +1131,8 @@ def registrar_callbacks_ventas(app):
 
         Output("tabla-ventas", "style"),
 
+        Output("tabla-ventas", "dashGridOptions"),
+
         Input("store-arbol-expandido", "data"),
 
         State("store-arbol-completo", "data"),
@@ -1144,7 +1147,7 @@ def registrar_callbacks_ventas(app):
 
         if arbol_data is None:
 
-            return no_update, no_update
+            return no_update, no_update, no_update
 
         arbol = pd.DataFrame(arbol_data)
 
@@ -1156,7 +1159,7 @@ def registrar_callbacks_ventas(app):
 
         )
 
-        alto = calcular_altura_grid(
+        opciones_extra, alto = configuracion_tamano(
 
             len(visibles),
 
@@ -1164,11 +1167,15 @@ def registrar_callbacks_ventas(app):
 
         )
 
+        pinned = [total] if total else None
+
         return (
 
             visibles.to_dict("records"),
 
-            estilo_grid(alto)
+            estilo_grid(alto),
+
+            opciones_grid(pinned, opciones_extra)
 
         )
 

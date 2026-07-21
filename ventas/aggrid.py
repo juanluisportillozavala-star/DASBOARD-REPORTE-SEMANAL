@@ -318,8 +318,31 @@ ALTO_ENCABEZADO = 38
 
 ALTO_MAXIMO = 2400
 
+UMBRAL_SCROLL = 40
+
 
 def calcular_altura_grid(cantidad_filas, hay_total=True):
+
+    """
+    NOTA sobre el "+ margen": antes era solo "+ 4", un número
+    calculado a ojo. El problema real: cada fila tiene su
+    propia línea divisoria (borde de ~1px) y la fila fija
+    (TOTAL GENERAL) tiene su propio separador — si el cálculo
+    se queda CORTO por aunque sea 1-2px, AG Grid activa su
+    scroll interno justo en el límite, y ese scroll aparece y
+    desaparece solo en cada recálculo de layout: eso es lo que
+    se ve como "temblor", siempre pegado a la esquina inferior
+    derecha (donde vive la barra de scroll). Mejor sobrar unos
+    pixeles de margen que faltar uno solo.
+
+    Esta función SOLO se usa cuando hay MUCHAS filas (arriba
+    de UMBRAL_SCROLL) — con pocas filas se usa domLayout=
+    "autoHeight" en vez de esto (ver configuracion_tamano),
+    que no necesita adivinar nada porque AG Grid mide su
+    propio contenido exacto.
+    """
+
+    margen = (cantidad_filas * 1) + 24
 
     alto_contenido = (
 
@@ -329,16 +352,83 @@ def calcular_altura_grid(cantidad_filas, hay_total=True):
 
         + (ALTO_FILA if hay_total else 0)
 
-        + 4
+        + margen
 
     )
 
     return min(alto_contenido, ALTO_MAXIMO)
 
 
+def configuracion_tamano(cantidad_filas, hay_total=True):
+
+    """
+    Decide CÓMO debe medirse el grid, según cuántas filas hay:
+
+    - Pocas filas (la gran mayoría de los casos): domLayout=
+      "autoHeight". AG Grid mide su PROPIO contenido exacto,
+      sin que nosotros adivinemos nada en pixeles — cero
+      riesgo de quedarnos cortos por 1-2px y disparar el
+      scroll fantasma que causaba el "temblor".
+
+    - Muchas filas (arriba de UMBRAL_SCROLL): ya no es
+      práctico mostrar todo sin scroll, así que se usa una
+      altura acotada con scroll interno propio (con margen de
+      sobra, ver calcular_altura_grid) — el encabezado queda
+      fijo mientras se hace scroll, como pediste.
+
+    Regresa (dashGridOptions_extra, altura_para_style).
+    """
+
+    if cantidad_filas <= UMBRAL_SCROLL:
+
+        return (
+
+            {"domLayout": "autoHeight"},
+
+            "auto"
+
+        )
+
+    alto = calcular_altura_grid(cantidad_filas, hay_total=hay_total)
+
+    return (
+
+        {},
+
+        f"{alto}px"
+
+    )
+
+
 # =========================================================
 # AG GRID (100% COMMUNITY)
 # =========================================================
+
+def opciones_grid(pinned, opciones_extra):
+
+    """
+    Arma el diccionario COMPLETO de dashGridOptions. Pública
+    por la misma razón que estilo_grid(): "dashGridOptions"
+    reemplaza todo el diccionario de golpe, así que el
+    callback de expandir en callbacks.py también necesita
+    esta función para no perder animateRows/rowHeight/etc.
+    al actualizarlo ligeramente.
+    """
+
+    return {
+
+        "animateRows": False,
+
+        "rowHeight": ALTO_FILA,
+
+        "headerHeight": ALTO_ENCABEZADO,
+
+        "pinnedBottomRowData": pinned,
+
+        **opciones_extra
+
+    }
+
 
 def crear_aggrid(df, fila_total=None):
 
@@ -371,7 +461,13 @@ def crear_aggrid(df, fila_total=None):
 
     pinned = [fila_total] if fila_total else None
 
-    alto_grid = calcular_altura_grid(len(df), hay_total=bool(pinned))
+    opciones_extra, alto_estilo = configuracion_tamano(
+
+        len(df),
+
+        hay_total=bool(pinned)
+
+    )
 
     return dag.AgGrid(
 
@@ -428,28 +524,18 @@ def crear_aggrid(df, fila_total=None):
         # (pinnedBottomRowData) va aquí adentro, no como kwarg
         # de nivel superior.
         #
-        # Sin domLayout="autoHeight" y sin paginación: con
-        # altura acotada (ver alto_grid arriba), AG Grid usa su
-        # scroll interno normal, que trae encabezado fijo de
-        # fábrica — no hace falta configurar nada extra para
-        # eso.
+        # "domLayout" se agrega condicionalmente (ver
+        # configuracion_tamano): con pocas filas se usa
+        # "autoHeight" para que AG Grid mida su propio
+        # contenido exacto; con muchas, se omite y se usa la
+        # altura acotada + scroll interno de estilo_grid.
         # -----------------------------------------------------
 
-        dashGridOptions={
-
-            "animateRows": False,
-
-            "rowHeight": ALTO_FILA,
-
-            "headerHeight": ALTO_ENCABEZADO,
-
-            "pinnedBottomRowData": pinned
-
-        },
+        dashGridOptions=opciones_grid(pinned, opciones_extra),
 
         className="ag-theme-alpine",
 
-        style=estilo_grid(alto_grid)
+        style=estilo_grid(alto_estilo)
 
     )
 
@@ -465,13 +551,19 @@ def crear_aggrid(df, fila_total=None):
 # si solo se manda {"height": ...} se pierden los colores.
 # =========================================================
 
-def estilo_grid(alto_px):
+def estilo_grid(alto):
+
+    """
+    alto: string listo para usarse tal cual como CSS height,
+    p.ej. "auto" (domLayout=autoHeight) o "640px" (altura
+    acotada con scroll). Viene de configuracion_tamano().
+    """
 
     return {
 
         "width": "100%",
 
-        "height": f"{alto_px}px",
+        "height": alto,
 
         "transition": "height 0.15s ease-out",
 
