@@ -335,44 +335,58 @@ def crear_layout_ventas():
             html.Br(),
 
             # ==========================================
-            # ESTADO
+            # ESTADO (oculto)
+            #
+            # La tarjeta ya no se muestra en pantalla, pero el
+            # div "estado-proceso" SIGUE existiendo: el callback
+            # procesar_archivos escribe aquí, así que si algo
+            # falla el mensaje se genera (aunque no se vea). Esto
+            # evita un fallo silencioso y deja el callback intacto
+            # (no hay que quitarle el Output "estado-proceso").
+            # Para reactivarlo en el futuro: quitar el display none.
             # ==========================================
 
-            dbc.Card(
+            html.Div(
 
-                dbc.CardBody(
+                dbc.Card(
 
-                    [
+                    dbc.CardBody(
 
-                        html.H4(
+                        [
 
-                            [
+                            html.H4(
 
-                                html.I(
+                                [
 
-                                    className="fas fa-circle-info me-2"
+                                    html.I(
 
-                                ),
+                                        className="fas fa-circle-info me-2"
 
-                                "Estado del procesamiento"
+                                    ),
 
-                            ]
+                                    "Estado del procesamiento"
 
-                        ),
+                                ]
 
-                        html.Hr(),
+                            ),
 
-                        html.Div(
+                            html.Hr(),
 
-                            id="estado-proceso"
+                            html.Div(
 
-                        )
+                                id="estado-proceso"
 
-                    ]
+                            )
+
+                        ]
+
+                    ),
+
+                    className="card-premium"
 
                 ),
 
-                className="card-premium"
+                style={"display": "none"}
 
             )
 
