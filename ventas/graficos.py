@@ -138,21 +138,69 @@ def fig_venta_vs_margen(df, columna_dim, n=10):
         marker=dict(color=DORADO, size=8), yaxis="y2",
         hovertemplate="<b>%{x}</b><br>Margen: %{y:.1f}%<extra></extra>",
     ))
-    base = _layout_base("Venta vs Margen % (Top 10 Productos)")
+    base = _layout_base("")
     base["yaxis"] = dict(title="Venta MN", gridcolor=GRIS_CLARO, zeroline=False)
     base["yaxis2"] = dict(title="Margen %", overlaying="y", side="right",
                           showgrid=False, zeroline=False, ticksuffix="%")
     base["xaxis"] = dict(tickangle=-40, gridcolor=GRIS_CLARO)
-    # leyenda a la DERECHA arriba, para no pisar el título (que va
-    # a la izquierda). Así conviven sin encimarse.
-    base["legend"] = dict(orientation="h", yanchor="bottom", y=1.06,
-                          xanchor="right", x=1)
-    base["title"] = dict(text="Venta vs Margen % (Top 10 Productos)",
-                         font=dict(color=AZUL, size=18), y=0.99, yanchor="top")
-    base["height"] = 480
-    base["margin"] = dict(l=10, r=20, t=90, b=90)  # más aire arriba (título+leyenda) y abajo (nombres inclinados)
-    base["hovermode"] = "x unified"  # muestra venta y margen juntos al apuntar
+    # sin título interno (va como encabezado HTML afuera); leyenda
+    # centrada arriba, con aire suficiente porque no compite con nada.
+    base["legend"] = dict(orientation="h", yanchor="bottom", y=1.02,
+                          xanchor="center", x=0.5)
+    base["title"] = None
+    base["height"] = 470
+    base["margin"] = dict(l=10, r=20, t=50, b=90)
+    base["hovermode"] = "x unified"
     fig.update_layout(**base)
+    return fig
+
+
+def fig_participacion(df, columna_dim, titulo, n=6):
+    """Dona de participación: Top N por Utilidad Bruta + 'Otros'
+    agrupado. Muestra qué tan concentrado está el negocio. Tonos
+    de azul (del más oscuro al más claro) + dorado, 'Otros' gris."""
+    if df is None or len(df) == 0 or columna_dim not in df.columns:
+        fig = go.Figure(); fig.update_layout(**_layout_base(""))
+        fig.add_annotation(text="Sin datos para el periodo",
+                           showarrow=False, font=dict(color=GRIS, size=14))
+        return fig
+
+    serie = df.groupby(columna_dim)[C.UT_BRUTA].sum().sort_values(ascending=False)
+    total = float(serie.sum())
+    top = serie.head(n)
+    otros = float(serie.iloc[n:].sum())
+
+    etiquetas = [str(x)[:26] for x in top.index.tolist()]
+    valores = [float(v) for v in top.tolist()]
+    if otros > 0:
+        etiquetas.append("Otros")
+        valores.append(otros)
+
+    # paleta: gradiente de azules + dorado, y gris para "Otros"
+    colores = ["#0B2D5B", "#173C73", "#2C5090", "#3D6BB3", "#5A85C7",
+               "#D4AF37", "#8FA9CC"]
+    colores = colores[:len(valores)]
+    if otros > 0:
+        colores[-1] = GRIS  # "Otros" siempre gris
+
+    fig = go.Figure(go.Pie(
+        labels=etiquetas, values=valores, hole=0.55,
+        marker=dict(colors=colores, line=dict(color=BLANCO, width=2)),
+        textinfo="percent", textposition="inside",
+        textfont=dict(color=BLANCO, size=12),
+        hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>",
+        sort=False,
+    ))
+    base = _layout_base("")
+    base["height"] = 400
+    base["margin"] = dict(l=10, r=10, t=20, b=40)
+    base["legend"] = dict(orientation="h", yanchor="top", y=0,
+                          xanchor="center", x=0.5, font=dict(size=11))
+    # total en el centro de la dona
+    fig.update_layout(**base)
+    fig.add_annotation(text=f"<b>Total</b><br>${total:,.0f}",
+                       showarrow=False, font=dict(color=AZUL, size=13),
+                       x=0.5, y=0.5, xanchor="center", yanchor="middle")
     return fig
 
 
@@ -184,11 +232,46 @@ def crear_layout_graficos():
                        "marginBottom": "10px"},
             ),
             html.Div(
-                dcc.Graph(id="grafico-venta-margen",
-                          responsive=False,
-                          config={"displayModeBar": False},
-                          style={"height": "500px"}),
+                [
+                    html.H4("Venta vs Margen % (Top 10 Productos)",
+                            style={"color": AZUL, "fontWeight": "700",
+                                   "marginBottom": "4px"}),
+                    dcc.Graph(id="grafico-venta-margen",
+                              responsive=False,
+                              config={"displayModeBar": False},
+                              style={"height": "500px"}),
+                ],
                 style={"marginTop": "30px"},
+            ),
+            html.H4("Participación / Concentración (por Utilidad Bruta)",
+                    style={"color": AZUL, "fontWeight": "700",
+                           "marginTop": "34px", "marginBottom": "4px"}),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H5("Por Producto",
+                                    style={"color": AZUL, "textAlign": "center",
+                                           "marginBottom": "0"}),
+                            dcc.Graph(id="grafico-part-productos",
+                                      responsive=False,
+                                      config={"displayModeBar": False},
+                                      style={"height": "400px"}),
+                        ],
+                        style={"flex": "1", "minWidth": "380px"}),
+                    html.Div(
+                        [
+                            html.H5("Por Cliente",
+                                    style={"color": AZUL, "textAlign": "center",
+                                           "marginBottom": "0"}),
+                            dcc.Graph(id="grafico-part-clientes",
+                                      responsive=False,
+                                      config={"displayModeBar": False},
+                                      style={"height": "400px"}),
+                        ],
+                        style={"flex": "1", "minWidth": "380px"}),
+                ],
+                style={"display": "flex", "flexWrap": "wrap", "gap": "30px"},
             ),
         ],
         style={"padding": "10px 4px"},
@@ -201,6 +284,8 @@ def registrar_callbacks_graficos(app):
         Output("grafico-top-productos", "figure"),
         Output("grafico-top-clientes", "figure"),
         Output("grafico-venta-margen", "figure"),
+        Output("grafico-part-productos", "figure"),
+        Output("grafico-part-clientes", "figure"),
         Input("store-bd-ventas", "data"),
         Input("store-mes", "data"),
         Input("store-semana", "data"),
@@ -209,7 +294,7 @@ def registrar_callbacks_graficos(app):
         if data is None:
             vacio = go.Figure()
             vacio.update_layout(**_layout_base("Sin datos"))
-            return vacio, vacio, vacio
+            return vacio, vacio, vacio, vacio, vacio
 
         df = pd.DataFrame(data)
         df_f = filtrar_dataframe(df, meses=meses, semanas=semanas)
@@ -238,4 +323,14 @@ def registrar_callbacks_graficos(app):
         else:
             fig_vm = go.Figure(); fig_vm.update_layout(**_layout_base("Venta vs Margen %"))
 
-        return fig_prod, fig_cli, fig_vm
+        # Participación (donas) por producto y por cliente
+        if col_prod:
+            fig_pp = fig_participacion(df_f, col_prod, "Por Producto", n=6)
+        else:
+            fig_pp = go.Figure(); fig_pp.update_layout(**_layout_base(""))
+        if col_cli:
+            fig_pc = fig_participacion(df_f, col_cli, "Por Cliente", n=6)
+        else:
+            fig_pc = go.Figure(); fig_pc.update_layout(**_layout_base(""))
+
+        return fig_prod, fig_cli, fig_vm, fig_pp, fig_pc
