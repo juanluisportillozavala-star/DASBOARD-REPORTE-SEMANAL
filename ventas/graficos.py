@@ -23,6 +23,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from core import columnas as C
+from core.metricas import margen as _margen
 from ventas.filtros import filtrar_dataframe
 
 
@@ -109,8 +110,6 @@ def fig_venta_vs_margen(df, columna_dim, n=10):
     """Combo: barras de Venta (azul) + línea de Margen % (dorado)
     sobre eje secundario. Top N por Venta. Sirve para ver qué
     entradas venden mucho pero con margen bajo (o al revés)."""
-    from core.metricas import margen as _margen
-
     if df is None or len(df) == 0 or columna_dim not in df.columns:
         fig = go.Figure(); fig.update_layout(**_layout_base("Venta vs Margen %"))
         fig.add_annotation(text="Sin datos para el periodo",
