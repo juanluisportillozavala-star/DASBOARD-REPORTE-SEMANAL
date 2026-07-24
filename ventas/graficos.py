@@ -93,11 +93,15 @@ def fig_top_barras(df, columna_dim, columna_metrica, titulo, moneda=True):
     fig = go.Figure(go.Bar(
         x=val, y=dim, orientation="h",
         marker_color=AZUL,
-        text=[fmt(v) for v in val], textposition="auto",
-        textfont=dict(color=BLANCO),
+        text=[fmt(v) for v in val],
+        textposition="outside",          # SIEMPRE afuera: visible en barras chicas
+        textfont=dict(color=AZUL, size=12),
+        cliponaxis=False,                # que el texto no se recorte en el borde
         hovertemplate="%{y}<br>" + ("$" if moneda else "") + "%{x:,.2f}<extra></extra>",
     ))
     fig.update_layout(**_layout_base(titulo))
+    # margen derecho amplio para que quepan las etiquetas de valor afuera
+    fig.update_layout(margin=dict(l=10, r=90, t=50, b=30))
     return fig
 
 
