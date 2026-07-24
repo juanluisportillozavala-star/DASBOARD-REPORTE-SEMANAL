@@ -26,9 +26,10 @@ from ventas.tabla_arbol import crear_layout_tabla, registrar_callbacks_tablas
 # -------------------------------------------------------
 
 TABLAS = [
+    {"clave": "vend_cli_prod", "niveles": ["Vendedor", "Cliente", "Producto"]},
     {"clave": "prod_cli", "niveles": ["Producto", "Cliente"]},
-    # {"clave": "cli_prod", "niveles": ["Cliente", "Producto"]},
-    # {"clave": "vend_prod", "niveles": ["Vendedor", "Producto"]},
+    {"clave": "cli_prod", "niveles": ["Cliente", "Producto"]},
+    {"clave": "vend_prod", "niveles": ["Vendedor", "Producto"]},
 ]
 
 

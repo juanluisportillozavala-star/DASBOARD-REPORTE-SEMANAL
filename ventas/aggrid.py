@@ -24,8 +24,7 @@ crear_aggrid() con las filas visibles actualizadas.
 IMPORTANTE: no hay filtro ni ordenamiento nativo de columnas.
 El sort nativo se quitó porque reordena TODAS las filas
 visibles juntas, rompiendo la jerarquía. El orden se controla
-con el comparador jerárquico (ver _columnas / comparador_
-jerarquico en analisis.py).
+desde Python con el dropdown "Ordenar por" (ver ventas/tabla_arbol.py).
 """
 
 import dash_ag_grid as dag
@@ -36,21 +35,13 @@ from dash import html
 # =========================================================
 # DEFINICIÓN DE COLUMNAS
 #
-# titulo_concepto: encabezado de la primera columna. Antes
-# estaba fijo en "Vendedor / Cliente / Producto"; ahora es
-# parámetro para que cada tabla (Producto/Cliente,
-# Cliente/Producto, etc.) muestre su propio título. El
-# default conserva el texto de la tabla original, así la
-# llamada existente no cambia de comportamiento.
+# titulo_concepto: encabezado de la primera columna, parámetro
+# para que cada tabla muestre su propio título.
 # =========================================================
 
 def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
     return [
-
-        # ---------------------------------------------
-        # CONCEPTO (la jerarquía)
-        # ---------------------------------------------
 
         {
 
@@ -74,10 +65,6 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
         },
 
-        # ---------------------------------------------
-        # CANTIDAD
-        # ---------------------------------------------
-
         {
 
             "field": "Cantidad",
@@ -97,10 +84,6 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
             }
 
         },
-
-        # ---------------------------------------------
-        # UTILIDAD UNITARIA
-        # ---------------------------------------------
 
         {
 
@@ -122,10 +105,6 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
         },
 
-        # ---------------------------------------------
-        # VENTA
-        # ---------------------------------------------
-
         {
 
             "field": "Venta",
@@ -146,10 +125,6 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
         },
 
-        # ---------------------------------------------
-        # UTILIDAD BRUTA
-        # ---------------------------------------------
-
         {
 
             "field": "Utilidad Bruta",
@@ -169,10 +144,6 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
             }
 
         },
-
-        # ---------------------------------------------
-        # MARGEN %
-        # ---------------------------------------------
 
         {
 
@@ -234,18 +205,17 @@ def _estilo_filas():
 
 
 # =========================================================
-# ALTURA DEL GRID
+# ALTURA DEL GRID (ADAPTATIVA)
 #
-# CAMBIO (encabezado azul fijo): antes, con pocas filas se
-# usaba domLayout="autoHeight" y el grid crecía sin scroll
-# interno propio — al hacer scroll de la PÁGINA, el encabezado
-# de columnas se iba de la vista. Ahora se usa SIEMPRE una
-# altura fija por viewport (ALTO_VIEWPORT) con scroll interno,
-# así el encabezado de columnas queda clavado arriba de la
-# tabla al desplazarse, en todas las tablas por igual.
+# - Pocas filas (<= UMBRAL_SCROLL): domLayout="autoHeight". El
+#   grid se ajusta EXACTO a su contenido, sin bloque vacío
+#   debajo (caso de la tabla con 3 vendedores sin expandir).
+# - Muchas filas (> UMBRAL_SCROLL): altura fija por viewport
+#   con scroll interno, así el encabezado de columnas queda
+#   pegado arriba al desplazarse.
 #
-# calcular_altura_grid() se deja SIN borrar por si se quiere
-# volver al comportamiento adaptativo anterior; hoy no se usa.
+# calcular_altura_grid() se conserva SIN uso por si se quiere
+# volver a una altura en px calculada.
 # =========================================================
 
 ALTO_FILA = 34
@@ -254,22 +224,17 @@ ALTO_ENCABEZADO = 38
 
 ALTO_MAXIMO = 2400
 
-UMBRAL_SCROLL = 40
+UMBRAL_SCROLL = 15
 
-# Altura fija del grid como fracción de la ventana. Con esto
-# el encabezado de columnas queda fijo. Ajustable a gusto:
-# "60vh" más compacto, "80vh" casi pantalla completa.
+# Altura fija SOLO cuando hay muchas filas (> UMBRAL_SCROLL).
+# Ajustable: "60vh" más compacto, "80vh" casi pantalla completa.
 ALTO_VIEWPORT = "70vh"
 
 
 def calcular_altura_grid(cantidad_filas, hay_total=True):
 
     """
-    (EN DESUSO tras fijar el encabezado — se conserva por si se
-    quiere volver a la altura adaptativa.)
-
-    Altura en px calculada a partir del nº de filas, con margen
-    de sobra para no disparar el scroll fantasma ("temblor").
+    (EN DESUSO — se conserva por si se quiere altura en px.)
     """
 
     margen = (cantidad_filas * 1) + 24
@@ -294,21 +259,17 @@ def configuracion_tamano(cantidad_filas, hay_total=True):
     """
     Devuelve (dashGridOptions_extra, altura_para_style).
 
-    Ahora SIEMPRE usa altura fija por viewport con scroll
-    interno (sin domLayout="autoHeight"), para que el
-    encabezado de columnas quede fijo al hacer scroll dentro
-    de la tabla. El parámetro cantidad_filas ya no cambia la
-    decisión, pero se mantiene en la firma porque callbacks.py
-    y los módulos de tabla llaman a esta función con él.
+    ADAPTATIVA:
+    - <= UMBRAL_SCROLL filas: autoHeight (compacto, sin vacío).
+    - > UMBRAL_SCROLL filas: altura fija viewport + scroll, con
+      el encabezado de columnas pegado arriba.
     """
 
-    return (
+    if cantidad_filas <= UMBRAL_SCROLL:
 
-        {},
+        return ({"domLayout": "autoHeight"}, "auto")
 
-        ALTO_VIEWPORT
-
-    )
+    return ({}, ALTO_VIEWPORT)
 
 
 # =========================================================
@@ -410,8 +371,8 @@ def crear_aggrid(df, fila_total=None, id_grid="tabla-ventas",
 def estilo_grid(alto):
 
     """
-    alto: string CSS height listo, p.ej. "70vh". Viene de
-    configuracion_tamano().
+    alto: string CSS height listo, p.ej. "70vh" o "auto".
+    Viene de configuracion_tamano().
     """
 
     return {

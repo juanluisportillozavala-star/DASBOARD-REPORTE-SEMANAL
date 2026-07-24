@@ -285,15 +285,7 @@ def crear_layout_ventas():
             html.Br(),
 
 
-            # ==========================================
-            # TABLAS
-            # ==========================================
 
-            html.Div(
-
-                id="contenedor-tablas"
-
-            ),
 
             # ==========================================
             # TABLA Producto / Cliente (nueva)
