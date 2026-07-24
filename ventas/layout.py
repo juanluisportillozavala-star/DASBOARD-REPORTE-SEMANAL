@@ -9,6 +9,7 @@ import dash_bootstrap_components as dbc
 
 from ventas.controles import crear_controles
 from ventas.tablas_ventas import crear_layout_tablas_ventas
+from ventas.graficos import crear_layout_graficos
 
 
 def crear_layout_ventas():
@@ -288,7 +289,7 @@ def crear_layout_ventas():
 
 
             # ==========================================
-            # TABLA Producto / Cliente (nueva)
+            # TABLAS DINÁMICAS (fábrica)
             # ==========================================
 
             html.Br(),
@@ -304,7 +305,7 @@ def crear_layout_ventas():
             html.Br(),
 
             # ==========================================
-            # GRAFICAS
+            # GRAFICAS (dentro del accordion reservado)
             # ==========================================
 
             dbc.Accordion(
@@ -315,11 +316,7 @@ def crear_layout_ventas():
 
                         [
 
-                            html.Div(
-
-                                id="contenedor-graficas"
-
-                            )
+                            crear_layout_graficos()
 
                         ],
 
