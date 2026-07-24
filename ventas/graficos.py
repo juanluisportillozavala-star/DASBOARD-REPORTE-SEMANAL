@@ -46,9 +46,11 @@ def _layout_base(titulo, alto=380):
         paper_bgcolor=BLANCO,
         font=dict(color=AZUL, family="Segoe UI, Arial, sans-serif"),
         height=alto,
+        autosize=False,          # evita el bucle de recálculo de tamaño
+        transition=dict(duration=0),  # sin animación (era el "se expande sin parar")
         margin=dict(l=10, r=20, t=50, b=30),
         xaxis=dict(gridcolor=GRIS_CLARO, zeroline=False),
-        yaxis=dict(gridcolor=GRIS_CLARO, zeroline=False),
+        yaxis=dict(gridcolor=GRIS_CLARO, zeroline=False, automargin=True),
     )
 
 
@@ -80,9 +82,12 @@ def fig_top_barras(df, columna_dim, columna_metrica, titulo, moneda=True):
                            showarrow=False, font=dict(color=GRIS, size=14))
         return fig
 
-    # invertir para que el mayor quede ARRIBA en barras horizontales
-    dim = df[columna_dim].astype(str).str[:32][::-1]
-    val = df[columna_metrica][::-1]
+    # invertir para que el mayor quede ARRIBA en barras horizontales.
+    # IMPORTANTE: usar LISTAS planas, no Series de pandas — una Series
+    # invertida con [::-1] conserva su índice invertido y Plotly puede
+    # desalinear x/y al reordenar por índice (bug de la "barra única").
+    dim = [str(x)[:32] for x in df[columna_dim].tolist()][::-1]
+    val = [float(v) for v in df[columna_metrica].tolist()][::-1]
     fmt = (lambda v: f"${v:,.0f}") if moneda else (lambda v: f"{v:,.0f}")
 
     fig = go.Figure(go.Bar(
@@ -109,9 +114,15 @@ def crear_layout_graficos():
                            "marginTop": "20px", "marginBottom": "16px"}),
             html.Div(
                 [
-                    html.Div(dcc.Graph(id="grafico-top-productos"),
+                    html.Div(dcc.Graph(id="grafico-top-productos",
+                                       responsive=False,
+                                       config={"displayModeBar": False},
+                                       style={"height": "400px"}),
                              style={"flex": "1", "minWidth": "420px"}),
-                    html.Div(dcc.Graph(id="grafico-top-clientes"),
+                    html.Div(dcc.Graph(id="grafico-top-clientes",
+                                       responsive=False,
+                                       config={"displayModeBar": False},
+                                       style={"height": "400px"}),
                              style={"flex": "1", "minWidth": "420px"}),
                 ],
                 style={"display": "flex", "flexWrap": "wrap", "gap": "20px"},
