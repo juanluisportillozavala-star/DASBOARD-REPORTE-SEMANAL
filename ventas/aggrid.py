@@ -222,7 +222,7 @@ ALTO_FILA = 34
 
 ALTO_ENCABEZADO = 38
 
-ALTO_MAXIMO = 2400
+ALTO_MAXIMO = 650
 
 UMBRAL_SCROLL = 15
 
@@ -259,17 +259,23 @@ def configuracion_tamano(cantidad_filas, hay_total=True):
     """
     Devuelve (dashGridOptions_extra, altura_para_style).
 
-    ADAPTATIVA:
-    - <= UMBRAL_SCROLL filas: autoHeight (compacto, sin vacío).
-    - > UMBRAL_SCROLL filas: altura fija viewport + scroll, con
-      el encabezado de columnas pegado arriba.
+    Usa SIEMPRE altura en píxeles calculada por calcular_altura_grid:
+    - Pocas filas -> altura pequeña, ajustada al contenido (sin
+      bloque vacío debajo).
+    - Muchas filas -> crece hasta ALTO_MAXIMO y ahí se topa,
+      activando scroll interno con el encabezado pegado.
+
+    Por qué NO autoHeight: alternar domLayout entre "autoHeight"
+    (pocas filas) y normal (muchas) al expandir/contraer NO lo
+    aplica bien AG Grid en vivo — el grid se queda en autoHeight
+    y crece sin tope, chocando con lo de abajo. Con una altura en
+    px que solo cambia de número, no hay esa transición y el tope
+    (ALTO_MAXIMO) siempre se respeta.
     """
 
-    if cantidad_filas <= UMBRAL_SCROLL:
+    alto = calcular_altura_grid(cantidad_filas, hay_total=hay_total)
 
-        return ({"domLayout": "autoHeight"}, "auto")
-
-    return ({}, ALTO_VIEWPORT)
+    return ({}, f"{alto}px")
 
 
 # =========================================================
