@@ -130,21 +130,28 @@ def fig_venta_vs_margen(df, columna_dim, n=10):
     fig.add_trace(go.Bar(
         x=x, y=ventas, name="Venta MN",
         marker_color=AZUL, yaxis="y",
-        hoverinfo="skip",
+        hovertemplate="<b>%{x}</b><br>Venta: $%{y:,.0f}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=x, y=margenes, name="Margen %",
         mode="lines+markers", line=dict(color=DORADO, width=3),
         marker=dict(color=DORADO, size=8), yaxis="y2",
-        hoverinfo="skip",
+        hovertemplate="<b>%{x}</b><br>Margen: %{y:.1f}%<extra></extra>",
     ))
     base = _layout_base("Venta vs Margen % (Top 10 Productos)")
     base["yaxis"] = dict(title="Venta MN", gridcolor=GRIS_CLARO, zeroline=False)
     base["yaxis2"] = dict(title="Margen %", overlaying="y", side="right",
                           showgrid=False, zeroline=False, ticksuffix="%")
     base["xaxis"] = dict(tickangle=-40, gridcolor=GRIS_CLARO)
-    base["legend"] = dict(orientation="h", yanchor="bottom", y=1.02, x=0)
-    base["height"] = 440
+    # leyenda a la DERECHA arriba, para no pisar el título (que va
+    # a la izquierda). Así conviven sin encimarse.
+    base["legend"] = dict(orientation="h", yanchor="bottom", y=1.06,
+                          xanchor="right", x=1)
+    base["title"] = dict(text="Venta vs Margen % (Top 10 Productos)",
+                         font=dict(color=AZUL, size=18), y=0.99, yanchor="top")
+    base["height"] = 480
+    base["margin"] = dict(l=10, r=20, t=90, b=90)  # más aire arriba (título+leyenda) y abajo (nombres inclinados)
+    base["hovermode"] = "x unified"  # muestra venta y margen juntos al apuntar
     fig.update_layout(**base)
     return fig
 
@@ -159,30 +166,32 @@ def crear_layout_graficos():
         [
             html.H3("Análisis gráfico",
                     style={"color": AZUL, "fontWeight": "700",
-                           "marginTop": "20px", "marginBottom": "16px"}),
+                           "marginTop": "10px", "marginBottom": "28px"}),
             html.Div(
                 [
                     html.Div(dcc.Graph(id="grafico-top-productos",
                                        responsive=False,
                                        config={"displayModeBar": False},
                                        style={"height": "400px"}),
-                             style={"flex": "1", "minWidth": "420px"}),
+                             style={"flex": "1", "minWidth": "440px"}),
                     html.Div(dcc.Graph(id="grafico-top-clientes",
                                        responsive=False,
                                        config={"displayModeBar": False},
                                        style={"height": "400px"}),
-                             style={"flex": "1", "minWidth": "420px"}),
+                             style={"flex": "1", "minWidth": "440px"}),
                 ],
-                style={"display": "flex", "flexWrap": "wrap", "gap": "20px"},
+                style={"display": "flex", "flexWrap": "wrap", "gap": "30px",
+                       "marginBottom": "10px"},
             ),
             html.Div(
                 dcc.Graph(id="grafico-venta-margen",
                           responsive=False,
                           config={"displayModeBar": False},
-                          style={"height": "460px"}),
-                style={"marginTop": "20px"},
+                          style={"height": "500px"}),
+                style={"marginTop": "30px"},
             ),
-        ]
+        ],
+        style={"padding": "10px 4px"},
     )
 
 
