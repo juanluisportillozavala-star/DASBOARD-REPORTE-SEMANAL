@@ -8,7 +8,7 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 from ventas.controles import crear_controles
-from ventas.tabla_producto_cliente import crear_layout_tabla_pc
+from ventas.tablas_ventas import crear_layout_tablas_ventas
 
 
 def crear_layout_ventas():
@@ -301,7 +301,7 @@ def crear_layout_ventas():
 
             html.Br(),
 
-            crear_layout_tabla_pc(),
+            crear_layout_tablas_ventas(),
 
             # Debug: muestra resumen corto del store de ventas
             html.Div(
