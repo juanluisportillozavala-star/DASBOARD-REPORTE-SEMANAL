@@ -29,25 +29,43 @@ from dash import Input, Output, State, html, dcc, no_update, MATCH
 import pandas as pd
 
 from ventas.filtros import filtrar_dataframe
+from core import columnas as C
 from ventas.aggrid import (
     crear_aggrid, crear_encabezado_periodo,
     configuracion_tamano, estilo_grid, opciones_grid,
 )
 from core.arbol import (
     construir_arbol, total_general, filas_visibles,
-    COLUMNAS_ORDEN_VALIDAS,
+    COLUMNAS_ORDEN_VALIDAS, ORDEN_ALFABETICO,
 )
 
 
-# Métricas ofrecidas en el dropdown "Ordenar por"
+# Dropdown único "Ordenar por": cada opción codifica métrica y
+# dirección en un solo value "columna|asc" o "columna|desc".
+# ORDEN_ALFABETICO ordena por el nombre de la primera columna.
 OPCIONES_ORDEN = [
-    {"label": "Ut Bruta MN", "value": "Utilidad Bruta"},
-    {"label": "Venta MN", "value": "Venta"},
-    {"label": "Cantidad", "value": "Cantidad"},
-    {"label": "Margen %", "value": "Margen %"},
-    {"label": "Ut. Unitaria", "value": "Utilidad Unitaria"},
+    {"label": "Ut Bruta MN ↓", "value": "Utilidad Bruta|desc"},
+    {"label": "Ut Bruta MN ↑", "value": "Utilidad Bruta|asc"},
+    {"label": "Venta MN ↓", "value": "Venta|desc"},
+    {"label": "Venta MN ↑", "value": "Venta|asc"},
+    {"label": "Cantidad ↓", "value": "Cantidad|desc"},
+    {"label": "Cantidad ↑", "value": "Cantidad|asc"},
+    {"label": "Margen % ↓", "value": "Margen %|desc"},
+    {"label": "Margen % ↑", "value": "Margen %|asc"},
+    {"label": "Ut. Unitaria ↓", "value": "Utilidad Unitaria|desc"},
+    {"label": "Ut. Unitaria ↑", "value": "Utilidad Unitaria|asc"},
+    {"label": "Nombre A-Z", "value": f"{ORDEN_ALFABETICO}|asc"},
+    {"label": "Nombre Z-A", "value": f"{ORDEN_ALFABETICO}|desc"},
 ]
-ORDEN_POR_DEFECTO = "Utilidad Bruta"
+ORDEN_POR_DEFECTO = "Utilidad Bruta|desc"
+
+
+def _parse_orden(value):
+    """Convierte 'columna|asc' -> (columna, ascendente_bool)."""
+    if not value or "|" not in value:
+        return C.UTILIDAD_BRUTA, False
+    col, dirn = value.rsplit("|", 1)
+    return col, (dirn == "asc")
 
 
 # ---- Tipos de id (pattern-matching) ----
@@ -92,7 +110,7 @@ def crear_layout_tabla(clave, niveles, titulo=None):
                                 options=OPCIONES_ORDEN,
                                 value=ORDEN_POR_DEFECTO,
                                 clearable=False,
-                                style={"width": "200px"},
+                                style={"width": "230px"},
                             ),
                         ],
                         style={"display": "flex", "alignItems": "center"},
@@ -140,10 +158,12 @@ def registrar_callbacks_tablas(app):
             df = pd.DataFrame(data)
             df_f = filtrar_dataframe(df, meses=meses, semanas=semanas)
 
-            if orden not in COLUMNAS_ORDEN_VALIDAS:
-                orden = ORDEN_POR_DEFECTO
+            columna, ascendente = _parse_orden(orden)
+            if columna != ORDEN_ALFABETICO and columna not in COLUMNAS_ORDEN_VALIDAS:
+                columna, ascendente = C.UTILIDAD_BRUTA, False
 
-            arbol = construir_arbol(df_f, niveles=niveles, columna_orden=orden)
+            arbol = construir_arbol(df_f, niveles=niveles,
+                                    columna_orden=columna, ascendente=ascendente)
             total = total_general(df_f)
 
             col_fecha = "Asiento contable/Fecha de factura"

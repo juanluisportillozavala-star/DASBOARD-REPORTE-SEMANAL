@@ -31,7 +31,6 @@ jerarquico en analisis.py).
 import dash_ag_grid as dag
 from dash import html
 
-from ventas.analisis import comparador_jerarquico
 
 
 # =========================================================
@@ -89,13 +88,7 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
             "filter": False,
 
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Cantidad")
-
-            },
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -119,13 +112,7 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
             "filter": False,
 
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Utilidad Unitaria")
-
-            },
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -149,13 +136,7 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
             "filter": False,
 
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Venta")
-
-            },
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -179,13 +160,7 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
             "filter": False,
 
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Utilidad Bruta")
-
-            },
+            "sortable": False,
 
             "valueFormatter": {
 
@@ -209,13 +184,7 @@ def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
 
             "filter": False,
 
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Margen %")
-
-            },
+            "sortable": False,
 
             "valueFormatter": {
 

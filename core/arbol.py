@@ -54,7 +54,13 @@ def _rangos(df, grupo=None):
     return df
 
 
-def construir_arbol(df_crudo, niveles, columna_orden=C.UTILIDAD_BRUTA):
+# Valor especial de columna_orden para ordenar por el nombre
+# (texto del nivel) en vez de por una métrica numérica.
+ORDEN_ALFABETICO = "__alfabetico__"
+
+
+def construir_arbol(df_crudo, niveles, columna_orden=C.UTILIDAD_BRUTA,
+                    ascendente=False):
     """
     df_crudo: DataFrame de ventas enriquecido (columnas crudas
               de Odoo + Producto 2). El mismo insumo que usa el
@@ -62,9 +68,14 @@ def construir_arbol(df_crudo, niveles, columna_orden=C.UTILIDAD_BRUTA):
     niveles:  lista de dimensiones amigables, p.ej.
               ["Producto", "Cliente"]. Cada una debe estar en
               C.DIMENSION_A_RAW.
-    columna_orden: métrica de ordenamiento (default Ut Bruta MN).
+    columna_orden: métrica de ordenamiento (default Ut Bruta MN),
+              o ORDEN_ALFABETICO para ordenar por el nombre del
+              nivel (A-Z / Z-A).
+    ascendente: False = mayor a menor (o Z-A si alfabético);
+              True = menor a mayor (o A-Z si alfabético).
     """
-    if columna_orden not in COLUMNAS_ORDEN_VALIDAS:
+    alfabetico = (columna_orden == ORDEN_ALFABETICO)
+    if not alfabetico and columna_orden not in COLUMNAS_ORDEN_VALIDAS:
         columna_orden = C.UTILIDAD_BRUTA
 
     if df_crudo is None or len(df_crudo) == 0 or not niveles:
@@ -110,14 +121,17 @@ def construir_arbol(df_crudo, niveles, columna_orden=C.UTILIDAD_BRUTA):
         g = _rangos(g, grupo=padre)
         agregados.append(g)
 
-    # nivel más grueso (0) ordenado por columna_orden
-    agregados[0] = agregados[0].sort_values(columna_orden, ascending=False)
+    # nivel más grueso (0): por nombre (alfabético) o por métrica
+    col0 = niveles[0] if alfabetico else columna_orden
+    agregados[0] = agregados[0].sort_values(col0, ascending=ascendente)
 
     # ---- índices hijos-por-padre, para recorrido en profundidad ----
     # clave = tupla de valores de niveles[:k+1]
     hijos = []
     for k in range(len(niveles)):
-        g = agregados[k].sort_values(columna_orden, ascending=False)
+        # alfabético -> ordenar por el nombre del nivel k; si no, por métrica
+        col_k = niveles[k] if alfabetico else columna_orden
+        g = agregados[k].sort_values(col_k, ascending=ascendente)
         d = {}
         for reg in g.to_dict("records"):
             if k == 0:
