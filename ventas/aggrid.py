@@ -430,7 +430,7 @@ def opciones_grid(pinned, opciones_extra):
     }
 
 
-def crear_aggrid(df, fila_total=None):
+def crear_aggrid(df, fila_total=None, id_grid="tabla-ventas"):
 
     """
     df: DataFrame con las filas que deben mostrarse AHORA
@@ -471,7 +471,7 @@ def crear_aggrid(df, fila_total=None):
 
     return dag.AgGrid(
 
-        id="tabla-ventas",
+        id=id_grid,
 
         rowData=df.to_dict("records"),
 

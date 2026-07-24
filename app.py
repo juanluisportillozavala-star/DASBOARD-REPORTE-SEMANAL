@@ -20,6 +20,7 @@ from layouts.principal import crear_principal
 
 from callbacks.router_callbacks import registrar_router_callbacks
 from ventas.callbacks import registrar_callbacks_ventas
+from ventas.tabla_producto_cliente import registrar_callbacks_tabla_pc
 
 # =========================
 # Crear aplicación
@@ -60,6 +61,7 @@ app.layout = crear_principal()
 registrar_router_callbacks(app)
 
 registrar_callbacks_ventas(app)
+registrar_callbacks_tabla_pc(app)
 
 # =========================
 # Ejecutar
