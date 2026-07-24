@@ -1,569 +1,218 @@
 """
 =========================================================
-AG GRID DEL DASHBOARD DE VENTAS
+ventas/tabla_arbol.py
 =========================================================
+FÁBRICA DE TABLAS JERÁRQUICAS.
 
-Tabla dinámica estilo Excel usando Dash AG Grid COMMUNITY.
+Una sola función, crear_modulo_tabla(...), genera el layout
+Y registra los callbacks de CUALQUIER tabla jerárquica del
+dashboard de ventas. En vez de un archivo por tabla (con el
+mismo cuerpo copiado), cada tabla es solo unas líneas de
+configuración (ver ventas/tablas_ventas.py).
 
-No se usa rowGroup, treeData, autoGroupColumnDef, sideBar,
-statusBar ni pinnedBottomRowData de nivel superior: todo eso
-truena en esta versión del wrapper (35.3.0) porque son
-funciones Enterprise o props que no existen como kwarg de
-Python en esta versión. Solo se usan los props confirmados
-como válidos:
+Reutiliza:
+  • core.arbol   -> construir_arbol / total_general / filas_visibles
+  • ventas.aggrid -> dibujo del grid (mismo look que la tabla original)
+  • ventas.filtros -> filtro Mes/Semana compartido
 
-    id, rowData, columnDefs, defaultColDef, dashGridOptions,
-    getRowId, getRowStyle, className, style, cellClicked
+ORDEN: se controla desde Python con un dropdown "Ordenar por"
+(no con el sort del encabezado de AG Grid). El motor recibe
+columna_orden y devuelve las filas ya ordenadas jerárquicamente,
+así AG Grid no reordena nada y la jerarquía nunca se rompe.
 
-La jerarquía viene ya armada como filas planas desde el
-motor (core/arbol.py o ventas/analisis.py). El icono ▶ / ▼
-para expandir/contraer es solo visual (texto dentro de la
-celda); el callback escucha "cellClicked" y vuelve a llamar
-crear_aggrid() con las filas visibles actualizadas.
-
-IMPORTANTE: no hay filtro ni ordenamiento nativo de columnas.
-El sort nativo se quitó porque reordena TODAS las filas
-visibles juntas, rompiendo la jerarquía. El orden se controla
-con el comparador jerárquico (ver _columnas / comparador_
-jerarquico en analisis.py).
+IDs: todos llevan un sufijo por-tabla (clave) para que varias
+tablas convivan sin chocar. Se usan IDs de diccionario
+(pattern-matching) con {"type": ..., "index": clave}.
 """
 
-import dash_ag_grid as dag
-from dash import html
-
-from ventas.analisis import comparador_jerarquico
-
-
-# =========================================================
-# DEFINICIÓN DE COLUMNAS
-#
-# titulo_concepto: encabezado de la primera columna. Antes
-# estaba fijo en "Vendedor / Cliente / Producto"; ahora es
-# parámetro para que cada tabla (Producto/Cliente,
-# Cliente/Producto, etc.) muestre su propio título. El
-# default conserva el texto de la tabla original, así la
-# llamada existente no cambia de comportamiento.
-# =========================================================
-
-def _columnas(titulo_concepto="Vendedor / Cliente / Producto"):
-
-    return [
-
-        # ---------------------------------------------
-        # CONCEPTO (la jerarquía)
-        # ---------------------------------------------
-
-        {
-
-            "field": "concepto",
-
-            "headerName": titulo_concepto,
-
-            "minWidth": 300,
-
-            "pinned": "left",
-
-            "filter": False,
-
-            "sortable": False,
-
-            "cellStyle": {
-
-                "function": "params.data.tieneHijos ? {cursor: 'pointer'} : {}"
-
-            }
-
-        },
-
-        # ---------------------------------------------
-        # CANTIDAD
-        # ---------------------------------------------
-
-        {
-
-            "field": "Cantidad",
-
-            "headerName": "Cantidad",
-
-            "type": "numericColumn",
-
-            "filter": False,
-
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Cantidad")
-
-            },
-
-            "valueFormatter": {
-
-                "function": "d3.format(',.0f')(params.value)"
-
-            }
-
-        },
-
-        # ---------------------------------------------
-        # UTILIDAD UNITARIA
-        # ---------------------------------------------
-
-        {
-
-            "field": "Utilidad Unitaria",
-
-            "headerName": "Ut. Unit.",
-
-            "type": "numericColumn",
-
-            "filter": False,
-
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Utilidad Unitaria")
-
-            },
-
-            "valueFormatter": {
-
-                "function": "'$' + d3.format(',.2f')(params.value)"
-
-            }
-
-        },
-
-        # ---------------------------------------------
-        # VENTA
-        # ---------------------------------------------
-
-        {
-
-            "field": "Venta",
-
-            "headerName": "Venta MN",
-
-            "type": "numericColumn",
-
-            "filter": False,
-
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Venta")
-
-            },
-
-            "valueFormatter": {
-
-                "function": "'$' + d3.format(',.2f')(params.value)"
-
-            }
-
-        },
-
-        # ---------------------------------------------
-        # UTILIDAD BRUTA
-        # ---------------------------------------------
-
-        {
-
-            "field": "Utilidad Bruta",
-
-            "headerName": "Ut Bruta MN",
-
-            "type": "numericColumn",
-
-            "filter": False,
-
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Utilidad Bruta")
-
-            },
-
-            "valueFormatter": {
-
-                "function": "'$' + d3.format(',.2f')(params.value)"
-
-            }
-
-        },
-
-        # ---------------------------------------------
-        # MARGEN %
-        # ---------------------------------------------
-
-        {
-
-            "field": "Margen %",
-
-            "headerName": "Margen%",
-
-            "type": "numericColumn",
-
-            "filter": False,
-
-            "sortable": True,
-
-            "comparator": {
-
-                "function": comparador_jerarquico("_ruta_Margen %")
-
-            },
-
-            "valueFormatter": {
-
-                "function": "d3.format(',.1f')(params.value) + '%'"
-
-            }
-
-        }
-
-    ]
-
-
-# =========================================================
-# ESTILO POR FILA, SEGÚN NIVEL
-# =========================================================
-
-def _estilo_filas():
-
+from dash import Input, Output, State, html, dcc, no_update, MATCH
+import pandas as pd
+
+from ventas.filtros import filtrar_dataframe
+from ventas.aggrid import (
+    crear_aggrid, crear_encabezado_periodo,
+    configuracion_tamano, estilo_grid, opciones_grid,
+)
+from core.arbol import (
+    construir_arbol, total_general, filas_visibles,
+    COLUMNAS_ORDEN_VALIDAS,
+)
+
+
+# Métricas ofrecidas en el dropdown "Ordenar por"
+OPCIONES_ORDEN = [
+    {"label": "Ut Bruta MN", "value": "Utilidad Bruta"},
+    {"label": "Venta MN", "value": "Venta"},
+    {"label": "Cantidad", "value": "Cantidad"},
+    {"label": "Margen %", "value": "Margen %"},
+    {"label": "Ut. Unitaria", "value": "Utilidad Unitaria"},
+]
+ORDEN_POR_DEFECTO = "Utilidad Bruta"
+
+
+# ---- Tipos de id (pattern-matching) ----
+def _id(tipo, clave):
+    return {"type": tipo, "index": clave}
+
+
+def crear_layout_tabla(clave, niveles, titulo=None):
     """
-    Color/negrita por nivel. Fijo por nivel (no por rowIndex)
-    para evitar el "temblor" al expandir/contraer.
+    Layout de una tabla: título + dropdown de orden + stores +
+    contenedor del grid. 'clave' es un identificador corto y
+    único (p.ej. 'prod_cli'); 'niveles' la lista de dimensiones;
+    'titulo' el encabezado visible (por defecto, los niveles
+    unidos por ' / ').
     """
-
-    return {
-
-        "function": (
-
-            "params.data.nivel === 0 ? "
-
-            "{fontWeight: 'bold', backgroundColor: '#173C73', color: '#FFFFFF'} : "
-
-            "params.data.nivel === 1 ? "
-
-            "{fontWeight: 'bold', backgroundColor: '#FFFFFF', color: '#173C73', "
-
-            "borderLeft: '5px solid #D4AF37'} : "
-
-            "params.data.nivel === 2 ? "
-
-            "{fontWeight: '600', backgroundColor: '#FBF3DC', color: '#173C73'} : "
-
-            "{backgroundColor: '#FFFFFF', color: '#3A3F44'}"
-
-        )
-
-    }
-
-
-# =========================================================
-# ALTURA DEL GRID
-#
-# CAMBIO (encabezado azul fijo): antes, con pocas filas se
-# usaba domLayout="autoHeight" y el grid crecía sin scroll
-# interno propio — al hacer scroll de la PÁGINA, el encabezado
-# de columnas se iba de la vista. Ahora se usa SIEMPRE una
-# altura fija por viewport (ALTO_VIEWPORT) con scroll interno,
-# así el encabezado de columnas queda clavado arriba de la
-# tabla al desplazarse, en todas las tablas por igual.
-#
-# calcular_altura_grid() se deja SIN borrar por si se quiere
-# volver al comportamiento adaptativo anterior; hoy no se usa.
-# =========================================================
-
-ALTO_FILA = 34
-
-ALTO_ENCABEZADO = 38
-
-ALTO_MAXIMO = 2400
-
-UMBRAL_SCROLL = 40
-
-# Altura fija del grid como fracción de la ventana. Con esto
-# el encabezado de columnas queda fijo. Ajustable a gusto:
-# "60vh" más compacto, "80vh" casi pantalla completa.
-ALTO_VIEWPORT = "70vh"
-
-
-def calcular_altura_grid(cantidad_filas, hay_total=True):
-
-    """
-    (EN DESUSO tras fijar el encabezado — se conserva por si se
-    quiere volver a la altura adaptativa.)
-
-    Altura en px calculada a partir del nº de filas, con margen
-    de sobra para no disparar el scroll fantasma ("temblor").
-    """
-
-    margen = (cantidad_filas * 1) + 24
-
-    alto_contenido = (
-
-        ALTO_ENCABEZADO
-
-        + (cantidad_filas * ALTO_FILA)
-
-        + (ALTO_FILA if hay_total else 0)
-
-        + margen
-
-    )
-
-    return min(alto_contenido, ALTO_MAXIMO)
-
-
-def configuracion_tamano(cantidad_filas, hay_total=True):
-
-    """
-    Devuelve (dashGridOptions_extra, altura_para_style).
-
-    Ahora SIEMPRE usa altura fija por viewport con scroll
-    interno (sin domLayout="autoHeight"), para que el
-    encabezado de columnas quede fijo al hacer scroll dentro
-    de la tabla. El parámetro cantidad_filas ya no cambia la
-    decisión, pero se mantiene en la firma porque callbacks.py
-    y los módulos de tabla llaman a esta función con él.
-    """
-
-    return (
-
-        {},
-
-        ALTO_VIEWPORT
-
-    )
-
-
-# =========================================================
-# AG GRID (100% COMMUNITY)
-# =========================================================
-
-def opciones_grid(pinned, opciones_extra):
-
-    """
-    Arma el diccionario COMPLETO de dashGridOptions. Pública
-    porque "dashGridOptions" reemplaza todo el diccionario de
-    golpe, así que el callback de expandir también la necesita
-    para no perder animateRows/rowHeight/etc.
-    """
-
-    return {
-
-        "animateRows": False,
-
-        "rowHeight": ALTO_FILA,
-
-        "headerHeight": ALTO_ENCABEZADO,
-
-        "pinnedBottomRowData": pinned,
-
-        **opciones_extra
-
-    }
-
-
-def crear_aggrid(df, fila_total=None, id_grid="tabla-ventas",
-                 titulo_concepto="Vendedor / Cliente / Producto"):
-
-    """
-    df: DataFrame con las filas visibles AHORA.
-    fila_total: dict opcional para fijar el TOTAL GENERAL al
-        fondo (pinnedBottomRowData, dentro de dashGridOptions).
-    id_grid: id del componente (una por tabla).
-    titulo_concepto: encabezado de la primera columna.
-    """
-
-    pinned = [fila_total] if fila_total else None
-
-    opciones_extra, alto_estilo = configuracion_tamano(
-
-        len(df),
-
-        hay_total=bool(pinned)
-
-    )
-
-    return dag.AgGrid(
-
-        id=id_grid,
-
-        rowData=df.to_dict("records"),
-
-        columnDefs=_columnas(titulo_concepto),
-
-        getRowId={
-
-            "function": "params.data.id"
-
-        },
-
-        getRowStyle=_estilo_filas(),
-
-        defaultColDef={
-
-            "flex": 1,
-
-            "minWidth": 130,
-
-            "sortable": False,
-
-            "filter": False,
-
-            "resizable": True,
-
-            "floatingFilter": False,
-
-            "editable": False
-
-        },
-
-        dashGridOptions=opciones_grid(pinned, opciones_extra),
-
-        className="ag-theme-alpine",
-
-        style=estilo_grid(alto_estilo)
-
-    )
-
-
-# =========================================================
-# ESTILO COMPLETO DEL GRID (colores + altura)
-# =========================================================
-
-def estilo_grid(alto):
-
-    """
-    alto: string CSS height listo, p.ej. "70vh". Viene de
-    configuracion_tamano().
-    """
-
-    return {
-
-        "width": "100%",
-
-        "height": alto,
-
-        "transition": "height 0.15s ease-out",
-
-        "--ag-font-size": "18px",
-
-        "--ag-header-background-color": "#173C73",
-
-        "--ag-header-foreground-color": "#090000",
-
-        "--ag-background-color": "#FFFFFF",
-
-        "--ag-foreground-color": "#FDFEFF",
-
-        "--ag-border-color": "#E7DBB0",
-
-        "--ag-header-column-separator-color": "#2C5090",
-
-        "--ag-row-hover-color": "#E5DECB",
-
-        "--ag-range-selection-border-color": "#D4AF37",
-
-        "--ag-icon-color": "#050400"
-
-    }
-
-
-# =========================================================
-# ENCABEZADO "FECHA DE CORTE"
-# =========================================================
-
-def crear_encabezado_periodo(fecha_corte, semanas_texto):
+    if titulo is None:
+        titulo = " / ".join(niveles)
 
     return html.Div(
-
         [
+            dcc.Store(id=_id("tabla-niveles", clave), data=niveles),
+            dcc.Store(id=_id("tabla-clave", clave), data=clave),
+            dcc.Store(id=_id("tabla-arbol", clave), data=None),
+            dcc.Store(id=_id("tabla-total", clave), data=None),
+            dcc.Store(id=_id("tabla-exp", clave), data=[]),
 
-            html.Span(
-
-                "Fecha de corte:  ",
-
-                style={
-
-                    "color": "#D4AF37",
-
-                    "fontWeight": "bold",
-
-                    "marginLeft": "24px"
-
-                }
-
+            html.Div(
+                [
+                    html.H4(
+                        titulo,
+                        style={"color": "#173C73", "fontWeight": "700",
+                               "margin": "0"},
+                    ),
+                    html.Div(
+                        [
+                            html.Span("Ordenar por: ",
+                                      style={"fontWeight": "600",
+                                             "color": "#173C73",
+                                             "marginRight": "8px"}),
+                            dcc.Dropdown(
+                                id=_id("tabla-orden", clave),
+                                options=OPCIONES_ORDEN,
+                                value=ORDEN_POR_DEFECTO,
+                                clearable=False,
+                                style={"width": "200px"},
+                            ),
+                        ],
+                        style={"display": "flex", "alignItems": "center"},
+                    ),
+                ],
+                style={"display": "flex", "justifyContent": "space-between",
+                       "alignItems": "center", "marginTop": "10px",
+                       "marginBottom": "12px"},
             ),
 
-            html.Span(
+            html.Div(id=_id("tabla-cont", clave)),
+        ]
+    )
 
-                fecha_corte,
 
-                style={
+def registrar_callbacks_tablas(app):
+    """
+    Registra UNA sola vez los callbacks pattern-matching que
+    sirven a TODAS las tablas creadas con esta fábrica. Cada
+    callback usa MATCH sobre 'index' (la clave), así que Dash
+    lo aplica de forma independiente a cada tabla.
+    """
 
-                    "color": "#FFFFFF",
+    # 1) Construir tabla cuando cambian datos, filtro u orden
+    @app.callback(
+        Output(_id("tabla-cont", MATCH), "children"),
+        Output(_id("tabla-arbol", MATCH), "data"),
+        Output(_id("tabla-total", MATCH), "data"),
+        Input("store-bd-ventas", "data"),
+        Input("store-mes", "data"),
+        Input("store-semana", "data"),
+        Input(_id("tabla-orden", MATCH), "value"),
+        State(_id("tabla-niveles", MATCH), "data"),
+        State(_id("tabla-clave", MATCH), "data"),
+        State(_id("tabla-exp", MATCH), "data"),
+    )
+    def construir(data, meses, semanas, orden, niveles, clave, ids_expandidos):
+        if data is None:
+            return (
+                html.Div("Procesa un archivo para ver la tabla.",
+                         style={"color": "#6C757D"}),
+                None, None,
+            )
+        try:
+            df = pd.DataFrame(data)
+            df_f = filtrar_dataframe(df, meses=meses, semanas=semanas)
 
-                    "fontWeight": "bold",
+            if orden not in COLUMNAS_ORDEN_VALIDAS:
+                orden = ORDEN_POR_DEFECTO
 
-                    "marginRight": "32px"
+            arbol = construir_arbol(df_f, niveles=niveles, columna_orden=orden)
+            total = total_general(df_f)
 
-                }
-
-            ),
-
-            html.Span(
-
-                "Semana(s):  ",
-
-                style={
-
-                    "color": "#D4AF37",
-
-                    "fontWeight": "bold"
-
-                }
-
-            ),
-
-            html.Span(
-
-                semanas_texto,
-
-                style={
-
-                    "color": "#FFFFFF",
-
-                    "fontWeight": "bold"
-
-                }
-
+            col_fecha = "Asiento contable/Fecha de factura"
+            fecha_corte = "N/D"
+            if col_fecha in df_f.columns and len(df_f) > 0:
+                fmax = pd.to_datetime(df_f[col_fecha], errors="coerce").max()
+                if pd.notna(fmax):
+                    fecha_corte = fmax.strftime("%d/%m/%Y")
+            semanas_txt = (
+                ", ".join(str(s) for s in sorted(semanas)) if semanas else "Todas"
             )
 
-        ],
+            visibles = filas_visibles(arbol, ids_expandidos or [])
+            grid_id = _id("tabla-grid", clave)
+            contenido = html.Div([
+                crear_encabezado_periodo(fecha_corte, semanas_txt),
+                crear_aggrid(visibles, fila_total=total,
+                             id_grid=grid_id,
+                             titulo_concepto=" / ".join(niveles)),
+            ])
+            return contenido, arbol.to_dict("records"), total
+        except Exception as e:
+            return (
+                html.Div([html.H3("ERROR"), html.Pre(str(e))],
+                         style={"color": "red"}),
+                None, None,
+            )
 
-        style={
-
-            "backgroundColor": "#173C73",
-
-            "padding": "12px 16px",
-
-            "borderRadius": "10px 10px 0 0",
-
-            "display": "flex",
-
-            "justifyContent": "flex-end",
-
-            "flexWrap": "wrap",
-
-            "fontSize": "15px"
-
-        }
-
+    # 2) Refresco ligero al expandir/contraer
+    @app.callback(
+        Output(_id("tabla-grid", MATCH), "rowData"),
+        Output(_id("tabla-grid", MATCH), "style"),
+        Output(_id("tabla-grid", MATCH), "dashGridOptions"),
+        Input(_id("tabla-exp", MATCH), "data"),
+        State(_id("tabla-arbol", MATCH), "data"),
+        State(_id("tabla-total", MATCH), "data"),
+        prevent_initial_call=True,
     )
+    def refrescar(ids_expandidos, arbol_data, total):
+        if arbol_data is None:
+            return no_update, no_update, no_update
+        arbol = pd.DataFrame(arbol_data)
+        visibles = filas_visibles(arbol, ids_expandidos or [])
+        extra, alto = configuracion_tamano(len(visibles), hay_total=bool(total))
+        pinned = [total] if total else None
+        return (visibles.to_dict("records"),
+                estilo_grid(alto), opciones_grid(pinned, extra))
+
+    # 3) Expandir/contraer al hacer clic
+    @app.callback(
+        Output(_id("tabla-exp", MATCH), "data"),
+        Input(_id("tabla-grid", MATCH), "cellClicked"),
+        State(_id("tabla-exp", MATCH), "data"),
+        State(_id("tabla-niveles", MATCH), "data"),
+        prevent_initial_call=True,
+    )
+    def alternar(celda, ids_expandidos, niveles):
+        if celda is None:
+            return no_update
+        fila_id = celda.get("rowId")
+        if fila_id is None:
+            return no_update
+        # hoja (último nivel) no se expande: con N niveles, el
+        # último tiene (N-1) separadores "||".
+        if fila_id.count("||") >= len(niveles) - 1:
+            return no_update
+        ids = set(ids_expandidos or [])
+        if fila_id in ids:
+            ids.discard(fila_id)
+        else:
+            ids.add(fila_id)
+        return sorted(ids)
