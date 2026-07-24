@@ -97,7 +97,7 @@ def fig_top_barras(df, columna_dim, columna_metrica, titulo, moneda=True):
         textposition="outside",          # SIEMPRE afuera: visible en barras chicas
         textfont=dict(color=AZUL, size=12),
         cliponaxis=False,                # que el texto no se recorte en el borde
-        hovertemplate="%{y}<br>" + ("$" if moneda else "") + "%{x:,.2f}<extra></extra>",
+        hoverinfo="skip",                # sin tooltip al pasar el mouse
     ))
     fig.update_layout(**_layout_base(titulo))
     # margen derecho amplio para que quepan las etiquetas de valor afuera
