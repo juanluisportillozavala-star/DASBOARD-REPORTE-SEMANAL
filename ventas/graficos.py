@@ -105,6 +105,51 @@ def fig_top_barras(df, columna_dim, columna_metrica, titulo, moneda=True):
     return fig
 
 
+def fig_venta_vs_margen(df, columna_dim, n=10):
+    """Combo: barras de Venta (azul) + línea de Margen % (dorado)
+    sobre eje secundario. Top N por Venta. Sirve para ver qué
+    entradas venden mucho pero con margen bajo (o al revés)."""
+    from core.metricas import margen as _margen
+
+    if df is None or len(df) == 0 or columna_dim not in df.columns:
+        fig = go.Figure(); fig.update_layout(**_layout_base("Venta vs Margen %"))
+        fig.add_annotation(text="Sin datos para el periodo",
+                           showarrow=False, font=dict(color=GRIS, size=14))
+        return fig
+
+    g = (df.groupby(columna_dim)
+         .agg(Venta=(C.RAW_CREDITO, "sum"),
+              Utilidad=(C.UT_BRUTA, "sum"))
+         .sort_values("Venta", ascending=False).head(n).reset_index())
+    g["Margen"] = [(_margen(u, v)) for u, v in zip(g["Utilidad"], g["Venta"])]
+
+    x = [str(v)[:28] for v in g[columna_dim].tolist()]
+    ventas = [float(v) for v in g["Venta"].tolist()]
+    margenes = [float(m) for m in g["Margen"].tolist()]
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=x, y=ventas, name="Venta MN",
+        marker_color=AZUL, yaxis="y",
+        hoverinfo="skip",
+    ))
+    fig.add_trace(go.Scatter(
+        x=x, y=margenes, name="Margen %",
+        mode="lines+markers", line=dict(color=DORADO, width=3),
+        marker=dict(color=DORADO, size=8), yaxis="y2",
+        hoverinfo="skip",
+    ))
+    base = _layout_base("Venta vs Margen % (Top 10 Productos)")
+    base["yaxis"] = dict(title="Venta MN", gridcolor=GRIS_CLARO, zeroline=False)
+    base["yaxis2"] = dict(title="Margen %", overlaying="y", side="right",
+                          showgrid=False, zeroline=False, ticksuffix="%")
+    base["xaxis"] = dict(tickangle=-40, gridcolor=GRIS_CLARO)
+    base["legend"] = dict(orientation="h", yanchor="bottom", y=1.02, x=0)
+    base["height"] = 440
+    fig.update_layout(**base)
+    return fig
+
+
 # =========================================================
 # LAYOUT + CALLBACKS del bloque de gráficos
 # =========================================================
@@ -131,6 +176,13 @@ def crear_layout_graficos():
                 ],
                 style={"display": "flex", "flexWrap": "wrap", "gap": "20px"},
             ),
+            html.Div(
+                dcc.Graph(id="grafico-venta-margen",
+                          responsive=False,
+                          config={"displayModeBar": False},
+                          style={"height": "460px"}),
+                style={"marginTop": "20px"},
+            ),
         ]
     )
 
@@ -140,6 +192,7 @@ def registrar_callbacks_graficos(app):
     @app.callback(
         Output("grafico-top-productos", "figure"),
         Output("grafico-top-clientes", "figure"),
+        Output("grafico-venta-margen", "figure"),
         Input("store-bd-ventas", "data"),
         Input("store-mes", "data"),
         Input("store-semana", "data"),
@@ -148,7 +201,7 @@ def registrar_callbacks_graficos(app):
         if data is None:
             vacio = go.Figure()
             vacio.update_layout(**_layout_base("Sin datos"))
-            return vacio, vacio
+            return vacio, vacio, vacio
 
         df = pd.DataFrame(data)
         df_f = filtrar_dataframe(df, meses=meses, semanas=semanas)
@@ -171,4 +224,10 @@ def registrar_callbacks_graficos(app):
         else:
             fig_cli = go.Figure(); fig_cli.update_layout(**_layout_base("Top 10 Clientes"))
 
-        return fig_prod, fig_cli
+        # Venta vs Margen % por producto
+        if col_prod:
+            fig_vm = fig_venta_vs_margen(df_f, col_prod, n=10)
+        else:
+            fig_vm = go.Figure(); fig_vm.update_layout(**_layout_base("Venta vs Margen %"))
+
+        return fig_prod, fig_cli, fig_vm
