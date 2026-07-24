@@ -93,7 +93,8 @@ def registrar_callbacks_tabla_pc(app):
             visibles = filas_visibles(arbol, ids_expandidos or [])
             contenido = html.Div([
                 crear_encabezado_periodo(fecha_corte, semanas_txt),
-                crear_aggrid(visibles, fila_total=total, id_grid=ID_GRID),
+                crear_aggrid(visibles, fila_total=total, id_grid=ID_GRID,
+                             titulo_concepto=" / ".join(NIVELES)),
             ])
             return contenido, arbol.to_dict("records"), total
         except Exception as e:
