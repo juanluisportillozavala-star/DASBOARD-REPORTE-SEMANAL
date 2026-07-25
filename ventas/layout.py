@@ -325,7 +325,8 @@ def crear_layout_ventas():
                     )
 
                 ],
-
+                
+                id="acc-graficos",
                 start_collapsed=True
 
             ),

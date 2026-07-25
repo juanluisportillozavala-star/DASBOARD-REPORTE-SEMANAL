@@ -18,7 +18,7 @@ Paleta corporativa (acorde a las tablas):
   + grises de apoyo y un azul claro para segundas series.
 """
 
-from dash import Input, Output, html, dcc
+from dash import Input, Output, html, dcc, no_update
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -289,8 +289,18 @@ def registrar_callbacks_graficos(app):
         Input("store-bd-ventas", "data"),
         Input("store-mes", "data"),
         Input("store-semana", "data"),
+        Input("acc-graficos", "active_item"),
     )
-    def actualizar_graficos(data, meses, semanas):
+    def actualizar_graficos(data, meses, semanas, item_activo):
+        # OPTIMIZACIÓN: si el accordion de gráficos está CERRADO
+        # (active_item None/vacío), no recalcular nada. Los gráficos
+        # Plotly son lo más pesado de renderizar; no tiene sentido
+        # rehacerlos en cada cambio de filtro si no se están viendo.
+        # Se recalculan solo al abrir el accordion o al cambiar el
+        # filtro CON el accordion ya abierto.
+        if not item_activo:
+            return (no_update, no_update, no_update, no_update, no_update)
+
         if data is None:
             vacio = go.Figure()
             vacio.update_layout(**_layout_base("Sin datos"))
