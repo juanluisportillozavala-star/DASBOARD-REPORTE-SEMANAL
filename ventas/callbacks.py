@@ -23,6 +23,11 @@ from ventas.aggrid import (
     opciones_grid
 )
 
+# Capa de base de datos (Supabase / PostgreSQL). Se importa aquí
+# arriba una sola vez. Si por lo que sea db no estuviera disponible,
+# los try/except en cada uso evitan que se rompa la app.
+import db
+
 
 def registrar_callbacks_ventas(app):
 
@@ -197,6 +202,30 @@ def registrar_callbacks_ventas(app):
             kpis = calcular_kpis(df_ventas)
 
             # ==========================================
+            # GUARDAR EN SUPABASE (persistencia compartida)
+            #
+            # Se guarda la BD en la base para que quede
+            # disponible a TODOS los que entren (no solo en
+            # esta sesión). Si la base fallara, NO se rompe el
+            # procesamiento: la pantalla sigue funcionando con
+            # el store local y se deja rastro en los logs.
+            # ==========================================
+
+            try:
+
+                db.guardar_dataset("ventas", df_ventas, "admin")
+
+            except Exception as e_db:
+
+                print(
+
+                    f">>> [DB] No se pudo guardar en Supabase: {e_db}",
+
+                    flush=True
+
+                )
+
+            # ==========================================
             # ESTADO
             # ==========================================
 
@@ -307,6 +336,69 @@ def registrar_callbacks_ventas(app):
             )
 
     # =====================================================
+    # CARGAR DESDE SUPABASE AL ENTRAR
+    #
+    # Cuando cualquier persona abre la página, si el store de
+    # ventas está vacío (no ha procesado nada en su sesión),
+    # se llena leyendo la última BD guardada en Supabase. Así,
+    # quien entre ve automáticamente el reporte que el admin
+    # cargó, sin subir archivos. También recalcula los KPIs.
+    #
+    # Se dispara con la carga del layout de ventas (Input al
+    # propio store, que arranca vacío -> None). allow_duplicate
+    # porque store-bd-ventas / store-kpis también los escribe
+    # el callback de procesar.
+    # =====================================================
+
+    @app.callback(
+
+        Output("store-bd-ventas", "data", allow_duplicate=True),
+
+        Output("store-kpis", "data", allow_duplicate=True),
+
+        Input("store-bd-ventas", "data"),
+
+        prevent_initial_call="initial_duplicate"
+
+    )
+
+    def cargar_desde_bd(store_actual):
+
+        # Si ya hay datos en el store (el admin acaba de procesar,
+        # o ya se cargaron antes), no hacemos nada: evita pisar
+        # datos frescos y evita un bucle.
+
+        if store_actual:
+
+            return no_update, no_update
+
+        # Store vacío -> intentar leer la última BD de Supabase.
+
+        try:
+
+            df = db.leer_dataset("ventas")
+
+        except Exception as e_db:
+
+            print(
+
+                f">>> [DB] No se pudo leer de Supabase: {e_db}",
+
+                flush=True
+
+            )
+
+            return no_update, no_update
+
+        if df is None or len(df) == 0:
+
+            return no_update, no_update
+
+        kpis = calcular_kpis(df)
+
+        return df.to_dict("records"), kpis
+
+    # =====================================================
     # ACTUALIZAR TARJETAS KPI
     # =====================================================
 
@@ -340,18 +432,6 @@ def registrar_callbacks_ventas(app):
 
     # =====================================================
     # SELECCIÓN DE MESES
-    # (múltiple + "seleccionar todo" + "limpiar")
-    #
-    # Los iconos "seleccionar-todos-meses" y "limpiar-meses"
-    # viven en ventas/controles.py (html.I con id propio).
-    #
-    # Cuando el usuario toca directamente los controles de
-    # mes (clic individual, seleccionar todo o limpiar), se
-    # auto-seleccionan también las semanas de esos meses. Esa
-    # auto-selección vive AQUÍ (no en un callback separado
-    # escuchando "store-mes") para que NO se dispare cuando
-    # el mes se activa solo como efecto secundario de elegir
-    # una semana suelta (ver "seleccionar_semanas" más abajo).
     # =====================================================
 
     @app.callback(
@@ -398,10 +478,6 @@ def registrar_callbacks_ventas(app):
 
         trigger = ctx.triggered_id
 
-        # -----------------------------------------
-        # Seleccionar todos los meses CON DATOS
-        # -----------------------------------------
-
         if trigger == "seleccionar-todos-meses":
 
             if not data:
@@ -438,26 +514,13 @@ def registrar_callbacks_ventas(app):
 
             return meses_con_datos, semanas_auto
 
-        # -----------------------------
-        # Limpiar meses (limpia también semanas)
-        # -----------------------------
-
         if trigger == "limpiar-meses":
 
             return [], []
 
-        # -----------------------------------------------
-        # Activa / Desactiva un mes: solo se tocan las
-        # semanas DE ESE MES, sin recalcular ni pisar la
-        # selección que ya existía en otros meses activos.
-        # -----------------------------------------------
-
         mes = int(trigger["index"])
 
         if data is None:
-
-            # Sin datos no se puede saber qué semanas
-            # pertenecen a este mes; solo se togglea el mes.
 
             if mes in meses_activos:
 
@@ -485,8 +548,6 @@ def registrar_callbacks_ventas(app):
 
         if mes in meses_activos:
 
-            # Se desactiva el mes: se quitan SOLO sus semanas
-
             meses_activos.remove(mes)
 
             semanas_activas = [
@@ -498,9 +559,6 @@ def registrar_callbacks_ventas(app):
             ]
 
         else:
-
-            # Se activa el mes: se agregan todas sus semanas,
-            # sin tocar lo que ya estaba activo en otros meses
 
             meses_activos.append(mes)
 
@@ -516,19 +574,6 @@ def registrar_callbacks_ventas(app):
 
     # =====================================================
     # PINTAR MESES
-    #
-    # Pinta className activo/inactivo según store-mes, y
-    # además deshabilita los meses SIN datos (no se pueden
-    # seleccionar). Ya no toca "store-semana": esa auto-
-    # selección vive dentro de "seleccionar_meses", para que
-    # no se dispare cuando el mes se activa como efecto
-    # secundario de elegir una semana suelta.
-    #
-    # Las 52 celdas de semana son FIJAS y viven en el layout
-    # (ventas/controles.py), igual que los 12 meses. Por qué:
-    # si se regeneraran cada vez que cambia el mes, Dash
-    # resetea el n_clicks de cada botón a 0, y ese reseteo se
-    # interpreta como un clic real, desmarcando semanas solas.
     # =====================================================
 
     @app.callback(
@@ -615,22 +660,6 @@ def registrar_callbacks_ventas(app):
 
     # =====================================================
     # SELECCIÓN DE SEMANAS
-    # (múltiple + "seleccionar todo" + "limpiar" +
-    # la primera semana nunca se desmarca)
-    #
-    # Los iconos "seleccionar-todas-semanas" y "limpiar-semanas"
-    # viven en ventas/controles.py (html.I con id propio).
-    #
-    # "Seleccionar todas las semanas" toma TODAS las semanas
-    # con datos en el archivo completo (sin importar el mes
-    # activo) y además marca los meses correspondientes a
-    # esas semanas, para que meses y semanas queden coherentes
-    # en pantalla.
-    #
-    # Este callback escribe sobre "store-semana" y "store-mes",
-    # los mismos Outputs que usan otros callbacks. Por eso usa
-    # allow_duplicate=True (soportado por Dash >= 2.9), sin
-    # modificar la arquitectura del resto del proyecto.
     # =====================================================
 
     @app.callback(
@@ -677,12 +706,6 @@ def registrar_callbacks_ventas(app):
 
         trigger = ctx.triggered_id
 
-        # -----------------------------------------------
-        # Seleccionar TODAS las semanas con datos (sin
-        # importar el mes activo) y marcar los meses a
-        # los que pertenecen esas semanas.
-        # -----------------------------------------------
-
         if trigger == "seleccionar-todas-semanas":
 
             if not data:
@@ -721,14 +744,6 @@ def registrar_callbacks_ventas(app):
 
             return semanas_todas, meses_de_esas_semanas
 
-        # -----------------------------------------------
-        # "Semanas visibles" (relevantes a los meses elegidos)
-        # solo se pueden calcular si ya hay datos procesados.
-        # Sin datos, no hay semana "protegida" pero el toggle
-        # individual y "limpiar" igual funcionan (semanas
-        # siempre clickeables).
-        # -----------------------------------------------
-
         if data is None:
 
             semanas_visibles = []
@@ -751,28 +766,15 @@ def registrar_callbacks_ventas(app):
 
         primera_semana = semanas_visibles[0] if semanas_visibles else None
 
-        # -----------------------------------
-        # Limpiar semanas: quita TODO (semanas
-        # Y meses), igual que limpiar meses
-        # -----------------------------------
-
         if trigger == "limpiar-semanas":
 
             return [], []
-
-        # -----------------------------------
-        # Activar / desactivar una semana
-        # -----------------------------------
 
         semana = int(trigger["index"])
 
         mes_resultado = no_update
 
         if semana in semanas_activas:
-
-            # La primera semana no se puede desmarcar
-            # con un clic individual (sí se puede con
-            # "limpiar", arriba)
 
             if semana == primera_semana:
 
@@ -783,11 +785,6 @@ def registrar_callbacks_ventas(app):
         else:
 
             semanas_activas.append(semana)
-
-            # -----------------------------------------------
-            # Auto-seleccionar el mes correspondiente a esta
-            # semana, si aún no está activo.
-            # -----------------------------------------------
 
             if data is not None:
 
@@ -821,11 +818,6 @@ def registrar_callbacks_ventas(app):
 
     # =====================================================
     # PINTAR SEMANAS
-    #
-    # El grid de semanas es fijo (1-53, para cubrir años con
-    # semana ISO 53). Pinta activo/inactivo según store-semana,
-    # y deshabilita las semanas SIN datos (no se pueden
-    # seleccionar).
     # =====================================================
 
     @app.callback(
@@ -921,328 +913,3 @@ def registrar_callbacks_ventas(app):
             )
 
         return clases, deshabilitados
-
-    # =====================================================
-    # 1) CALCULAR + MONTAR TABLA DE VENTAS
-    #
-    # Se dispara cuando cambian los DATOS o el filtro de mes/
-    # semana — NO cuando expandes/contraes una fila (eso lo
-    # resuelve el callback 2, por separado y mucho más ligero).
-    #
-    # Antes esto estaba partido en dos callbacks encadenados
-    # (calcular árbol -> montar grid), lo cual funciona pero
-    # implica DOS idas y vueltas al servidor en cadena para
-    # una sola acción del usuario (cambiar el filtro). Al
-    # fusionarlos en uno solo, el cambio de mes/semana ahora
-    # es una sola ida y vuelta. El árbol y el total SIGUEN
-    # guardándose en stores, porque el callback 2 (expandir)
-    # sí los necesita para no recalcular nada.
-    # =====================================================
-
-    @app.callback(
-
-        Output("contenedor-tablas", "children"),
-
-        Output("store-arbol-completo", "data"),
-
-        Output("store-arbol-total", "data"),
-
-        Input("store-bd-ventas", "data"),
-
-        Input("store-mes", "data"),
-
-        Input("store-semana", "data"),
-
-        State("store-arbol-expandido", "data")
-
-    )
-
-    def calcular_y_montar_tabla_ventas(data, meses, semanas, ids_expandidos):
-
-        if data is None:
-
-            return (
-
-                html.Div(
-
-                    "Sube y procesa un archivo para ver la tabla.",
-
-                    style={"color": "#6C757D"}
-
-                ),
-
-                None,
-
-                None
-
-            )
-
-        try:
-
-            df = pd.DataFrame(data)
-
-            df_filtrado = filtrar_dataframe(
-
-                df,
-
-                meses=meses,
-
-                semanas=semanas
-
-            )
-
-            # ------------------------------------------------
-            # El orden por defecto (Venta) es solo el punto de
-            # partida antes de que el usuario haga clic en un
-            # encabezado. El clic real lo resuelve el grid en
-            # el navegador con el comparador jerárquico (ver
-            # analisis.comparador_jerarquico / aggrid._columnas)
-            # sin volver a pasar por Python.
-            # ------------------------------------------------
-
-            arbol = arbol_ventas(df_filtrado)
-
-            total = total_general_arbol(df_filtrado)
-
-            # ------------------------------------------------
-            # ENCABEZADO "FECHA DE CORTE"
-            # ------------------------------------------------
-
-            columna_fecha = "Asiento contable/Fecha de factura"
-
-            fecha_corte = "N/D"
-
-            if columna_fecha in df_filtrado.columns and len(df_filtrado) > 0:
-
-                fecha_max = pd.to_datetime(
-
-                    df_filtrado[columna_fecha],
-
-                    errors="coerce"
-
-                ).max()
-
-                if pd.notna(fecha_max):
-
-                    fecha_corte = fecha_max.strftime("%d/%m/%Y")
-
-            if semanas:
-
-                semanas_texto = ", ".join(
-
-                    str(s) for s in sorted(semanas)
-
-                )
-
-            else:
-
-                semanas_texto = "Todas"
-
-            visibles = filas_visibles(
-
-                arbol,
-
-                ids_expandidos or []
-
-            )
-
-            contenido = html.Div(
-
-                [
-
-                    crear_encabezado_periodo(
-
-                        fecha_corte,
-
-                        semanas_texto
-
-                    ),
-
-                    crear_aggrid(
-
-                        visibles,
-
-                        fila_total=total
-
-                    )
-
-                ]
-
-            )
-
-            return (
-
-                contenido,
-
-                arbol.to_dict("records"),
-
-                total
-
-            )
-
-        except Exception as e:
-
-            return (
-
-                html.Div(
-
-                    [
-
-                        html.H3("ERROR"),
-
-                        html.Pre(str(e))
-
-                    ],
-
-                    style={"color": "red"}
-
-                ),
-
-                None,
-
-                None
-
-            )
-
-    # =====================================================
-    # 2) REFRESCAR GRID AL EXPANDIR/CONTRAER (ligero)
-    #
-    # Actualiza SOLO "rowData" y "style" (la altura) de
-    # "tabla-ventas" directamente — ya NO reconstruye el
-    # componente completo. Antes esto causaba dos problemas:
-    # el ícono ▶/▼ no siempre se redibujaba bien (porque
-    # dependía de un campo aparte, "expandido", y no del
-    # propio valor de la celda), y reconstruir el componente
-    # entero en cada clic se sentía lento y hacía "temblar" el
-    # total al recalcular la altura de golpe.
-    #
-    # Ambos se resolvieron horneando el ícono directo en el
-    # texto de "concepto" (ver analisis.filas_visibles): ahora
-    # el VALOR de la celda sí cambia cuando cambia "expandido",
-    # así que AG Grid redibuja bien con solo actualizar
-    # "rowData" — sin reconstruir nada, sin recalcular el
-    # árbol (arbol_ventas) tampoco: solo relee lo que ya está
-    # en el store.
-    # =====================================================
-
-    @app.callback(
-
-        Output("tabla-ventas", "rowData"),
-
-        Output("tabla-ventas", "style"),
-
-        Output("tabla-ventas", "dashGridOptions"),
-
-        Input("store-arbol-expandido", "data"),
-
-        State("store-arbol-completo", "data"),
-
-        State("store-arbol-total", "data"),
-
-        prevent_initial_call=True
-
-    )
-
-    def refrescar_grid_ventas(ids_expandidos, arbol_data, total):
-
-        if arbol_data is None:
-
-            return no_update, no_update, no_update
-
-        arbol = pd.DataFrame(arbol_data)
-
-        visibles = filas_visibles(
-
-            arbol,
-
-            ids_expandidos or []
-
-        )
-
-        opciones_extra, alto = configuracion_tamano(
-
-            len(visibles),
-
-            hay_total=bool(total)
-
-        )
-
-        pinned = [total] if total else None
-
-        return (
-
-            visibles.to_dict("records"),
-
-            estilo_grid(alto),
-
-            opciones_grid(pinned, opciones_extra)
-
-        )
-
-    # =====================================================
-    # EXPANDIR / CONTRAER FILAS DEL ÁRBOL
-    #
-    # Escucha el clic sobre CUALQUIER celda del grid
-    # ("cellClicked" es una prop estándar de dash-ag-grid,
-    # no requiere JS extra). Si el clic fue sobre la columna
-    # "concepto" y esa fila tiene hijos, alterna su id dentro
-    # de "store-arbol-expandido". Ese cambio dispara de nuevo
-    # el callback de arriba, que reconstruye el grid con las
-    # filas visibles actualizadas.
-    # =====================================================
-
-    @app.callback(
-
-        Output("store-arbol-expandido", "data"),
-
-        Input("tabla-ventas", "cellClicked"),
-
-        State("store-arbol-expandido", "data"),
-
-        prevent_initial_call=True
-
-    )
-
-    def alternar_expandido(celda, ids_expandidos):
-
-        if celda is None:
-
-            return no_update
-
-        # -----------------------------------------------
-        # cellClicked en esta versión NO trae "data" (se
-        # confirmó con el debug): solo trae value, colId,
-        # rowIndex, rowId y timestamp. Por eso ya no se usa
-        # celda["data"]["id"] / celda["data"]["tieneHijos"];
-        # se usa "rowId" directamente, que es el mismo id
-        # que le pusimos a cada fila en getRowId.
-        #
-        # Los ids se arman como:
-        #   "v::Vendedor"                    (nivel 1, 0 "||")
-        #   "v::Vendedor||c::Cliente"        (nivel 2, 1 "||")
-        #   "v::Vendedor||c::Cliente||p::Producto"  (nivel 3, 2 "||")
-        #
-        # Nivel 3 (producto) nunca tiene hijos que expandir.
-        # -----------------------------------------------
-
-        fila_id = celda.get("rowId")
-
-        if fila_id is None:
-
-            return no_update
-
-        if fila_id.count("||") >= 2:
-
-            return no_update
-
-        ids_expandidos = set(ids_expandidos or [])
-
-        if fila_id in ids_expandidos:
-
-            ids_expandidos.discard(fila_id)
-
-        else:
-
-            ids_expandidos.add(fila_id)
-
-        return sorted(ids_expandidos)
