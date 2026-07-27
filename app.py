@@ -55,6 +55,16 @@ server = app.server
 
 app.layout = crear_principal()
 
+# ==========================================================
+# INICIALIZACIÓN DE BASE DE DATOS (Supabase / PostgreSQL)
+# ==========================================================
+import db
+
+try:
+    db.inicializar_esquema()
+    print(">>> [DB] Conexión a Supabase OK. Tablas listas.", flush=True)
+except Exception as e:
+    print(f">>> [DB] ERROR conectando a Supabase: {e}", flush=True)
 # =========================
 # Registrar callbacks
 # =========================
