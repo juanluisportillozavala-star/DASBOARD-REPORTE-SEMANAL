@@ -11,3 +11,6 @@ openpyxl==3.1.5
 gunicorn==26.0.0
 
 dash-ag-grid
+
+psycopg2-binary
+bcrypt
