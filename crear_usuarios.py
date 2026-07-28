@@ -34,17 +34,21 @@ import db
 
 USUARIOS = [
     # --- ADMINS (cargan y consultan) ---
-    ("admin1", "Liderza2026-1", "admin"),
-    ("admin2", "Liderza2026-2", "admin"),
+    ("admin1", "CAMBIA-ESTA-CLAVE", "admin"),
+    ("admin2", "CAMBIA-ESTA-CLAVE", "admin"),
 
     # --- CONSULTA (solo ven) ---
-    ("LID1", "Liderza2026-3", "consulta"),
-    ("LID2", "Liderza2026-4", "consulta"),
-    ("LID3", "Liderza2026-5", "consulta"),
-    ("LID4", "Liderza2026-6", "consulta"),
-    ("LID5", "Liderza2026-7", "consulta"),
-    ("LID6", "Liderza2026-8", "consulta"),
-    ("LID7", "Liderza2026-9", "consulta"),
+    ("LID1", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID2", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID3", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID4", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID5", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID6", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID7", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID8", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID9", "CAMBIA-ESTA-CLAVE", "consulta"),
+    ("LID10", "CAMBIA-ESTA-CLAVE", "consulta"),
+    
 ]
 
 

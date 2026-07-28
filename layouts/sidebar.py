@@ -34,38 +34,47 @@ def item(nombre, icono, ruta):
     )
 
 
-def crear_sidebar():
+def crear_sidebar(rol=None):
+
+    # Ítems que TODOS ven (admin y consulta)
+    items = [
+
+        html.Div(
+            "MENÚ PRINCIPAL",
+            className="menu-titulo"
+        ),
+
+        item("Dashboard", "fas fa-gauge-high", "/dashboard"),
+
+        item("Ventas", "fas fa-chart-line", "/ventas"),
+
+        item("Ingresos", "fas fa-wallet", "/ingresos"),
+
+        item("Cartera", "fas fa-users", "/cartera"),
+
+        item("Inventario", "fas fa-box", "/inventario"),
+
+        item("Saldo Proveedor", "fas fa-truck", "/saldo-proveedor"),
+
+        item("Reportes", "fas fa-file-lines", "/reportes"),
+
+        item("Configuración", "fas fa-gear", "/configuracion"),
+
+    ]
+
+    # Ítem SOLO para admin: carga de datos
+    if rol == "admin":
+
+        items.append(
+
+            item("Cargar datos", "fas fa-cloud-arrow-up", "/cargar")
+
+        )
 
     return html.Div(
 
         className="sidebar",
 
-        children=[
-
-            html.Div(
-
-                "MENÚ PRINCIPAL",
-
-                className="menu-titulo"
-
-            ),
-
-            item("Dashboard", "fas fa-gauge-high", "/dashboard"),
-
-            item("Ventas", "fas fa-chart-line", "/ventas"),
-
-            item("Ingresos", "fas fa-wallet", "/ingresos"),
-
-            item("Cartera", "fas fa-users", "/cartera"),
-
-            item("Inventario", "fas fa-box", "/inventario"),
-
-            item("Saldo Proveedor", "fas fa-truck", "/saldo-proveedor"),
-
-            item("Reportes", "fas fa-file-lines", "/reportes"),
-
-            item("Configuración", "fas fa-gear", "/configuracion")
-
-        ]
+        children=items
 
     )
