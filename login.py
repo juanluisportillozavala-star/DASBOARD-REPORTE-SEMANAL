@@ -2,29 +2,19 @@
 =========================================================
 login.py  —  Pantalla de acceso (Pieza 5, Opción A visual)
 =========================================================
-Compuerta de acceso al dashboard con diseño Liderza
-(azul #173C73, dorado #D4AF37, blanco). Pide usuario y
-contraseña, verifica contra la tabla `usuarios` de Supabase
-(db.verificar_login) y guarda la sesión en un dcc.Store.
-
-Uso desde el layout principal:
-  - Incluir dcc.Store(id="store-sesion") a nivel raíz.
-  - Mostrar crear_layout_login() si no hay sesión, o el
-    dashboard si la hay (lo controla un callback en la app).
-  - Llamar registrar_callbacks_login(app) una vez.
+Diseño Liderza (azul #173C73, dorado #D4AF37, blanco).
+Usa componentes NATIVOS de Dash (html.Button, dcc.Input) en
+vez de dash-bootstrap-components, para garantizar que el
+clic del botón siempre engancha su callback.
 """
 
 from dash import Input, Output, State, html, dcc, no_update
-import dash_bootstrap_components as dbc
 
 import db
 
-# Paleta corporativa
 AZUL = "#173C73"
 DORADO = "#D4AF37"
 BLANCO = "#FFFFFF"
-
-# Nombre del archivo del logo en assets/. Ajustar si difiere.
 LOGO = "/assets/logo.png"
 
 
@@ -47,24 +37,35 @@ def crear_layout_login():
                     style={"color": "#6C757D", "marginBottom": "24px",
                            "textAlign": "center"},
                 ),
-                dbc.Input(
+                dcc.Input(
                     id="login-usuario",
                     placeholder="Usuario",
                     type="text",
-                    style={"marginBottom": "12px"},
+                    n_submit=0,
+                    style={"marginBottom": "12px", "width": "100%",
+                           "padding": "10px 12px", "borderRadius": "8px",
+                           "border": "1px solid #CBD5E1", "boxSizing": "border-box",
+                           "fontSize": "15px"},
                 ),
-                dbc.Input(
+                dcc.Input(
                     id="login-password",
                     placeholder="Contraseña",
                     type="password",
-                    style={"marginBottom": "20px"},
+                    n_submit=0,
+                    style={"marginBottom": "20px", "width": "100%",
+                           "padding": "10px 12px", "borderRadius": "8px",
+                           "border": "1px solid #CBD5E1", "boxSizing": "border-box",
+                           "fontSize": "15px"},
                 ),
-                dbc.Button(
+                html.Button(
                     "Ingresar",
                     id="login-btn",
                     n_clicks=0,
                     style={"width": "100%", "backgroundColor": AZUL,
-                           "border": "none", "fontWeight": "600"},
+                           "color": BLANCO, "border": "none",
+                           "padding": "12px", "borderRadius": "8px",
+                           "fontWeight": "600", "fontSize": "15px",
+                           "cursor": "pointer"},
                 ),
                 html.Div(
                     id="login-mensaje",
@@ -97,15 +98,22 @@ def crear_layout_login():
 
 def registrar_callbacks_login(app):
 
+    # Se dispara con el clic del botón O con Enter en cualquier campo
     @app.callback(
         Output("store-sesion", "data"),
         Output("login-mensaje", "children"),
         Input("login-btn", "n_clicks"),
+        Input("login-usuario", "n_submit"),
+        Input("login-password", "n_submit"),
         State("login-usuario", "value"),
         State("login-password", "value"),
         prevent_initial_call=True,
     )
-    def hacer_login(n, usuario, password):
+    def hacer_login(n_clicks, s1, s2, usuario, password):
+        # limpiar espacios accidentales
+        usuario = (usuario or "").strip()
+        password = (password or "").strip()
+
         if not usuario or not password:
             return no_update, "Escribe usuario y contraseña."
         try:
@@ -115,5 +123,4 @@ def registrar_callbacks_login(app):
             return no_update, "Error de conexión. Intenta de nuevo."
         if resultado is None:
             return no_update, "Usuario o contraseña incorrectos."
-        # sesión válida: guarda usuario y rol
         return resultado, ""
