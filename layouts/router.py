@@ -8,6 +8,7 @@ from dash import html
 
 from layouts.dashboard import crear_dashboard
 from ventas.layout import crear_layout_ventas
+from carga import crear_layout_carga
 
 
 def pagina_temporal(nombre):
@@ -42,6 +43,10 @@ def crear_router(pathname):
     elif pathname == "/ventas":
 
         return crear_layout_ventas()
+
+    elif pathname == "/cargar":
+
+        return crear_layout_carga()
 
     elif pathname == "/ingresos":
 
