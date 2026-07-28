@@ -4,25 +4,9 @@ ventas/tabla_arbol.py
 =========================================================
 FÁBRICA DE TABLAS JERÁRQUICAS.
 
-Una sola función, crear_modulo_tabla(...), genera el layout
-Y registra los callbacks de CUALQUIER tabla jerárquica del
-dashboard de ventas. En vez de un archivo por tabla (con el
-mismo cuerpo copiado), cada tabla es solo unas líneas de
-configuración (ver ventas/tablas_ventas.py).
-
-Reutiliza:
-  • core.arbol   -> construir_arbol / total_general / filas_visibles
-  • ventas.aggrid -> dibujo del grid (mismo look que la tabla original)
-  • ventas.filtros -> filtro Mes/Semana compartido
-
-ORDEN: se controla desde Python con un dropdown "Ordenar por"
-(no con el sort del encabezado de AG Grid). El motor recibe
-columna_orden y devuelve las filas ya ordenadas jerárquicamente,
-así AG Grid no reordena nada y la jerarquía nunca se rompe.
-
-IDs: todos llevan un sufijo por-tabla (clave) para que varias
-tablas convivan sin chocar. Se usan IDs de diccionario
-(pattern-matching) con {"type": ..., "index": clave}.
+VELOCIDAD: 'construir' lee los datos de la CACHÉ del servidor
+(db.obtener_df) en vez de recibir las 589 filas por el store.
+Así los datos no viajan del navegador en cada filtrada.
 """
 
 from dash import Input, Output, State, html, dcc, no_update, MATCH
@@ -38,11 +22,11 @@ from core.arbol import (
     construir_arbol, total_general, filas_visibles,
     COLUMNAS_ORDEN_VALIDAS, ORDEN_ALFABETICO,
 )
+import db
+
+MODULO = "ventas"
 
 
-# Dropdown único "Ordenar por": cada opción codifica métrica y
-# dirección en un solo value "columna|asc" o "columna|desc".
-# ORDEN_ALFABETICO ordena por el nombre de la primera columna.
 OPCIONES_ORDEN = [
     {"label": "Ut Bruta MN ↓", "value": "Utilidad Bruta|desc"},
     {"label": "Ut Bruta MN ↑", "value": "Utilidad Bruta|asc"},
@@ -61,26 +45,17 @@ ORDEN_POR_DEFECTO = "Utilidad Bruta|desc"
 
 
 def _parse_orden(value):
-    """Convierte 'columna|asc' -> (columna, ascendente_bool)."""
     if not value or "|" not in value:
         return C.UTILIDAD_BRUTA, False
     col, dirn = value.rsplit("|", 1)
     return col, (dirn == "asc")
 
 
-# ---- Tipos de id (pattern-matching) ----
 def _id(tipo, clave):
     return {"type": tipo, "index": clave}
 
 
 def crear_layout_tabla(clave, niveles, titulo=None):
-    """
-    Layout de una tabla: título + dropdown de orden + stores +
-    contenedor del grid. 'clave' es un identificador corto y
-    único (p.ej. 'prod_cli'); 'niveles' la lista de dimensiones;
-    'titulo' el encabezado visible (por defecto, los niveles
-    unidos por ' / ').
-    """
     if titulo is None:
         titulo = " / ".join(niveles)
 
@@ -127,14 +102,11 @@ def crear_layout_tabla(clave, niveles, titulo=None):
 
 
 def registrar_callbacks_tablas(app):
-    """
-    Registra UNA sola vez los callbacks pattern-matching que
-    sirven a TODAS las tablas creadas con esta fábrica. Cada
-    callback usa MATCH sobre 'index' (la clave), así que Dash
-    lo aplica de forma independiente a cada tabla.
-    """
 
-    # 1) Construir tabla cuando cambian datos, filtro u orden
+    # 1) Construir tabla cuando cambian filtro u orden.
+    #    Lee los datos de la CACHÉ del servidor (db.obtener_df),
+    #    NO del store. store-bd-ventas es solo Input "señal"
+    #    (su marca ligera cambia de versión al recargar datos).
     @app.callback(
         Output(_id("tabla-cont", MATCH), "children"),
         Output(_id("tabla-arbol", MATCH), "data"),
@@ -147,15 +119,15 @@ def registrar_callbacks_tablas(app):
         State(_id("tabla-clave", MATCH), "data"),
         State(_id("tabla-exp", MATCH), "data"),
     )
-    def construir(data, meses, semanas, orden, niveles, clave, ids_expandidos):
-        if data is None:
+    def construir(marca, meses, semanas, orden, niveles, clave, ids_expandidos):
+        df = db.obtener_df(MODULO)
+        if df is None:
             return (
-                html.Div("Procesa un archivo para ver la tabla.",
+                html.Div("Aún no hay datos cargados.",
                          style={"color": "#6C757D"}),
                 None, None,
             )
         try:
-            df = pd.DataFrame(data)
             df_f = filtrar_dataframe(df, meses=meses, semanas=semanas)
 
             columna, ascendente = _parse_orden(orden)
@@ -226,8 +198,6 @@ def registrar_callbacks_tablas(app):
         fila_id = celda.get("rowId")
         if fila_id is None:
             return no_update
-        # hoja (último nivel) no se expande: con N niveles, el
-        # último tiene (N-1) separadores "||".
         if fila_id.count("||") >= len(niveles) - 1:
             return no_update
         ids = set(ids_expandidos or [])

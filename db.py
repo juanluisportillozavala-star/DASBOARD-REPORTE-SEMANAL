@@ -1,34 +1,21 @@
 """
 =========================================================
-db.py  —  Capa de acceso a datos (PostgreSQL)
+db.py  —  Capa de acceso a datos (PostgreSQL / Supabase)
 =========================================================
-Pieza 1 del plan de arquitectura: estado compartido en base
-de datos. Guarda las BD de cada módulo (como JSON) y los
-usuarios para el login.
+Guarda las BD de cada módulo (JSON) y los usuarios (login).
+Incluye una CACHÉ EN MEMORIA del servidor para que los datos
+no viajen del navegador en cada callback (optimización de
+velocidad del filtro).
 
-CONEXIÓN:
-  En Render, la URL viene de la variable de entorno
-  DATABASE_URL (la crea Render al añadir el PostgreSQL).
-  En local, se puede usar una cadena de prueba.
+CONEXIÓN: la URL viene de DATABASE_URL (Render/Supabase).
+Usar el pooler de Supabase (puerto 6543).
 
-  Nunca se escribe la URL en el código. Se lee del entorno:
-      import os; CONN = os.environ["DATABASE_URL"]
-
-DECISIONES aplicadas:
-  • Reemplazo total semanal: guardar_dataset hace UPSERT
-    (una sola foto por módulo; subir de nuevo la sustituye).
-  • Dos roles: 'admin' (actualiza+consulta) y 'consulta'.
-  • Contraseñas cifradas con bcrypt (jamás en texto plano).
-
-NORMALIZACIÓN (aprendido probando con datos reales):
-  Antes de guardar en JSON hay que arreglar dos cosas o
-  PostgreSQL rechaza el dato:
-    - Timestamp de pandas  -> texto ISO 'YYYY-MM-DD'
-    - NaN / NaT            -> None  (JSON usa null, no NaN)
-  Lo hace _normalizar_para_json().
+NORMALIZACIÓN: Timestamp -> texto ISO, NaN -> None (JSON no
+admite NaN ni Timestamp).
 """
 
 import os
+import time
 import pandas as pd
 import psycopg2
 import bcrypt
@@ -36,20 +23,15 @@ from psycopg2.extras import Json
 
 
 def _conn():
-    """Devuelve una conexión nueva. Lee DATABASE_URL del entorno
-    (Render la provee). Para local, define esa variable o pasa
-    una cadena de prueba vía LIDERZA_DB_URL."""
     url = os.environ.get("DATABASE_URL") or os.environ.get("LIDERZA_DB_URL")
     if not url:
         raise RuntimeError("Falta DATABASE_URL en el entorno")
-    # Render entrega URLs 'postgres://'; psycopg2 quiere 'postgresql://'
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return psycopg2.connect(url)
 
 
 def inicializar_esquema():
-    """Crea las tablas si no existen. Llamar una vez al arrancar."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS datasets (
@@ -68,11 +50,10 @@ def inicializar_esquema():
 
 
 # =========================================================
-# DATASETS (las BD de cada módulo)
+# DATASETS
 # =========================================================
 
 def _normalizar_para_json(df):
-    """Prepara la BD para JSON: fechas -> texto ISO y NaN -> None."""
     df = df.copy()
     for col in df.columns:
         if str(df[col].dtype).startswith("datetime"):
@@ -81,7 +62,9 @@ def _normalizar_para_json(df):
 
 
 def guardar_dataset(modulo, df, admin):
-    """Reemplazo total: sustituye la BD del módulo por la nueva."""
+    """Reemplazo total. Además invalida la caché de ese módulo
+    y sube su versión (para que los navegadores detecten el
+    cambio y recarguen)."""
     registros = _normalizar_para_json(df).to_dict("records")
     with _conn() as c, c.cursor() as cur:
         cur.execute("""
@@ -92,10 +75,11 @@ def guardar_dataset(modulo, df, admin):
                           subido_por=EXCLUDED.subido_por,
                           actualizado=now();
         """, (modulo, Json(registros), admin))
+    invalidar_cache(modulo)
 
 
 def leer_dataset(modulo):
-    """Devuelve la BD del módulo como DataFrame, o None si no hay."""
+    """Lee la BD del módulo desde PostgreSQL (sin caché)."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT datos FROM datasets WHERE modulo=%s;", (modulo,))
         fila = cur.fetchone()
@@ -103,7 +87,6 @@ def leer_dataset(modulo):
 
 
 def info_dataset(modulo):
-    """Metadatos: cuándo y quién actualizó (para mostrar en la UI)."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT actualizado, subido_por FROM datasets WHERE modulo=%s;",
                     (modulo,))
@@ -112,11 +95,55 @@ def info_dataset(modulo):
 
 
 # =========================================================
+# CACHÉ EN MEMORIA DEL SERVIDOR
+# =========================================================
+# _CACHE: modulo -> DataFrame ya cargado.
+# _VERSION: modulo -> número que cambia cuando se suben datos
+#           nuevos. El navegador guarda su versión en el store;
+#           si difiere de la del servidor, recarga.
+
+_CACHE = {}
+_VERSION = {}
+
+
+def obtener_df(modulo):
+    """Devuelve el DataFrame del módulo desde la CACHÉ del
+    servidor. Si no está en caché, lo lee de PostgreSQL una vez
+    y lo guarda. Evita que los datos viajen del navegador."""
+    if modulo not in _CACHE:
+        df = leer_dataset(modulo)
+        if df is not None:
+            _CACHE[modulo] = df
+            _VERSION.setdefault(modulo, _nueva_version())
+    return _CACHE.get(modulo)
+
+
+def version_actual(modulo):
+    """Versión vigente de los datos del módulo. Si no hay nada
+    cargado aún, intenta cargar para fijar versión."""
+    if modulo not in _VERSION:
+        obtener_df(modulo)
+    return _VERSION.get(modulo, 0)
+
+
+def invalidar_cache(modulo):
+    """Borra la caché del módulo y sube su versión. Se llama
+    al guardar datos nuevos, para que la próxima lectura traiga
+    lo nuevo y los navegadores detecten el cambio."""
+    _CACHE.pop(modulo, None)
+    _VERSION[modulo] = _nueva_version()
+
+
+def _nueva_version():
+    # entero creciente basado en el tiempo (único por cambio)
+    return int(time.time() * 1000)
+
+
+# =========================================================
 # USUARIOS / LOGIN
 # =========================================================
 
 def crear_usuario(usuario, password, rol="consulta"):
-    """Crea (o actualiza) un usuario con contraseña cifrada."""
     h = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     with _conn() as c, c.cursor() as cur:
         cur.execute("""
@@ -128,7 +155,6 @@ def crear_usuario(usuario, password, rol="consulta"):
 
 
 def verificar_login(usuario, password):
-    """Devuelve {'usuario','rol'} si las credenciales son válidas, None si no."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT password_hash, rol FROM usuarios WHERE usuario=%s;",
                     (usuario,))
