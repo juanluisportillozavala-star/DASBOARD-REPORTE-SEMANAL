@@ -2,28 +2,21 @@
 =========================================================
 ventas/tablas_ventas.py
 =========================================================
-CATÁLOGO de las tablas jerárquicas de Ventas.
+CATÁLOGO de las tablas jerárquicas de Ventas, mostradas en
+PESTAÑAS (una visible a la vez).
 
-Aquí se declara CADA tabla en pocas líneas, usando la
-fábrica (ventas/tabla_arbol.py). Añadir una tabla nueva =
-añadir una entrada a TABLAS. Nada más.
+VELOCIDAD: solo la tabla de la pestaña ACTIVA se monta en la
+página, así que al filtrar (mes/semana) únicamente se
+recalcula ESA tabla, no las cuatro. Cambiar de pestaña monta
+la nueva (pequeño cálculo en ese momento).
 
-  clave:   identificador corto y único (sin espacios)
-  niveles: dimensiones de la jerarquía, de fuera hacia dentro
-  titulo:  encabezado visible (opcional; por defecto los
-           niveles unidos por ' / ')
+Añadir una tabla = añadir una entrada a TABLAS. Nada más.
 """
 
-from dash import html
+from dash import html, dcc, Input, Output
 
 from ventas.tabla_arbol import crear_layout_tabla, registrar_callbacks_tablas
 
-
-# -------------------------------------------------------
-# Definición de las tablas. Por ahora, solo Producto/Cliente
-# (validamos la fábrica conectada). Para agregar las otras,
-# se descomenta / añade su línea aquí — nada más.
-# -------------------------------------------------------
 
 TABLAS = [
     {"clave": "vend_cli_prod", "niveles": ["Vendedor", "Cliente", "Producto"]},
@@ -33,18 +26,47 @@ TABLAS = [
 ]
 
 
+def _titulo(t):
+    return t.get("titulo") or " / ".join(t["niveles"])
+
+
 def crear_layout_tablas_ventas():
-    """Apila los layouts de todas las tablas del catálogo."""
-    bloques = []
-    for t in TABLAS:
-        bloques.append(crear_layout_tabla(
-            t["clave"], t["niveles"], t.get("titulo"),
-        ))
-        bloques.append(html.Br())
-    return html.Div(bloques)
+    """Pestañas: una por tabla. Solo se monta la tabla activa."""
+    tabs = [
+        dcc.Tab(
+            label=_titulo(t),
+            value=t["clave"],
+            style={"padding": "10px 16px", "fontWeight": "600"},
+            selected_style={"padding": "10px 16px", "fontWeight": "700",
+                            "color": "#173C73",
+                            "borderTop": "3px solid #D4AF37"},
+        )
+        for t in TABLAS
+    ]
+
+    return html.Div(
+        [
+            dcc.Tabs(
+                id="tabs-tablas",
+                value=TABLAS[0]["clave"],   # primera pestaña activa
+                children=tabs,
+            ),
+            html.Div(style={"height": "12px"}),
+            # aquí se monta SOLO la tabla de la pestaña activa
+            html.Div(id="contenedor-tabla-activa"),
+        ]
+    )
 
 
 def registrar_callbacks_tablas_ventas(app):
-    """Registra los callbacks de la fábrica (una sola vez sirve
-    a todas las tablas del catálogo, vía pattern-matching)."""
+    # callbacks de la fábrica (pattern-matching, sirven a todas)
     registrar_callbacks_tablas(app)
+
+    # monta la tabla de la pestaña activa (perezoso)
+    @app.callback(
+        Output("contenedor-tabla-activa", "children"),
+        Input("tabs-tablas", "value"),
+    )
+    def montar_tabla_activa(clave):
+        t = next((x for x in TABLAS if x["clave"] == clave), TABLAS[0])
+        return crear_layout_tabla(t["clave"], t["niveles"], t.get("titulo"))
