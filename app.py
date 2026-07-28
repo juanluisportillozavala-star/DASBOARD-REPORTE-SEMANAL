@@ -12,7 +12,7 @@ import dash_bootstrap_components as dbc
 # Layouts
 # =========================
 
-from layouts.principal import crear_principal
+from layouts.principal import crear_principal, registrar_callbacks_principal
 
 # =========================
 # Callbacks
@@ -55,9 +55,22 @@ server = app.server
 
 app.layout = crear_principal()
 
+# ==========================================================
+# INICIALIZACIÓN DE BASE DE DATOS (Supabase / PostgreSQL)
+# ==========================================================
+import db
+
+try:
+    db.inicializar_esquema()
+    print(">>> [DB] Conexión a Supabase OK. Tablas listas.", flush=True)
+except Exception as e:
+    print(f">>> [DB] ERROR conectando a Supabase: {e}", flush=True)
+
 # =========================
 # Registrar callbacks
 # =========================
+
+registrar_callbacks_principal(app)
 
 registrar_router_callbacks(app)
 
