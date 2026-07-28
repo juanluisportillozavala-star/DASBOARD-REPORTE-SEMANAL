@@ -30,11 +30,17 @@ def crear_app_interna(rol=None):
 
 
 def crear_principal():
-    """Raíz: stores de sesión + contenedor que alterna login/app."""
+    """Raíz: store de sesión + contenedor que YA MUESTRA el login
+    de entrada. El callback solo lo cambia a la app cuando hay
+    sesión. Así, aunque el callback no corra en la carga inicial,
+    el login se ve igual (evita la pantalla en blanco)."""
     return html.Div(
         children=[
             dcc.Store(id="store-sesion", data=None),
-            html.Div(id="raiz-vista"),
+            html.Div(
+                id="raiz-vista",
+                children=crear_layout_login(),   # login visible de entrada
+            ),
         ]
     )
 
@@ -46,6 +52,7 @@ def registrar_callbacks_principal(app):
     @app.callback(
         Output("raiz-vista", "children"),
         Input("store-sesion", "data"),
+        prevent_initial_call=True,   # el login ya está puesto de entrada
     )
     def mostrar_vista(sesion):
         if not sesion:
