@@ -24,6 +24,7 @@ import dash_bootstrap_components as dbc
 
 import db
 from ventas.procesamiento import leer_archivos
+from ingresos.procesamiento import leer_archivo as leer_ingresos
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
@@ -39,6 +40,15 @@ def _procesar_ventas(contents_list):
     return df_ventas
 
 
+def _procesar_ingresos(contents_list):
+    # Un solo archivo (la BD de ingresos). La fecha de corte que
+    # congela Vigente/Vencido es el DÍA DE LA CARGA (hoy). Como
+    # leer_ingresos usa por defecto la fecha de hoy si no se pasa
+    # fecha_corte, aquí basta con no pasarla.
+    (bd,) = contents_list
+    return leer_ingresos(bd)
+
+
 # --- CATÁLOGO DE MÓDULOS ---
 MODULOS_CARGA = {
     "ventas": {
@@ -49,12 +59,13 @@ MODULOS_CARGA = {
         ],
         "procesar": _procesar_ventas,
     },
-    # Para añadir un módulo nuevo, descomentar y adaptar:
-    # "ingresos": {
-    #     "titulo": "Ingresos",
-    #     "archivos": [{"id": "bd", "label": "BD Ingresos"}],
-    #     "procesar": _procesar_ingresos,
-    # },
+    "ingresos": {
+        "titulo": "Ingresos",
+        "archivos": [
+            {"id": "bd", "label": "BD Ingresos"},
+        ],
+        "procesar": _procesar_ingresos,
+    },
 }
 
 
