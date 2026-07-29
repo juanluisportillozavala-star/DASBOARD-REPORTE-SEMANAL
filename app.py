@@ -24,6 +24,10 @@ from ventas.tablas_ventas import registrar_callbacks_tablas_ventas
 from ventas.graficos import registrar_callbacks_graficos
 from carga import registrar_callbacks_carga
 
+# Ingresos
+from ingresos.callbacks import registrar_callbacks_ingresos
+from ingresos.tabla_ingresos import registrar_callbacks_tabla_ingresos
+
 # =========================
 # Crear aplicación
 # =========================
@@ -75,10 +79,17 @@ registrar_callbacks_principal(app)
 
 registrar_router_callbacks(app)
 
+# Ventas
 registrar_callbacks_ventas(app)
 registrar_callbacks_tablas_ventas(app)
 registrar_callbacks_graficos(app)
+
+# Carga central
 registrar_callbacks_carga(app)
+
+# Ingresos
+registrar_callbacks_ingresos(app)
+registrar_callbacks_tabla_ingresos(app)
 
 # =========================
 # Ejecutar
