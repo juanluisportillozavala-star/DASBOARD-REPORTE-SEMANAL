@@ -47,28 +47,26 @@ def _fin_de_mes(fecha):
 def procesar_bd_ingresos(df, fecha_corte=None):
     """
     df: BD cruda de ingresos.
-    fecha_corte: fecha que congela Vigente/Vencido. En la carga
-                 se pasa el día de la carga; por defecto, hoy.
+
+    NOTA: ESTATUS (Vigente/Vencido) YA NO se calcula aquí. Se
+    calcula dinámicamente en la tabla según el mes de corte del
+    calendario (el mes más alto seleccionado). Aquí solo se
+    preparan las columnas que NO dependen del filtro: TERMINOS,
+    MES, SEMANA, y se conserva la Fecha de vencimiento (que la
+    tabla usa para el cálculo dinámico del estatus).
+
+    fecha_corte: se mantiene el parámetro por compatibilidad,
+    pero ya no se usa para ESTATUS.
     """
     df = df.copy()
-
-    if fecha_corte is None:
-        fecha_corte = pd.Timestamp.today().normalize()
-    else:
-        fecha_corte = pd.Timestamp(fecha_corte).normalize()
 
     df[COL_VENCIMIENTO] = pd.to_datetime(df[COL_VENCIMIENTO], errors="coerce")
     df[COL_ULTIMO_PAGO] = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce")
 
-    # ESTATUS
-    fin_corte = _fin_de_mes(fecha_corte)
-
-    def _estatus(v):
-        if pd.isna(v):
-            return None
-        return "Vigente" if _fin_de_mes(v) >= fin_corte else "Vencido"
-
-    df["ESTATUS"] = df[COL_VENCIMIENTO].apply(_estatus)
+    # MES_VENCIMIENTO: mes de la fecha de vencimiento. Lo usa la tabla
+    # para calcular ESTATUS dinámicamente (vigente/vencido según el
+    # mes de corte del calendario). ESTATUS ya NO se congela aquí.
+    df["MES_VENCIMIENTO"] = df[COL_VENCIMIENTO].dt.month
 
     # TERMINOS DE PAGO
     df["TERMINOS DE PAGO"] = df[COL_DESCRIPCION].apply(

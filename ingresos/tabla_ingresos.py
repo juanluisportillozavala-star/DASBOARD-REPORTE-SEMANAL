@@ -23,7 +23,8 @@ MODULO = "ingresos"
 COL_IMPORTE = "Importe sin impuestos firmado"
 COL_VENDEDOR = "Vendedor"
 COL_TERMINOS = "TERMINOS DE PAGO"   # Contado / Crédito
-COL_ESTATUS = "ESTATUS"             # Vencido / Vigente
+# ESTATUS ya no viene en los datos: se calcula dinámicamente en la
+# tabla según el mes de corte del calendario (ver _estatus_dinamico).
 COL_MES = "MES"
 COL_SEMANA = "SEMANA"
 
@@ -36,9 +37,34 @@ ESTATUS = ["Vencido", "Vigente"]
 FMT_MONEDA = {"function": "params.value == null ? '' : d3.format(',.2f')(params.value)"}
 
 
+def _mes_corte(df, meses):
+    """Determina el mes de corte para vigente/vencido:
+    el mes MÁS ALTO seleccionado en el calendario; si no hay
+    selección, el mes de vencimiento más alto de los datos."""
+    if meses:
+        return max(meses)
+    vencs = df["MES_VENCIMIENTO"].dropna().astype(int)
+    return int(vencs.max()) if len(vencs) else 1
+
+
+def _estatus_dinamico(df, corte):
+    """Añade columna ESTATUS a df según el mes de corte:
+    Vigente si mes de vencimiento >= corte, si no Vencido."""
+    df = df.copy()
+
+    def clasificar(mv):
+        if pd.isna(mv):
+            return None
+        return "Vigente" if int(mv) >= corte else "Vencido"
+
+    df["ESTATUS"] = df["MES_VENCIMIENTO"].apply(clasificar)
+    return df
+
+
 def _pivote(df):
     """Devuelve (filas, totales_fila) del pivote Vendedor x
-    (Terminos, Estatus). Cada fila es un dict listo para AG Grid."""
+    (Terminos, Estatus). Cada fila es un dict listo para AG Grid.
+    df ya debe traer la columna ESTATUS calculada (dinámica)."""
     filas = []
     vendedores = sorted(df[COL_VENDEDOR].dropna().unique().tolist())
 
@@ -53,7 +79,7 @@ def _pivote(df):
         for t in TERMINOS:
             for e in ESTATUS:
                 key = f"{t}|{e}"
-                monto = sub[(sub[COL_TERMINOS] == t) & (sub[COL_ESTATUS] == e)][COL_IMPORTE].sum()
+                monto = sub[(sub[COL_TERMINOS] == t) & (sub["ESTATUS"] == e)][COL_IMPORTE].sum()
                 if monto and not pd.isna(monto) and monto != 0:
                     fila[key] = float(monto)
                     total_fila += float(monto)
@@ -142,6 +168,12 @@ def registrar_callbacks_tabla_ingresos(app):
             if df_f is None or len(df_f) == 0:
                 return html.Div("No hay datos para el filtro seleccionado.",
                                 style={"color": "#6C757D"})
+
+            # ESTATUS dinámico: el mes de corte es el más alto
+            # seleccionado (o el más alto de los datos si no hay
+            # selección). Vigente si vence en ese mes o después.
+            corte = _mes_corte(df_f, meses)
+            df_f = _estatus_dinamico(df_f, corte)
 
             filas, fila_total = _pivote(df_f)
 
