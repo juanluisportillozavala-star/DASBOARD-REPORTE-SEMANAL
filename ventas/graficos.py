@@ -19,6 +19,7 @@ Paleta corporativa (acorde a las tablas):
 """
 
 from dash import Input, Output, html, dcc, no_update
+import db
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -298,7 +299,7 @@ def registrar_callbacks_graficos(app):
         Input("store-semana", "data"),
         Input("acc-graficos", "active_item"),
     )
-    def actualizar_graficos(data, meses, semanas, item_activo):
+    def actualizar_graficos(marca, meses, semanas, item_activo):
         # OPTIMIZACIÓN: si el accordion de gráficos está CERRADO
         # (active_item None/vacío), no recalcular nada. Los gráficos
         # Plotly son lo más pesado de renderizar; no tiene sentido
@@ -308,12 +309,14 @@ def registrar_callbacks_graficos(app):
         if not item_activo:
             return (no_update, no_update, no_update, no_update, no_update)
 
-        if data is None:
+        # Los datos se leen de la CACHÉ del servidor (no del store,
+        # que ahora solo trae una marca ligera).
+        df = db.obtener_df("ventas")
+        if df is None:
             vacio = go.Figure()
             vacio.update_layout(**_layout_base("Sin datos"))
             return vacio, vacio, vacio, vacio, vacio
 
-        df = pd.DataFrame(data)
         df_f = filtrar_dataframe(df, meses=meses, semanas=semanas)
 
         # Top 10 productos por Ut Bruta (columna real: Producto 2)
