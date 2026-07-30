@@ -13,7 +13,7 @@ ESTATUS es dinámico según el mes de corte del calendario
 Lee los datos de la caché del servidor (db.obtener_df).
 """
 
-from dash import Input, Output, State, html, no_update
+from dash import Input, Output, State, html, dcc, no_update
 import dash_ag_grid as dag
 import pandas as pd
 
@@ -49,6 +49,7 @@ def _column_defs():
             "minWidth": 300,
             "pinned": "left",
             "filter": False, "sortable": False,
+            "headerClass": "hdr-ingresos",
             "cellStyle": {"function": "params.data.tieneHijos ? {cursor: 'pointer'} : {}"},
         },
     ]
@@ -62,8 +63,10 @@ def _column_defs():
                 "filter": False, "sortable": False,
                 "valueFormatter": FMT_MONEDA,
                 "minWidth": 130,
+                "headerClass": "hdr-ingresos",
             })
-        defs.append({"headerName": t, "children": hijos})
+        defs.append({"headerName": t, "children": hijos,
+                     "headerClass": "hdr-ingresos-grupo"})
     defs.append({
         "field": "total",
         "headerName": "Total general",
@@ -71,6 +74,7 @@ def _column_defs():
         "filter": False, "sortable": False,
         "valueFormatter": FMT_MONEDA,
         "minWidth": 150, "pinned": "right",
+        "headerClass": "hdr-ingresos",
     })
     return defs
 
@@ -98,11 +102,13 @@ def _estilo_grid(alto):
         "--ag-font-size": "16px",
         "--ag-header-background-color": "#173C73",
         "--ag-header-foreground-color": "#FFFFFF",
+        "--ag-header-cell-hover-background-color": "#173C73",
         "--ag-background-color": "#FFFFFF",
         "--ag-border-color": "#E7DBB0",
         "--ag-header-column-separator-color": "#2C5090",
         "--ag-row-hover-color": "#E5DECB",
-        "--ag-icon-color": "#FDFCFB",
+        "--ag-icon-color": "#FFFFFF",
+        "--ag-secondary-foreground-color": "#FFFFFF",
     }
 
 
@@ -137,6 +143,21 @@ def crear_encabezado_periodo(fecha_corte, semanas_texto):
 def crear_layout_tabla_ingresos():
     return html.Div(
         [
+            # CSS que fuerza el texto BLANCO en los encabezados
+            # (normal y de grupo Contado/Crédito), por si las
+            # variables de AG Grid no bastan en esta versión.
+            html.Div(
+                dcc.Markdown(
+                    """<style>
+                    .hdr-ingresos, .hdr-ingresos .ag-header-cell-text,
+                    .hdr-ingresos-grupo, .hdr-ingresos-grupo .ag-header-group-text {
+                        color: #FFFFFF !important;
+                    }
+                    </style>""",
+                    dangerously_allow_html=True,
+                ),
+                style={"display": "none"},
+            ),
             # stores del árbol de ingresos (expansión + cache del árbol)
             dcc.Store(id="store-ing-arbol", data=None),
             dcc.Store(id="store-ing-total", data=None),
@@ -164,9 +185,6 @@ def _fecha_corte_texto(meses):
                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
         return f"Corte a {nombres[m]}"
     return "Todos los meses"
-
-
-from dash import dcc
 
 
 def registrar_callbacks_tabla_ingresos(app):
@@ -241,7 +259,6 @@ def registrar_callbacks_tabla_ingresos(app):
         else:
             ids.add(fid)
         return sorted(ids)
-
 
     # Refresco ligero al expandir/contraer (redibuja filas visibles)
     @app.callback(
