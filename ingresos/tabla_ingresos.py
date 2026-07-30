@@ -102,7 +102,7 @@ def _estilo_grid(alto):
         "--ag-border-color": "#E7DBB0",
         "--ag-header-column-separator-color": "#2C5090",
         "--ag-row-hover-color": "#E5DECB",
-        "--ag-icon-color": "#050400",
+        "--ag-icon-color": "#FDFCFB",
     }
 
 
