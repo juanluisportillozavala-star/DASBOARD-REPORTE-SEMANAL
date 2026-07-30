@@ -210,17 +210,21 @@ def registrar_callbacks_inventario(app):
         fig_pie.update_layout(height=380, autosize=False,
                               margin=dict(t=50, b=20, l=20, r=20))
 
-        # Barras: valor por ubicación
+        # Barras: valor por ubicación (valor fijo encima, sin hover)
         ubi = df.groupby(COL_UBICACION)[COL_VALOR].sum().reset_index()
+        ubi["etiqueta"] = ubi[COL_VALOR].apply(lambda v: f"${v:,.0f}")
         fig_bar = px.bar(ubi, x=COL_UBICACION, y=COL_VALOR,
                          title="Valor por ubicación",
+                         text="etiqueta",
                          color_discrete_sequence=[AZUL])
         fig_bar.update_traces(
-            hovertemplate="%{x}<br>Valor: $%{y:,.2f}<extra></extra>"
+            textposition="outside",
+            textfont=dict(color=AZUL, size=12),
+            hoverinfo="skip", hovertemplate=None,
         )
         fig_bar.update_layout(height=380, autosize=False,
-                              hovermode="closest",
-                              margin=dict(t=50, b=20, l=20, r=20))
+                              margin=dict(t=50, b=20, l=20, r=20),
+                              yaxis=dict(range=[0, ubi[COL_VALOR].max() * 1.15]))
 
         # Tabla
         grid = dag.AgGrid(
