@@ -224,8 +224,8 @@ def registrar_callbacks_inventario(app):
             defaultColDef={"resizable": True, "sortable": True,
                            "filter": False, "flex": 1, "minWidth": 110},
             dashGridOptions={"animateRows": False, "rowHeight": 32,
-                             "headerHeight": 38, "domLayout": "autoHeight"},
+                             "headerHeight": 38},
             className="ag-theme-alpine",
-            style=_estilo_grid("auto"),
+            style=_estilo_grid("600px"),
         )
         return kpis, fig_pie, fig_bar, grid
