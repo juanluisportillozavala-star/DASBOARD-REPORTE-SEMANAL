@@ -10,6 +10,7 @@ from layouts.dashboard import crear_dashboard
 from ventas.layout import crear_layout_ventas
 from carga import crear_layout_carga
 from ingresos.layout import crear_layout_ingresos
+from inventario.layout import crear_layout_inventario
 
 
 def pagina_temporal(nombre):
@@ -59,7 +60,7 @@ def crear_router(pathname):
 
     elif pathname == "/inventario":
 
-        return pagina_temporal("Inventario")
+        return crear_layout_inventario()
 
     elif pathname == "/saldo-proveedor":
 

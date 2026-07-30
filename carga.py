@@ -25,6 +25,7 @@ import dash_bootstrap_components as dbc
 import db
 from ventas.procesamiento import leer_archivos
 from ingresos.procesamiento import leer_archivo as leer_ingresos
+from inventario.procesamiento import leer_archivo as leer_inventario
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
@@ -49,6 +50,13 @@ def _procesar_ingresos(contents_list):
     return leer_ingresos(bd)
 
 
+def _procesar_inventario(contents_list):
+    # Un solo archivo. Los DIAS EN ALMACEN se congelan al día
+    # de la carga (leer_inventario usa hoy por defecto).
+    (bd,) = contents_list
+    return leer_inventario(bd)
+
+
 # --- CATÁLOGO DE MÓDULOS ---
 MODULOS_CARGA = {
     "ventas": {
@@ -65,6 +73,13 @@ MODULOS_CARGA = {
             {"id": "bd", "label": "BD Ingresos"},
         ],
         "procesar": _procesar_ingresos,
+    },
+    "inventario": {
+        "titulo": "Inventario",
+        "archivos": [
+            {"id": "bd", "label": "BD Inventario"},
+        ],
+        "procesar": _procesar_inventario,
     },
 }
 

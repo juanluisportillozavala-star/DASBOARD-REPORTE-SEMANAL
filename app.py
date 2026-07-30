@@ -28,6 +28,10 @@ from carga import registrar_callbacks_carga
 from ingresos.callbacks import registrar_callbacks_ingresos
 from ingresos.tabla_ingresos import registrar_callbacks_tabla_ingresos
 
+# Inventario
+from inventario.callbacks import registrar_callbacks_inventario_carga
+from inventario.tabla_inventario import registrar_callbacks_inventario
+
 # =========================
 # Crear aplicación
 # =========================
@@ -90,6 +94,10 @@ registrar_callbacks_carga(app)
 # Ingresos
 registrar_callbacks_ingresos(app)
 registrar_callbacks_tabla_ingresos(app)
+
+# Inventario
+registrar_callbacks_inventario_carga(app)
+registrar_callbacks_inventario(app)
 
 # =========================
 # Ejecutar
