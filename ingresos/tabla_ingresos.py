@@ -123,6 +123,19 @@ def _opciones_grid(pinned):
     }
 
 
+# Altura adaptativa: crece con las filas visibles hasta un tope.
+# Con pocas filas la tabla se ve chica y ajustada; al expandir
+# vendedores crece, y al pasar el tope activa scroll interno
+# (con el encabezado fijo).
+ALTO_MAXIMO_ING = 600  # px
+
+
+def _altura_dinamica(n_filas):
+    # encabezado de grupo + encabezado de columna + filas + fila total + margen
+    alto = (ALTO_ENCABEZADO * 2) + (n_filas * ALTO_FILA) + ALTO_FILA + 16
+    return f"{min(alto, ALTO_MAXIMO_ING)}px"
+
+
 def crear_encabezado_periodo(fecha_corte, semanas_texto):
     return html.Div(
         [
@@ -225,7 +238,7 @@ def registrar_callbacks_tabla_ingresos(app):
                                "filter": False, "resizable": True},
                 dashGridOptions=_opciones_grid([total]),
                 className="ag-theme-alpine",
-                style=_estilo_grid("600px"),
+                style=_estilo_grid(_altura_dinamica(len(visibles))),
             )
             contenido = html.Div([
                 crear_encabezado_periodo(_fecha_corte_texto(meses), semanas_txt),
@@ -259,16 +272,19 @@ def registrar_callbacks_tabla_ingresos(app):
             ids.add(fid)
         return sorted(ids)
 
-    # Refresco ligero al expandir/contraer (redibuja filas visibles)
+    # Refresco ligero al expandir/contraer: redibuja filas visibles
+    # Y recalcula la altura (para que la tabla crezca/encoja).
     @app.callback(
         Output("tabla-ingresos-grid", "rowData"),
+        Output("tabla-ingresos-grid", "style"),
         Input("store-ing-exp", "data"),
         State("store-ing-arbol", "data"),
         prevent_initial_call=True,
     )
     def refrescar(ids_exp, arbol_data):
         if arbol_data is None:
-            return no_update
+            return no_update, no_update
         arbol = pd.DataFrame(arbol_data)
         visibles = filas_visibles_ingresos(arbol, ids_exp or [])
-        return visibles.to_dict("records")
+        return (visibles.to_dict("records"),
+                _estilo_grid(_altura_dinamica(len(visibles))))
