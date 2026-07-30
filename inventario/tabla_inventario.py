@@ -113,22 +113,38 @@ def crear_layout_tabla_inventario():
                 style={"display": "flex", "alignItems": "center",
                        "marginBottom": "18px"},
             ),
-            # Gráficos
-            html.Div(
-                [
-                    html.Div(dcc.Graph(id="inv-grafico-pastel"),
-                             style={"flex": "1", "minWidth": "300px"}),
-                    html.Div(dcc.Graph(id="inv-grafico-barras"),
-                             style={"flex": "1", "minWidth": "300px"}),
-                ],
-                style={"display": "flex", "gap": "16px", "flexWrap": "wrap",
-                       "marginBottom": "20px"},
-            ),
             # Tabla
             html.H4("Detalle de productos",
                     style={"color": AZUL, "fontWeight": "700",
                            "marginBottom": "10px"}),
             html.Div(id="inv-tabla-cont"),
+
+            html.Br(),
+
+            # Gráficos AL FINAL. Altura fija (400px) para evitar el
+            # bucle de auto-redimensionamiento de Plotly dentro de flex.
+            html.H4("Análisis gráfico",
+                    style={"color": AZUL, "fontWeight": "700",
+                           "marginTop": "20px", "marginBottom": "10px"}),
+            html.Div(
+                [
+                    html.Div(
+                        dcc.Graph(id="inv-grafico-pastel",
+                                  style={"height": "400px"},
+                                  config={"responsive": False}),
+                        style={"flex": "1", "minWidth": "320px",
+                               "maxWidth": "600px"},
+                    ),
+                    html.Div(
+                        dcc.Graph(id="inv-grafico-barras",
+                                  style={"height": "400px"},
+                                  config={"responsive": False}),
+                        style={"flex": "1", "minWidth": "320px",
+                               "maxWidth": "600px"},
+                    ),
+                ],
+                style={"display": "flex", "gap": "16px", "flexWrap": "wrap"},
+            ),
         ]
     )
 
@@ -189,14 +205,16 @@ def registrar_callbacks_inventario(app):
         fig_pie = px.pie(cat, values=COL_VALOR, names="CATEGORIA",
                          title="Distribución de valor por categoría",
                          color="CATEGORIA", color_discrete_map=COLOR_CAT)
-        fig_pie.update_layout(margin=dict(t=50, b=20, l=20, r=20))
+        fig_pie.update_layout(height=380, autosize=False,
+                              margin=dict(t=50, b=20, l=20, r=20))
 
         # Barras: valor por ubicación
         ubi = df.groupby(COL_UBICACION)[COL_VALOR].sum().reset_index()
         fig_bar = px.bar(ubi, x=COL_UBICACION, y=COL_VALOR,
                          title="Valor por ubicación",
                          color_discrete_sequence=[AZUL])
-        fig_bar.update_layout(margin=dict(t=50, b=20, l=20, r=20))
+        fig_bar.update_layout(height=380, autosize=False,
+                              margin=dict(t=50, b=20, l=20, r=20))
 
         # Tabla
         grid = dag.AgGrid(
