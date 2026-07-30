@@ -130,19 +130,17 @@ def crear_layout_tabla_inventario():
                 [
                     html.Div(
                         dcc.Graph(id="inv-grafico-pastel",
-                                  style={"height": "400px"},
-                                  config={"responsive": False,
+                                  style={"height": "400px", "width": "100%"},
+                                  config={"responsive": True,
                                           "displayModeBar": False}),
-                        style={"flex": "1", "minWidth": "320px",
-                               "maxWidth": "600px"},
+                        style={"flex": "1 1 45%", "minWidth": "320px"},
                     ),
                     html.Div(
                         dcc.Graph(id="inv-grafico-barras",
-                                  style={"height": "400px"},
-                                  config={"responsive": False,
+                                  style={"height": "400px", "width": "100%"},
+                                  config={"responsive": True,
                                           "displayModeBar": False}),
-                        style={"flex": "1", "minWidth": "320px",
-                               "maxWidth": "600px"},
+                        style={"flex": "1 1 45%", "minWidth": "320px"},
                     ),
                 ],
                 style={"display": "flex", "gap": "16px", "flexWrap": "wrap"},
@@ -207,7 +205,7 @@ def registrar_callbacks_inventario(app):
         fig_pie = px.pie(cat, values=COL_VALOR, names="CATEGORIA",
                          title="Distribución de valor por categoría",
                          color="CATEGORIA", color_discrete_map=COLOR_CAT)
-        fig_pie.update_layout(height=380, autosize=False,
+        fig_pie.update_layout(height=380,
                               margin=dict(t=50, b=20, l=20, r=20))
 
         # Barras: valor por ubicación (valor fijo encima, sin hover)
@@ -222,7 +220,7 @@ def registrar_callbacks_inventario(app):
             textfont=dict(color=AZUL, size=12),
             hoverinfo="skip", hovertemplate=None,
         )
-        fig_bar.update_layout(height=380, autosize=False,
+        fig_bar.update_layout(height=380,
                               margin=dict(t=50, b=20, l=20, r=20),
                               yaxis=dict(range=[0, ubi[COL_VALOR].max() * 1.15]))
 
