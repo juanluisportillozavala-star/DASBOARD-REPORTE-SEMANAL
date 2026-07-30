@@ -26,7 +26,7 @@ COL_TERMINOS = "TERMINOS DE PAGO"     # Contado / Crédito
 COL_MES_VENC = "MES_VENCIMIENTO"
 
 TERMINOS = ["Contado", "Crédito"]
-ESTATUS = ["Vencido", "Vigente"]
+ESTATUS = ["Vigente", "Vencido"]
 
 # nombres de campo para las 4 columnas cruzadas + total
 def _campo(t, e):
