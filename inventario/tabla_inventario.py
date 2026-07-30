@@ -131,14 +131,16 @@ def crear_layout_tabla_inventario():
                     html.Div(
                         dcc.Graph(id="inv-grafico-pastel",
                                   style={"height": "400px"},
-                                  config={"responsive": False}),
+                                  config={"responsive": False,
+                                          "displayModeBar": False}),
                         style={"flex": "1", "minWidth": "320px",
                                "maxWidth": "600px"},
                     ),
                     html.Div(
                         dcc.Graph(id="inv-grafico-barras",
                                   style={"height": "400px"},
-                                  config={"responsive": False}),
+                                  config={"responsive": False,
+                                          "displayModeBar": False}),
                         style={"flex": "1", "minWidth": "320px",
                                "maxWidth": "600px"},
                     ),
@@ -213,7 +215,14 @@ def registrar_callbacks_inventario(app):
         fig_bar = px.bar(ubi, x=COL_UBICACION, y=COL_VALOR,
                          title="Valor por ubicación",
                          color_discrete_sequence=[AZUL])
+        fig_bar.update_traces(
+            hovertemplate="<b>%{x}</b><br>Valor: $%{y:,.2f}<extra></extra>"
+        )
         fig_bar.update_layout(height=380, autosize=False,
+                              hovermode="x",
+                              hoverlabel=dict(bgcolor="white",
+                                              bordercolor=AZUL,
+                                              font=dict(color=AZUL, size=13)),
                               margin=dict(t=50, b=20, l=20, r=20))
 
         # Tabla
