@@ -1038,3 +1038,8 @@ TARJETAS KPI PERSONALIZADAS
     transform:scale(1.15);
 
 }
+/* Solo encabezado de Ingresos */
+.hdr-ingresos .ag-header-cell-text,
+.hdr-ingresos-grupo .ag-header-group-text {
+    color: #FFFFFF !important;
+}
