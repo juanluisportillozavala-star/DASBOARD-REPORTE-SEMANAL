@@ -24,6 +24,8 @@ COL_VENDEDOR = "Vendedor"
 COL_CONTACTO = "Contacto"
 COL_TERMINOS = "TERMINOS DE PAGO"     # Contado / Crédito
 COL_MES_VENC = "MES_VENCIMIENTO"
+COL_VENCIMIENTO = "Fecha de vencimiento"
+COL_ULTIMO_PAGO = "Fecha último pago"
 
 TERMINOS = ["Contado", "Crédito"]
 ESTATUS = ["Vigente", "Vencido"]
@@ -35,24 +37,66 @@ def _campo(t, e):
 CAMPOS_CRUCE = [_campo(t, e) for t in TERMINOS for e in ESTATUS]
 
 
-def mes_corte(df, meses):
-    """Mes de corte: el más alto seleccionado; si no hay
-    selección, el mes de vencimiento más alto de los datos."""
+def _anio_reporte(df):
+    """Año del reporte = año MÁS COMÚN de la fecha de último pago.
+    Es el año contra el que se mide vigente/vencido (los pagos del
+    periodo que se está reportando)."""
+    fechas = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce").dropna()
+    if len(fechas) == 0:
+        return pd.Timestamp.today().year
+    return int(fechas.dt.year.mode().iloc[0])
+
+
+def fecha_corte(df, meses):
+    """Fecha de corte robusta (con AÑO): último día del mes de
+    corte, en el año del reporte. El mes de corte es el más alto
+    seleccionado; si no hay selección, el mes más alto presente en
+    las fechas de último pago."""
+    anio = _anio_reporte(df)
     if meses:
-        return max(meses)
-    v = df[COL_MES_VENC].dropna().astype(int)
-    return int(v.max()) if len(v) else 1
+        mes = max(meses)
+    else:
+        fp = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce").dropna()
+        mes = int(fp.dt.month.max()) if len(fp) else 12
+    # primer día del mes de corte + fin de mes = último día de ese mes
+    primero = pd.Timestamp(year=anio, month=mes, day=1)
+    return primero + pd.offsets.MonthEnd(0)
+
+
+# compatibilidad: algunos callbacks aún llaman mes_corte()
+def mes_corte(df, meses):
+    return fecha_corte(df, meses)
 
 
 def _con_estatus(df, corte):
+    """Clasifica cada factura comparando su FECHA DE VENCIMIENTO
+    COMPLETA (año + mes + día) contra la fecha de corte. Así una
+    factura que venció en un año anterior queda como Vencido aunque
+    su número de mes sea alto (bug que había al comparar solo el mes).
+
+    corte puede ser una fecha (Timestamp) — nuevo — o un entero de
+    mes — compatibilidad hacia atrás."""
     df = df.copy()
+    vencs = pd.to_datetime(df[COL_VENCIMIENTO], errors="coerce")
 
-    def clasificar(mv):
-        if pd.isna(mv):
+    if isinstance(corte, (int,)) or (hasattr(corte, "__int__") and not hasattr(corte, "year")):
+        # modo viejo (solo mes) — no debería usarse ya, pero por si acaso
+        mv = vencs.dt.month
+        df["_ESTATUS"] = mv.apply(
+            lambda m: None if pd.isna(m) else ("Vigente" if int(m) >= int(corte) else "Vencido")
+        )
+        return df
+
+    corte = pd.Timestamp(corte)
+
+    def clasificar(v):
+        if pd.isna(v):
             return None
-        return "Vigente" if int(mv) >= corte else "Vencido"
+        # fin de mes de la fecha de vencimiento vs fin de mes del corte
+        fin_v = v + pd.offsets.MonthEnd(0)
+        return "Vigente" if fin_v >= corte else "Vencido"
 
-    df["_ESTATUS"] = df[COL_MES_VENC].apply(clasificar)
+    df["_ESTATUS"] = vencs.apply(clasificar)
     return df
 
 
