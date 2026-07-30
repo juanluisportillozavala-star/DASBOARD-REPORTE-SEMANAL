@@ -119,7 +119,6 @@ def _opciones_grid(pinned):
         "headerHeight": ALTO_ENCABEZADO,
         "groupHeaderHeight": ALTO_ENCABEZADO,
         "pinnedBottomRowData": pinned,
-        "domLayout": "autoHeight",
         "suppressCellFocus": True,
     }
 
@@ -226,7 +225,7 @@ def registrar_callbacks_tabla_ingresos(app):
                                "filter": False, "resizable": True},
                 dashGridOptions=_opciones_grid([total]),
                 className="ag-theme-alpine",
-                style=_estilo_grid("auto"),
+                style=_estilo_grid("600px"),
             )
             contenido = html.Div([
                 crear_encabezado_periodo(_fecha_corte_texto(meses), semanas_txt),
