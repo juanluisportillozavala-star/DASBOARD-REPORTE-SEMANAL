@@ -216,13 +216,10 @@ def registrar_callbacks_inventario(app):
                          title="Valor por ubicación",
                          color_discrete_sequence=[AZUL])
         fig_bar.update_traces(
-            hovertemplate="<b>%{x}</b><br>Valor: $%{y:,.2f}<extra></extra>"
+            hovertemplate="%{x}<br>Valor: $%{y:,.2f}<extra></extra>"
         )
         fig_bar.update_layout(height=380, autosize=False,
-                              hovermode="x",
-                              hoverlabel=dict(bgcolor="white",
-                                              bordercolor=AZUL,
-                                              font=dict(color=AZUL, size=13)),
+                              hovermode="closest",
                               margin=dict(t=50, b=20, l=20, r=20))
 
         # Tabla
