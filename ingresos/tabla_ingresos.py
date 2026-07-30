@@ -242,6 +242,7 @@ def registrar_callbacks_tabla_ingresos(app):
             ids.add(fid)
         return sorted(ids)
 
+
     # Refresco ligero al expandir/contraer (redibuja filas visibles)
     @app.callback(
         Output("tabla-ingresos-grid", "rowData"),
