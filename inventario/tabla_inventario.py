@@ -206,6 +206,8 @@ def registrar_callbacks_inventario(app):
                          title="Distribución de valor por categoría",
                          color="CATEGORIA", color_discrete_map=COLOR_CAT)
         fig_pie.update_layout(height=380,
+                              paper_bgcolor="rgba(0,0,0,0)",
+                              plot_bgcolor="rgba(0,0,0,0)",
                               margin=dict(t=50, b=20, l=20, r=20))
 
         # Barras: valor por ubicación (valor fijo encima, sin hover)
@@ -221,6 +223,8 @@ def registrar_callbacks_inventario(app):
             hoverinfo="skip", hovertemplate=None,
         )
         fig_bar.update_layout(height=380,
+                              paper_bgcolor="rgba(0,0,0,0)",
+                              plot_bgcolor="rgba(0,0,0,0)",
                               margin=dict(t=50, b=20, l=20, r=20),
                               yaxis=dict(range=[0, ubi[COL_VALOR].max() * 1.15]))
 
