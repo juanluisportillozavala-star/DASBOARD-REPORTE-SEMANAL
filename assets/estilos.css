@@ -1044,3 +1044,12 @@ TARJETAS KPI PERSONALIZADAS
     color: #FFFFFF !important;
 }
 .hdr-inv .ag-header-cell-text { color:#FFFFFF !important; }
+/* Encabezados de grupo con color en tabla de inventario -> texto blanco */
+.hdr-inv-verde .ag-header-group-text,
+.hdr-inv-verde .ag-header-cell-text,
+.hdr-inv-amarillo .ag-header-group-text,
+.hdr-inv-amarillo .ag-header-cell-text,
+.hdr-inv-rojo .ag-header-group-text,
+.hdr-inv-rojo .ag-header-cell-text {
+    color: #FFFFFF !important;
+}
