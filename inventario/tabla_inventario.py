@@ -251,11 +251,11 @@ def crear_layout_tabla_inventario():
                     """<style>
                     .hdr-inv, .hdr-inv .ag-header-cell-text { color:#FFFFFF !important; }
                     .hdr-inv-verde, .hdr-inv-verde .ag-header-cell-text,
-                    .hdr-inv-verde .ag-header-group-text { color:#186A3B !important; background-color:#D5F5E3 !important; }
+                    .hdr-inv-verde .ag-header-group-text,
                     .hdr-inv-amarillo, .hdr-inv-amarillo .ag-header-cell-text,
-                    .hdr-inv-amarillo .ag-header-group-text { color:#7D6608 !important; background-color:#FCF3CF !important; }
+                    .hdr-inv-amarillo .ag-header-group-text,
                     .hdr-inv-rojo, .hdr-inv-rojo .ag-header-cell-text,
-                    .hdr-inv-rojo .ag-header-group-text { color:#943126 !important; background-color:#FADBD8 !important; }
+                    .hdr-inv-rojo .ag-header-group-text { color:#FFFFFF !important; }
                     </style>""",
                     dangerously_allow_html=True,
                 ),
