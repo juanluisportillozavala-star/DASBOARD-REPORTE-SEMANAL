@@ -52,9 +52,14 @@ def procesar_bd_inventario(df, fecha_corte=None):
     df = df.dropna(subset=[COL_PRODUCTO])
     df = df[~df[COL_PRODUCTO].str.contains("Existencias", case=False, na=False)]
 
-    # días en almacén (congelados a la fecha de corte)
+    # días en almacén (congelados a la fecha de corte).
+    # Se normaliza también la fecha de entrada (se ignora la hora)
+    # para contar días completos de CALENDARIO. Sin esto, un
+    # producto que entró a media mañana contaría un día de menos y
+    # podría caer en el rango equivocado (frontera 30/31, 60/61).
     df[COL_FECHA_ENTRADA] = pd.to_datetime(df[COL_FECHA_ENTRADA], errors="coerce")
-    df["DIAS EN ALMACEN"] = (fecha_corte - df[COL_FECHA_ENTRADA]).dt.days
+    entrada_norm = df[COL_FECHA_ENTRADA].dt.normalize()
+    df["DIAS EN ALMACEN"] = (fecha_corte - entrada_norm).dt.days
 
     # categoría por antigüedad
     df["CATEGORIA"] = pd.cut(

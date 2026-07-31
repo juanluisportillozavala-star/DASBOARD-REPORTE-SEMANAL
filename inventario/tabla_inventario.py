@@ -24,9 +24,168 @@ AZUL = "#173C73"
 DORADO = "#D4AF37"
 
 COLOR_CAT = {CAT_1: "#2ecc71", CAT_2: "#f1c40f", CAT_3: "#e74c3c"}
+# tonos suaves para pintar celdas de cada rango (verde/amarillo/rojo)
+COLOR_CAT_SUAVE = {CAT_1: "#D5F5E3", CAT_2: "#FCF3CF", CAT_3: "#FADBD8"}
+RANGOS = [CAT_1, CAT_2, CAT_3]
 
 FMT_MONEDA = {"function": "params.value == null ? '' : '$' + d3.format(',.2f')(params.value)"}
 FMT_NUM = {"function": "params.value == null ? '' : d3.format(',.0f')(params.value)"}
+FMT_PCT = {"function": "params.value == null ? '' : d3.format(',.1f')(params.value) + '%'"}
+
+
+def _estilo_grid_simple(alto):
+    return {
+        "width": "100%", "height": alto,
+        "--ag-font-size": "15px",
+        "--ag-header-background-color": AZUL,
+        "--ag-header-foreground-color": "#FFFFFF",
+        "--ag-background-color": "#FFFFFF",
+        "--ag-border-color": "#E7DBB0",
+        "--ag-row-hover-color": "#E5DECB",
+        "--ag-icon-color": "#FFFFFF",
+    }
+
+
+# =========================================================
+# TABLA 1: Resumen por Rango
+# =========================================================
+
+def _tabla_resumen_rango(df):
+    valor_total = df[COL_VALOR].sum()
+    filas = []
+    for r in RANGOS:
+        sub = df[df["CATEGORIA"] == r]
+        val = sub[COL_VALOR].sum()
+        filas.append({
+            "rango": r,
+            "n_productos": len(sub),
+            "cantidad": float(sub[COL_CANTIDAD].sum()),
+            "valor": float(val),
+            "pct": (val / valor_total * 100) if valor_total else 0,
+        })
+    fila_total = {
+        "rango": "Total", "n_productos": len(df),
+        "cantidad": float(df[COL_CANTIDAD].sum()),
+        "valor": float(valor_total), "pct": 100.0,
+    }
+
+    col_defs = [
+        {"field": "rango", "headerName": "Rango", "minWidth": 140,
+         "pinned": "left", "sortable": False, "filter": False,
+         "headerClass": "hdr-inv",
+         "cellStyle": {"function":
+             "params.value === '61+ días' ? {backgroundColor:'#FADBD8',fontWeight:'700'} : "
+             "params.value === '31-60 días' ? {backgroundColor:'#FCF3CF',fontWeight:'700'} : "
+             "params.value === '1-30 días' ? {backgroundColor:'#D5F5E3',fontWeight:'700'} : "
+             "{fontWeight:'700'}"}},
+        {"field": "n_productos", "headerName": "N° de productos",
+         "type": "numericColumn", "valueFormatter": FMT_NUM, "minWidth": 130,
+         "sortable": False, "filter": False, "headerClass": "hdr-inv"},
+        {"field": "cantidad", "headerName": "Cantidad en inventario",
+         "type": "numericColumn", "valueFormatter": FMT_NUM, "minWidth": 160,
+         "sortable": False, "filter": False, "headerClass": "hdr-inv"},
+        {"field": "valor", "headerName": "Valor", "type": "numericColumn",
+         "valueFormatter": FMT_MONEDA, "minWidth": 150,
+         "sortable": False, "filter": False, "headerClass": "hdr-inv"},
+        {"field": "pct", "headerName": "% del valor", "type": "numericColumn",
+         "valueFormatter": FMT_PCT, "minWidth": 110,
+         "sortable": False, "filter": False, "headerClass": "hdr-inv"},
+    ]
+
+    return dag.AgGrid(
+        rowData=filas,
+        columnDefs=col_defs,
+        dashGridOptions={"animateRows": False, "rowHeight": 34,
+                         "headerHeight": 40, "domLayout": "autoHeight",
+                         "pinnedBottomRowData": [fila_total],
+                         "suppressCellFocus": True},
+        defaultColDef={"resizable": True, "sortable": False, "filter": False,
+                       "flex": 1, "minWidth": 110},
+        className="ag-theme-alpine",
+        style=_estilo_grid_simple("auto"),
+    )
+
+
+# =========================================================
+# TABLA 2: Resumen Ubicación x Rango
+# =========================================================
+
+def _tabla_resumen_ubicacion(df):
+    valor_total = df[COL_VALOR].sum()
+
+    filas = []
+    for u in sorted(df[COL_UBICACION].dropna().unique().tolist()):
+        subu = df[df[COL_UBICACION] == u]
+        fila = {"ubicacion": u}
+        tot_u = 0.0
+        for r in RANGOS:
+            s = subu[subu["CATEGORIA"] == r]
+            val = float(s[COL_VALOR].sum())
+            fila[f"cant_{r}"] = float(s[COL_CANTIDAD].sum())
+            fila[f"val_{r}"] = val
+            tot_u += val
+        fila["valor_total"] = tot_u
+        fila["pct"] = (tot_u / valor_total * 100) if valor_total else 0
+        filas.append(fila)
+
+    # fila total
+    ftot = {"ubicacion": "Total"}
+    for r in RANGOS:
+        s = df[df["CATEGORIA"] == r]
+        ftot[f"cant_{r}"] = float(s[COL_CANTIDAD].sum())
+        ftot[f"val_{r}"] = float(s[COL_VALOR].sum())
+    ftot["valor_total"] = float(valor_total)
+    ftot["pct"] = 100.0
+
+    # columnas con grupos por rango (color en el encabezado de grupo)
+    col_defs = [
+        {"field": "ubicacion", "headerName": "Ubicación", "minWidth": 170,
+         "pinned": "left", "sortable": False, "filter": False,
+         "headerClass": "hdr-inv",
+         "cellStyle": {"fontWeight": "600", "color": AZUL}},
+    ]
+    clase_grupo = {CAT_1: "hdr-inv-verde", CAT_2: "hdr-inv-amarillo",
+                   CAT_3: "hdr-inv-rojo"}
+    for r in RANGOS:
+        col_defs.append({
+            "headerName": r,
+            "headerClass": clase_grupo[r],
+            "children": [
+                {"field": f"cant_{r}", "headerName": "Cantidad",
+                 "type": "numericColumn", "valueFormatter": FMT_NUM,
+                 "minWidth": 110, "sortable": False, "filter": False,
+                 "headerClass": clase_grupo[r],
+                 "cellStyle": {"backgroundColor": COLOR_CAT_SUAVE[r]}},
+                {"field": f"val_{r}", "headerName": "Valor",
+                 "type": "numericColumn", "valueFormatter": FMT_MONEDA,
+                 "minWidth": 130, "sortable": False, "filter": False,
+                 "headerClass": clase_grupo[r],
+                 "cellStyle": {"backgroundColor": COLOR_CAT_SUAVE[r]}},
+            ],
+        })
+    col_defs.append({"field": "valor_total", "headerName": "Valor total",
+                     "type": "numericColumn", "valueFormatter": FMT_MONEDA,
+                     "minWidth": 140, "pinned": "right", "sortable": False,
+                     "filter": False, "headerClass": "hdr-inv",
+                     "cellStyle": {"fontWeight": "700", "color": AZUL}})
+    col_defs.append({"field": "pct", "headerName": "% del total",
+                     "type": "numericColumn", "valueFormatter": FMT_PCT,
+                     "minWidth": 110, "pinned": "right", "sortable": False,
+                     "filter": False, "headerClass": "hdr-inv"})
+
+    return dag.AgGrid(
+        rowData=filas,
+        columnDefs=col_defs,
+        dashGridOptions={"animateRows": False, "rowHeight": 34,
+                         "headerHeight": 38, "groupHeaderHeight": 38,
+                         "domLayout": "autoHeight",
+                         "pinnedBottomRowData": [ftot],
+                         "suppressCellFocus": True},
+        defaultColDef={"resizable": True, "sortable": False, "filter": False,
+                       "flex": 1, "minWidth": 110},
+        className="ag-theme-alpine",
+        style=_estilo_grid_simple("auto"),
+    )
 
 
 def _column_defs():
@@ -91,6 +250,12 @@ def crear_layout_tabla_inventario():
                 dcc.Markdown(
                     """<style>
                     .hdr-inv, .hdr-inv .ag-header-cell-text { color:#FFFFFF !important; }
+                    .hdr-inv-verde, .hdr-inv-verde .ag-header-cell-text,
+                    .hdr-inv-verde .ag-header-group-text { color:#186A3B !important; background-color:#D5F5E3 !important; }
+                    .hdr-inv-amarillo, .hdr-inv-amarillo .ag-header-cell-text,
+                    .hdr-inv-amarillo .ag-header-group-text { color:#7D6608 !important; background-color:#FCF3CF !important; }
+                    .hdr-inv-rojo, .hdr-inv-rojo .ag-header-cell-text,
+                    .hdr-inv-rojo .ag-header-group-text { color:#943126 !important; background-color:#FADBD8 !important; }
                     </style>""",
                     dangerously_allow_html=True,
                 ),
@@ -100,7 +265,19 @@ def crear_layout_tabla_inventario():
             html.Div(id="inv-kpis",
                      style={"display": "flex", "gap": "16px", "flexWrap": "wrap",
                             "marginBottom": "20px"}),
-            # Filtro por ubicación
+
+            # ===== TABLAS RESUMEN (NO responden al filtro) =====
+            html.H4("Resumen por rango de antigüedad",
+                    style={"color": AZUL, "fontWeight": "700",
+                           "marginBottom": "10px"}),
+            html.Div(id="inv-tabla-rango", style={"marginBottom": "24px"}),
+
+            html.H4("Resumen por ubicación y rango",
+                    style={"color": AZUL, "fontWeight": "700",
+                           "marginBottom": "10px"}),
+            html.Div(id="inv-tabla-ubicacion", style={"marginBottom": "24px"}),
+
+            # Filtro por ubicación (solo afecta al detalle y gráficos)
             html.Div(
                 [
                     html.Label("Filtrar por ubicación:",
@@ -113,7 +290,7 @@ def crear_layout_tabla_inventario():
                 style={"display": "flex", "alignItems": "center",
                        "marginBottom": "18px"},
             ),
-            # Tabla
+            # Tabla de detalle
             html.H4("Detalle de productos",
                     style={"color": AZUL, "fontWeight": "700",
                            "marginBottom": "10px"}),
@@ -159,6 +336,20 @@ def _df_filtrado(ubicaciones):
 
 
 def registrar_callbacks_inventario(app):
+
+    # Tablas RESUMEN: solo dependen de la carga (NO del filtro).
+    # Siempre muestran TODO el inventario.
+    @app.callback(
+        Output("inv-tabla-rango", "children"),
+        Output("inv-tabla-ubicacion", "children"),
+        Input("store-bd-inventario", "data"),
+    )
+    def actualizar_resumenes(marca):
+        df = db.obtener_df(MODULO)
+        if df is None or len(df) == 0:
+            vacio = html.Div("Sin datos.", style={"color": "#6C757D"})
+            return vacio, vacio
+        return _tabla_resumen_rango(df), _tabla_resumen_ubicacion(df)
 
     # opciones del filtro de ubicación (al cargar datos)
     @app.callback(
