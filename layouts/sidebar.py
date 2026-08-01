@@ -58,16 +58,20 @@ def crear_sidebar(rol=None):
 
         item("Reportes", "fas fa-file-lines", "/reportes"),
 
-        item("Configuración", "fas fa-gear", "/configuracion"),
-
     ]
 
-    # Ítem SOLO para admin: carga de datos
+    # Ítems SOLO para admin: carga de datos y configuración
     if rol == "admin":
 
         items.append(
 
             item("Cargar datos", "fas fa-cloud-arrow-up", "/cargar")
+
+        )
+
+        items.append(
+
+            item("Configuración", "fas fa-gear", "/configuracion")
 
         )
 
