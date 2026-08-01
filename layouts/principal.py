@@ -77,12 +77,17 @@ def registrar_callbacks_principal(app):
         )
 
     # Cerrar sesión: limpia store-sesion -> la compuerta vuelve al login.
+    # También VACÍA los campos de usuario/contraseña y el mensaje, para
+    # que no queden los datos del usuario anterior visibles.
     @app.callback(
         Output("store-sesion", "data", allow_duplicate=True),
+        Output("login-usuario", "value"),
+        Output("login-password", "value"),
+        Output("login-mensaje", "children", allow_duplicate=True),
         Input("btn-cerrar-sesion", "n_clicks"),
         prevent_initial_call=True,
     )
     def cerrar_sesion(n):
         if not n:
-            return no_update
-        return None
+            return no_update, no_update, no_update, no_update
+        return None, "", "", ""
