@@ -32,6 +32,9 @@ from ingresos.tabla_ingresos import registrar_callbacks_tabla_ingresos
 from inventario.callbacks import registrar_callbacks_inventario_carga
 from inventario.tabla_inventario import registrar_callbacks_inventario
 
+# Configuración (admin de usuarios)
+from configuracion import registrar_callbacks_configuracion
+
 # =========================
 # Crear aplicación
 # =========================
@@ -98,6 +101,9 @@ registrar_callbacks_tabla_ingresos(app)
 # Inventario
 registrar_callbacks_inventario_carga(app)
 registrar_callbacks_inventario(app)
+
+# Configuración
+registrar_callbacks_configuracion(app)
 
 # =========================
 # Ejecutar

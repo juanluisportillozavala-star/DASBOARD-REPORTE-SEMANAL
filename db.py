@@ -164,3 +164,71 @@ def verificar_login(usuario, password):
     if bcrypt.checkpw(password.encode(), fila[0].encode()):
         return {"usuario": usuario, "rol": fila[1]}
     return None
+
+
+# =========================================================
+# ADMINISTRACIÓN DE USUARIOS DE CONSULTA
+# =========================================================
+# Estas funciones SOLO operan sobre usuarios de rol 'consulta'.
+# Los admin quedan protegidos: no se pueden cambiar ni eliminar
+# desde aquí (la validación es en el servidor, no solo en la UI).
+
+def listar_usuarios_consulta():
+    """Lista los usuarios de rol 'consulta' (para el panel admin).
+    NO incluye admins."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute(
+            "SELECT usuario, creado FROM usuarios WHERE rol='consulta' "
+            "ORDER BY usuario;"
+        )
+        filas = cur.fetchall()
+    return [{"usuario": f[0], "creado": f[1]} for f in filas]
+
+
+def _rol_de(usuario):
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT rol FROM usuarios WHERE usuario=%s;", (usuario,))
+        fila = cur.fetchone()
+    return fila[0] if fila else None
+
+
+def crear_usuario_consulta(usuario, password):
+    """Crea un usuario de consulta. Falla si el nombre ya existe
+    (con cualquier rol) para no pisar un admin por accidente."""
+    usuario = (usuario or "").strip()
+    password = (password or "").strip()
+    if not usuario or not password:
+        raise ValueError("Usuario y contraseña son obligatorios.")
+    if _rol_de(usuario) is not None:
+        raise ValueError(f"El usuario '{usuario}' ya existe.")
+    h = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    with _conn() as c, c.cursor() as cur:
+        cur.execute(
+            "INSERT INTO usuarios (usuario, password_hash, rol) "
+            "VALUES (%s, %s, 'consulta');",
+            (usuario, h),
+        )
+
+
+def cambiar_password_consulta(usuario, nueva):
+    """Cambia la contraseña SOLO si el usuario es de consulta."""
+    usuario = (usuario or "").strip()
+    nueva = (nueva or "").strip()
+    if not nueva:
+        raise ValueError("La nueva contraseña no puede estar vacía.")
+    if _rol_de(usuario) != "consulta":
+        raise ValueError("Solo se pueden cambiar contraseñas de usuarios de consulta.")
+    h = bcrypt.hashpw(nueva.encode(), bcrypt.gensalt()).decode()
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("UPDATE usuarios SET password_hash=%s WHERE usuario=%s AND rol='consulta';",
+                    (h, usuario))
+
+
+def eliminar_usuario_consulta(usuario):
+    """Elimina SOLO si el usuario es de consulta."""
+    usuario = (usuario or "").strip()
+    if _rol_de(usuario) != "consulta":
+        raise ValueError("Solo se pueden eliminar usuarios de consulta.")
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("DELETE FROM usuarios WHERE usuario=%s AND rol='consulta';",
+                    (usuario,))

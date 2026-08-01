@@ -11,6 +11,7 @@ from ventas.layout import crear_layout_ventas
 from carga import crear_layout_carga
 from ingresos.layout import crear_layout_ingresos
 from inventario.layout import crear_layout_inventario
+from configuracion import crear_layout_configuracion
 
 
 def pagina_temporal(nombre):
@@ -72,6 +73,6 @@ def crear_router(pathname):
 
     elif pathname == "/configuracion":
 
-        return pagina_temporal("Configuración")
+        return crear_layout_configuracion()
 
     return pagina_temporal("Página no encontrada")
