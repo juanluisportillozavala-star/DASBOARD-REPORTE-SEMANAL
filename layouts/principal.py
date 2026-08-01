@@ -10,7 +10,7 @@ problema de componentes dinámicos con suppress_callback_
 exceptions que hacía que el botón "no hiciera nada").
 """
 
-from dash import html, dcc, Input, Output
+from dash import html, dcc, Input, Output, State, no_update
 
 from layouts.header import crear_header
 from layouts.sidebar import crear_sidebar
@@ -55,18 +55,34 @@ def crear_principal():
 def registrar_callbacks_principal(app):
     registrar_callbacks_login(app)
 
-    # Alterna visibilidad login/app y rellena el sidebar con el rol
+    # Alterna visibilidad login/app, rellena el sidebar con el rol
+    # y muestra el nombre del usuario en el header.
     @app.callback(
         Output("vista-login", "style"),
         Output("vista-app", "style"),
         Output("contenedor-sidebar", "children"),
+        Output("header-nombre-usuario", "children"),
         Input("store-sesion", "data"),
     )
     def alternar_vista(sesion):
         if not sesion:
-            return {"display": "block"}, {"display": "none"}, None
+            return {"display": "block"}, {"display": "none"}, None, ""
+        nombre = sesion.get("usuario", "")
+        saludo = f"Hola, {nombre}" if nombre else ""
         return (
             {"display": "none"},
             {"display": "block"},
             crear_sidebar(sesion.get("rol")),
+            saludo,
         )
+
+    # Cerrar sesión: limpia store-sesion -> la compuerta vuelve al login.
+    @app.callback(
+        Output("store-sesion", "data", allow_duplicate=True),
+        Input("btn-cerrar-sesion", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def cerrar_sesion(n):
+        if not n:
+            return no_update
+        return None
