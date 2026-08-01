@@ -39,6 +39,28 @@ def _input(id_, placeholder, tipo="text"):
     )
 
 
+def _input_password(id_, placeholder, id_ojo):
+    """Campo de contraseña con ícono de ojo para mostrar/ocultar."""
+    return html.Div(
+        [
+            dcc.Input(
+                id=id_, type="password", placeholder=placeholder,
+                style={"width": "100%", "padding": "10px 42px 10px 12px",
+                       "borderRadius": "8px", "border": "1px solid #CBD5E1",
+                       "boxSizing": "border-box", "fontSize": "15px"},
+            ),
+            html.I(
+                id=id_ojo, className="fas fa-eye", n_clicks=0,
+                title="Mostrar/ocultar contraseña",
+                style={"position": "absolute", "right": "14px", "top": "20px",
+                       "transform": "translateY(-50%)", "cursor": "pointer",
+                       "color": "#6C757D"},
+            ),
+        ],
+        style={"position": "relative", "width": "100%", "marginBottom": "12px"},
+    )
+
+
 def _boton(texto, id_, color=AZUL):
     return html.Button(
         texto, id=id_, n_clicks=0,
@@ -69,7 +91,7 @@ def crear_layout_configuracion():
             # ---- Crear usuario ----
             _tarjeta("Crear usuario de consulta", [
                 _input("config-nuevo-usuario", "Nombre de usuario"),
-                _input("config-nuevo-password", "Contraseña", "password"),
+                _input_password("config-nuevo-password", "Contraseña", "config-ojo-nuevo"),
                 _boton("Crear usuario", "config-btn-crear"),
                 html.Div(id="config-msg-crear",
                          style={"marginTop": "12px", "minHeight": "22px"}),
@@ -80,7 +102,7 @@ def crear_layout_configuracion():
                 dcc.Dropdown(id="config-sel-usuario",
                              placeholder="Selecciona un usuario de consulta",
                              style={"marginBottom": "12px"}),
-                _input("config-cambio-password", "Nueva contraseña", "password"),
+                _input_password("config-cambio-password", "Nueva contraseña", "config-ojo-cambio"),
                 _boton("Cambiar contraseña", "config-btn-cambiar"),
                 html.Div(id="config-msg-cambiar",
                          style={"marginTop": "12px", "minHeight": "22px"}),
@@ -130,6 +152,29 @@ def _tabla_usuarios(usuarios):
 
 
 def registrar_callbacks_configuracion(app):
+
+    # Mostrar/ocultar contraseña (clientside, instantáneo) en los
+    # dos campos de contraseña del panel.
+    _js_ojo = """
+        function(n, tipoActual) {
+            if (!n) { return window.dash_clientside.no_update; }
+            return tipoActual === "password" ? "text" : "password";
+        }
+    """
+    app.clientside_callback(
+        _js_ojo,
+        Output("config-nuevo-password", "type"),
+        Input("config-ojo-nuevo", "n_clicks"),
+        State("config-nuevo-password", "type"),
+        prevent_initial_call=True,
+    )
+    app.clientside_callback(
+        _js_ojo,
+        Output("config-cambio-password", "type"),
+        Input("config-ojo-cambio", "n_clicks"),
+        State("config-cambio-password", "type"),
+        prevent_initial_call=True,
+    )
 
     # Refrescar lista + opciones de dropdowns (al entrar, al refrescar,
     # y tras crear/cambiar/eliminar via config-refresco)
