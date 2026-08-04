@@ -73,11 +73,7 @@ def _tabla_resumen_rango(df):
         {"field": "rango", "headerName": "Rango", "minWidth": 140,
          "pinned": "left", "sortable": False, "filter": False,
          "headerClass": "hdr-inv",
-         "cellStyle": {"function":
-             "params.value === '61+ días' ? {backgroundColor:'#FADBD8',fontWeight:'700'} : "
-             "params.value === '31-60 días' ? {backgroundColor:'#FCF3CF',fontWeight:'700'} : "
-             "params.value === '1-30 días' ? {backgroundColor:'#D5F5E3',fontWeight:'700'} : "
-             "{fontWeight:'700'}"}},
+         "cellStyle": {"fontWeight": "700"}},
         {"field": "n_productos", "headerName": "N° de productos",
          "type": "numericColumn", "valueFormatter": FMT_NUM, "minWidth": 130,
          "sortable": False, "filter": False, "headerClass": "hdr-inv"},
@@ -144,23 +140,19 @@ def _tabla_resumen_ubicacion(df):
          "headerClass": "hdr-inv",
          "cellStyle": {"fontWeight": "600", "color": AZUL}},
     ]
-    clase_grupo = {CAT_1: "hdr-inv-verde", CAT_2: "hdr-inv-amarillo",
-                   CAT_3: "hdr-inv-rojo"}
     for r in RANGOS:
         col_defs.append({
             "headerName": r,
-            "headerClass": clase_grupo[r],
+            "headerClass": "hdr-inv",
             "children": [
                 {"field": f"cant_{r}", "headerName": "Cantidad",
                  "type": "numericColumn", "valueFormatter": FMT_NUM,
                  "minWidth": 110, "sortable": False, "filter": False,
-                 "headerClass": clase_grupo[r],
-                 "cellStyle": {"backgroundColor": COLOR_CAT_SUAVE[r]}},
+                 "headerClass": "hdr-inv"},
                 {"field": f"val_{r}", "headerName": "Valor",
                  "type": "numericColumn", "valueFormatter": FMT_MONEDA,
                  "minWidth": 130, "sortable": False, "filter": False,
-                 "headerClass": clase_grupo[r],
-                 "cellStyle": {"backgroundColor": COLOR_CAT_SUAVE[r]}},
+                 "headerClass": "hdr-inv"},
             ],
         })
     col_defs.append({"field": "valor_total", "headerName": "Valor total",
