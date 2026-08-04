@@ -39,8 +39,7 @@ CAMPOS_CRUCE = [_campo(t, e) for t in TERMINOS for e in ESTATUS]
 
 def _anio_reporte(df):
     """Año del reporte = año MÁS COMÚN de la fecha de último pago.
-    Es el año contra el que se mide vigente/vencido (los pagos del
-    periodo que se está reportando)."""
+    (Se conserva por compatibilidad; ya no se usa para el estatus.)"""
     fechas = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce").dropna()
     if len(fechas) == 0:
         return pd.Timestamp.today().year
@@ -48,55 +47,46 @@ def _anio_reporte(df):
 
 
 def fecha_corte(df, meses):
-    """Fecha de corte robusta (con AÑO): último día del mes de
-    corte, en el año del reporte. El mes de corte es el más alto
-    seleccionado; si no hay selección, el mes más alto presente en
-    las fechas de último pago."""
+    """(Compatibilidad) Devuelve una fecha de referencia. Ya NO se
+    usa para clasificar vigente/vencido — el estatus ahora se calcula
+    por factura (vencimiento vs último pago). Se mantiene por si algún
+    texto de la UI la usa."""
     anio = _anio_reporte(df)
     if meses:
         mes = max(meses)
     else:
         fp = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce").dropna()
         mes = int(fp.dt.month.max()) if len(fp) else 12
-    # primer día del mes de corte + fin de mes = último día de ese mes
-    primero = pd.Timestamp(year=anio, month=mes, day=1)
-    return primero + pd.offsets.MonthEnd(0)
+    return pd.Timestamp(year=anio, month=mes, day=1) + pd.offsets.MonthEnd(0)
 
 
-# compatibilidad: algunos callbacks aún llaman mes_corte()
 def mes_corte(df, meses):
     return fecha_corte(df, meses)
 
 
-def _con_estatus(df, corte):
-    """Clasifica cada factura comparando su FECHA DE VENCIMIENTO
-    COMPLETA (año + mes + día) contra la fecha de corte. Así una
-    factura que venció en un año anterior queda como Vencido aunque
-    su número de mes sea alto (bug que había al comparar solo el mes).
+def _con_estatus(df, corte=None):
+    """Clasifica cada factura por su PROPIO par de fechas:
+      Vigente  si fin_de_mes(Fecha de vencimiento) >= fin_de_mes(Fecha último pago)
+               (es decir, se pagó dentro del mes de vencimiento o antes)
+      Vencido  si venció en un mes anterior al del pago (pago tardío).
 
-    corte puede ser una fecha (Timestamp) — nuevo — o un entero de
-    mes — compatibilidad hacia atrás."""
+    El estatus es FIJO por factura: NO depende del mes de corte ni del
+    calendario. El parámetro 'corte' se ignora (se deja por
+    compatibilidad con las llamadas existentes).
+    """
     df = df.copy()
-    vencs = pd.to_datetime(df[COL_VENCIMIENTO], errors="coerce")
+    venc = pd.to_datetime(df[COL_VENCIMIENTO], errors="coerce")
+    pago = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce")
 
-    if isinstance(corte, (int,)) or (hasattr(corte, "__int__") and not hasattr(corte, "year")):
-        # modo viejo (solo mes) — no debería usarse ya, pero por si acaso
-        mv = vencs.dt.month
-        df["_ESTATUS"] = mv.apply(
-            lambda m: None if pd.isna(m) else ("Vigente" if int(m) >= int(corte) else "Vencido")
-        )
-        return df
+    fin_venc = venc + pd.offsets.MonthEnd(0)
+    fin_pago = pago + pd.offsets.MonthEnd(0)
 
-    corte = pd.Timestamp(corte)
-
-    def clasificar(v):
-        if pd.isna(v):
+    def clasificar(fv, fp):
+        if pd.isna(fv) or pd.isna(fp):
             return None
-        # fin de mes de la fecha de vencimiento vs fin de mes del corte
-        fin_v = v + pd.offsets.MonthEnd(0)
-        return "Vigente" if fin_v >= corte else "Vencido"
+        return "Vigente" if fv >= fp else "Vencido"
 
-    df["_ESTATUS"] = vencs.apply(clasificar)
+    df["_ESTATUS"] = [clasificar(fv, fp) for fv, fp in zip(fin_venc, fin_pago)]
     return df
 
 
@@ -121,8 +111,9 @@ def construir_arbol_ingresos(df, meses):
     expandido, los 4 cruces y total. Ordenado por total
     descendente dentro de cada nivel.
     """
-    corte = mes_corte(df, meses)
-    df = _con_estatus(df, corte)
+    # ESTATUS fijo por factura (vencimiento vs último pago); no
+    # depende del calendario. El filtro de meses ya se aplicó antes.
+    df = _con_estatus(df)
 
     filas = []
 
@@ -164,8 +155,7 @@ def construir_arbol_ingresos(df, meses):
 
 def total_general_ingresos(df, meses):
     """Fila TOTAL GENERAL (nivel 0) con los cruces globales."""
-    corte = mes_corte(df, meses)
-    d = _con_estatus(df, corte)
+    d = _con_estatus(df)
     sumas = _sumas_cruce(d)
     fila = {"id": "total", "parentId": "", "nivel": 0,
             "concepto": "TOTAL GENERAL", "tieneHijos": False, "expandido": False}
