@@ -1054,3 +1054,70 @@ TARJETAS KPI PERSONALIZADAS
     color: #FFFFFF !important;
 }
 .hdr-cartera .ag-header-cell-text { color:#FFFFFF !important; }
+/* =========================================================
+   USUARIO + CERRAR SESIÓN (encabezado)
+   Pegar al final de assets/estilos.css
+   ========================================================= */
+
+/* contenedor derecho del header */
+.header-usuario {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-right: 24px;
+}
+
+/* --- chip del usuario: avatar dorado + nombre --- */
+.usuario-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.usuario-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4AF37 0%, #E9C767 100%);
+    color: #173C73;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+    flex-shrink: 0;
+}
+
+.usuario-nombre {
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.2px;
+}
+
+/* --- botón cerrar sesión: borde dorado, se rellena en hover --- */
+.btn-cerrar-sesion {
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent;
+    color: #FFFFFF;
+    border: 1.5px solid #D4AF37;
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cerrar-sesion:hover {
+    background-color: #D4AF37;
+    color: #173C73;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.4);
+    transform: translateY(-1px);
+}
+
+.btn-cerrar-sesion:active {
+    transform: translateY(0);
+}
