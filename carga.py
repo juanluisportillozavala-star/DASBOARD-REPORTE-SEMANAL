@@ -52,9 +52,11 @@ def _procesar_ingresos(contents_list, fecha=None):
 
 
 def _procesar_inventario(contents_list, fecha=None):
-    # Un solo archivo. Los DIAS EN ALMACEN se congelan al día de la carga.
-    (bd,) = contents_list
-    return leer_inventario(bd)
+    # DOS archivos que se cruzan por código de producto:
+    #   valuation (fechas de entrada) + quants (ubicaciones).
+    # La fecha de corte (manual) alimenta los DIAS EN ALMACEN.
+    valuation, quants = contents_list  # orden segun 'archivos'
+    return leer_inventario(valuation, quants, fecha_corte=fecha)
 
 
 def _procesar_cartera(contents_list, fecha=None):
@@ -84,9 +86,11 @@ MODULOS_CARGA = {
     "inventario": {
         "titulo": "Inventario",
         "archivos": [
-            {"id": "bd", "label": "BD Inventario"},
+            {"id": "valuation", "label": "BD Valuación (fechas)"},
+            {"id": "quants", "label": "BD Quants (ubicaciones)"},
         ],
         "procesar": _procesar_inventario,
+        "pide_fecha": True,
     },
     "cartera": {
         "titulo": "Cartera",
@@ -143,8 +147,8 @@ def _tarjeta_modulo(clave, cfg):
                 [
                     html.H6("Fecha de corte",
                             style={"color": AZUL, "marginBottom": "6px"}),
-                    html.P("Fecha base para calcular la antigüedad de la "
-                           "cartera (vigente / por vencer / vencido).",
+                    html.P("Fecha base para calcular la antigüedad "
+                           "(días en almacén / vencimiento de cartera).",
                            style={"fontSize": "12px", "color": "#6C757D",
                                   "marginBottom": "8px"}),
                     dcc.DatePickerSingle(
