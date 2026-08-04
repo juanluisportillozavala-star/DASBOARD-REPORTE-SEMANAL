@@ -1121,3 +1121,20 @@ TARJETAS KPI PERSONALIZADAS
 .btn-cerrar-sesion:active {
     transform: translateY(0);
 }
+/* =========================================================
+   FILA DE TOTAL (pie) en las tablas resumen de INVENTARIO
+   Pegar al final de assets/estilos.css
+   La fila fijada al pie (pinned) sale en azul de marca,
+   negrita y fondo crema, para que no se vea la letra negra.
+   ========================================================= */
+
+.ag-theme-alpine .ag-row-pinned,
+.ag-theme-alpine .ag-floating-bottom .ag-row {
+    background-color: #F4F1E4 !important;
+}
+
+.ag-theme-alpine .ag-row-pinned .ag-cell,
+.ag-theme-alpine .ag-floating-bottom .ag-cell {
+    color: #173C73 !important;
+    font-weight: 700 !important;
+}
