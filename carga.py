@@ -13,11 +13,14 @@ Cada módulo declara:
               su id y etiqueta
   procesar:   función que recibe los contenidos (en el orden
               de 'archivos') y devuelve el DataFrame final a
-              guardar en Supabase.
-
-Hoy solo Ventas (catálogo + BD). Para añadir Ingresos, etc.,
-se agrega su entrada con su propia función de procesado.
+              guardar en Supabase. Si el módulo pide fecha, la
+              recibe como segundo argumento.
+  pide_fecha: (opcional) True si el módulo necesita una fecha
+              de referencia que el admin captura al cargar
+              (caso Cartera: la columna N / fecha de corte).
 """
+
+from datetime import date
 
 from dash import Input, Output, State, html, dcc, no_update, ALL, ctx
 import dash_bootstrap_components as dbc
@@ -26,35 +29,39 @@ import db
 from ventas.procesamiento import leer_archivos
 from ingresos.procesamiento import leer_archivo as leer_ingresos
 from inventario.procesamiento import leer_archivo as leer_inventario
+from cartera.procesamiento import leer_archivo as leer_cartera
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
 
 
 # --- adaptadores de procesado por módulo ---
-# Reciben la lista de 'contents' (en el orden de 'archivos')
-# y devuelven el DataFrame a guardar.
+# Reciben la lista de 'contents' (en el orden de 'archivos').
+# Los módulos con pide_fecha reciben además 'fecha' (str ISO).
 
-def _procesar_ventas(contents_list):
+def _procesar_ventas(contents_list, fecha=None):
     catalogo, ventas = contents_list  # orden segun 'archivos' abajo
     _, df_ventas = leer_archivos(catalogo, ventas)
     return df_ventas
 
 
-def _procesar_ingresos(contents_list):
-    # Un solo archivo (la BD de ingresos). La fecha de corte que
-    # congela Vigente/Vencido es el DÍA DE LA CARGA (hoy). Como
-    # leer_ingresos usa por defecto la fecha de hoy si no se pasa
-    # fecha_corte, aquí basta con no pasarla.
+def _procesar_ingresos(contents_list, fecha=None):
+    # Un solo archivo (la BD de ingresos).
     (bd,) = contents_list
     return leer_ingresos(bd)
 
 
-def _procesar_inventario(contents_list):
-    # Un solo archivo. Los DIAS EN ALMACEN se congelan al día
-    # de la carga (leer_inventario usa hoy por defecto).
+def _procesar_inventario(contents_list, fecha=None):
+    # Un solo archivo. Los DIAS EN ALMACEN se congelan al día de la carga.
     (bd,) = contents_list
     return leer_inventario(bd)
+
+
+def _procesar_cartera(contents_list, fecha=None):
+    # Un solo archivo + la FECHA de referencia (columna N) que el
+    # admin captura al cargar. Base de todo el aging de cartera.
+    (bd,) = contents_list
+    return leer_cartera(bd, fecha_referencia=fecha)
 
 
 # --- CATÁLOGO DE MÓDULOS ---
@@ -81,11 +88,21 @@ MODULOS_CARGA = {
         ],
         "procesar": _procesar_inventario,
     },
+    "cartera": {
+        "titulo": "Cartera",
+        "archivos": [
+            {"id": "bd", "label": "BD Cartera"},
+        ],
+        "procesar": _procesar_cartera,
+        "pide_fecha": True,
+    },
 }
 
 
 def _tarjeta_modulo(clave, cfg):
-    """Una tarjeta por módulo, con sus zonas de subida y botón."""
+    """Una tarjeta por módulo, con sus zonas de subida y botón.
+    Si el módulo pide_fecha, inserta un selector de fecha entre
+    los archivos y el botón de procesar."""
     uploads = []
     for arch in cfg["archivos"]:
         uploads.append(
@@ -118,12 +135,36 @@ def _tarjeta_modulo(clave, cfg):
             )
         )
 
+    # selector de fecha (solo si el módulo lo pide) — entre archivos y botón
+    bloque_fecha = []
+    if cfg.get("pide_fecha"):
+        bloque_fecha = [
+            html.Div(
+                [
+                    html.H6("Fecha de corte",
+                            style={"color": AZUL, "marginBottom": "6px"}),
+                    html.P("Fecha base para calcular la antigüedad de la "
+                           "cartera (vigente / por vencer / vencido).",
+                           style={"fontSize": "12px", "color": "#6C757D",
+                                  "marginBottom": "8px"}),
+                    dcc.DatePickerSingle(
+                        id={"type": "carga-fecha", "modulo": clave},
+                        display_format="DD/MM/YYYY",
+                        placeholder="Selecciona la fecha",
+                        date=date.today().isoformat(),
+                        style={"marginBottom": "14px"},
+                    ),
+                ]
+            )
+        ]
+
     return html.Div(
         [
             html.H4(cfg["titulo"],
                     style={"color": AZUL, "fontWeight": "700",
                            "marginBottom": "16px"}),
             *uploads,
+            *bloque_fecha,
             html.Button(
                 [html.I(className="fas fa-gears me-2"), "Procesar y guardar"],
                 id={"type": "carga-btn", "modulo": clave},
@@ -185,10 +226,13 @@ def registrar_callbacks_carga(app):
         Input({"type": "carga-btn", "modulo": ALL}, "n_clicks"),
         State({"type": "carga-upload", "modulo": ALL, "archivo": ALL}, "contents"),
         State({"type": "carga-upload", "modulo": ALL, "archivo": ALL}, "id"),
+        State({"type": "carga-fecha", "modulo": ALL}, "date"),
+        State({"type": "carga-fecha", "modulo": ALL}, "id"),
         State("store-sesion", "data"),
         prevent_initial_call=True,
     )
-    def procesar_y_guardar(n_clicks_list, contents_all, ids_all, sesion):
+    def procesar_y_guardar(n_clicks_list, contents_all, ids_all,
+                           fechas_all, fechas_ids, sesion):
         # cuántos módulos hay (para armar la salida del tamaño correcto)
         claves = list(MODULOS_CARGA.keys())
         salida = [no_update] * len(claves)
@@ -224,13 +268,27 @@ def registrar_callbacks_carga(app):
 
         contents_ordenados = [por_archivo[a] for a in orden]
 
+        # Si el módulo pide fecha, recuperarla y validarla
+        fecha = None
+        if cfg.get("pide_fecha"):
+            for f, fid in zip(fechas_all, fechas_ids):
+                if fid["modulo"] == modulo:
+                    fecha = f
+                    break
+            if not fecha:
+                salida[idx] = html.Div(
+                    "Selecciona la fecha de corte antes de procesar.",
+                    style={"color": "#DC3545"})
+                return salida
+
         try:
-            df = cfg["procesar"](contents_ordenados)
+            df = cfg["procesar"](contents_ordenados, fecha)
             admin = sesion.get("usuario", "admin")
             db.guardar_dataset(modulo, df, admin)
+            extra = f" (fecha de corte: {fecha})" if fecha else ""
             salida[idx] = html.Div(
                 [html.I(className="fas fa-circle-check me-2"),
-                 f"Guardado correctamente: {len(df):,} registros."],
+                 f"Guardado correctamente: {len(df):,} registros.{extra}"],
                 style={"color": "#198754", "fontWeight": "600"})
         except Exception as e:
             salida[idx] = html.Div(

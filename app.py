@@ -35,6 +35,10 @@ from inventario.tabla_inventario import registrar_callbacks_inventario
 # Configuración (admin de usuarios)
 from configuracion import registrar_callbacks_configuracion
 
+# Cartera
+from cartera.callbacks import registrar_callbacks_cartera
+from cartera.tabla_cartera import registrar_callbacks_tabla_cartera
+
 # =========================
 # Crear aplicación
 # =========================
@@ -104,6 +108,10 @@ registrar_callbacks_inventario(app)
 
 # Configuración
 registrar_callbacks_configuracion(app)
+
+# Cartera
+registrar_callbacks_cartera(app)
+registrar_callbacks_tabla_cartera(app)
 
 # =========================
 # Ejecutar
