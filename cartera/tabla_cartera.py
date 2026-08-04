@@ -1,136 +1,244 @@
 """
 =========================================================
-cartera/arbol_cartera.py
+cartera/tabla_cartera.py
 =========================================================
-Árbol jerárquico de Cartera: Vendedor -> Cliente (contacto),
-expandible, con los 7 rangos de aging como columnas:
-  Vencido >90, Vencido 61-90, Vencido 31-60, Vencido 0-30,
-  Por vencer, Vigente, Total Cartera.
+Tabla jerárquica de Cartera (Vendedor -> Cliente, expandible)
+con los 7 rangos de aging + Total. Diseño premium (encabezado
+azul, marcador dorado por nivel, franja de fecha de corte, fila
+TOTAL CARTERA) y SEMÁFORO en los rangos vencidos (rojos/naranja).
 
-Produce filas planas con el mismo esquema base que Ingresos
-(id, parentId, nivel, concepto, tieneHijos, expandido) para
-reutilizar diseño premium y expansión por clic.
-
-El estatus/aging YA viene calculado por el procesamiento
-(columnas de aging por fila). Aquí solo se SUMAN por vendedor
-y por cliente.
+Lee de la caché del servidor (db.obtener_df).
 """
 
+from dash import Input, Output, State, html, dcc, no_update
+import dash_ag_grid as dag
 import pandas as pd
 
-COL_VENDEDOR = "Vendedor"
-COL_CONTACTO = "Contacto"
+import db
+from cartera.arbol_cartera import (
+    construir_arbol_cartera, total_general_cartera, filas_visibles_cartera,
+    RANGOS, CAMPOS,
+)
 
-# columnas de aging (campo interno -> etiqueta visible)
-RANGOS = [
-    ("v90",   "Vencido >90 días"),
-    ("v6190", "Vencido 61-90 días"),
-    ("v3160", "Vencido 31-60 días"),
-    ("v030",  "Vencido 0-30 días"),
-    ("porv",  "Por vencer"),
-    ("vig",   "Vigente"),
-]
+MODULO = "cartera"
+COL_MES = "Mes"
+COL_SEMANA = "Semana"
 
-# mapa campo interno -> columna del DataFrame procesado
-_COL_DE = {
-    "v90":   "Vencido >90 días",
-    "v6190": "Vencido 61-90 días",
-    "v3160": "Vencido 31-60 días",
-    "v030":  "Vencido 0-30 días",
-    "porv":  "Por vencer",
-    "vig":   "Vigente",
+AZUL = "#173C73"
+DORADO = "#D4AF37"
+
+ALTO_FILA = 34
+ALTO_ENCABEZADO = 38
+ALTO_MAXIMO = 600
+
+# color de fondo por rango (semáforo): vencidos en rojos/naranja,
+# por vencer amarillo, vigente verde.
+COLOR_RANGO = {
+    "v90":   "#F5B7B1",   # rojo fuerte (>90)
+    "v6190": "#F8C9A4",   # naranja
+    "v3160": "#FAD7A0",   # naranja claro
+    "v030":  "#FCF3CF",   # amarillo pálido
+    "porv":  "#FDEBD0",   # crema
+    "vig":   "#D5F5E3",   # verde
 }
 
-CAMPOS = [c for c, _ in RANGOS]
+FMT_MONEDA = {"function": "params.value == null ? '' : '$' + d3.format(',.2f')(params.value)"}
 
 
-def _sumas(sub):
-    """Dict {campo: suma} + total, para un subconjunto de filas."""
-    d = {}
-    total = 0.0
-    for campo in CAMPOS:
-        col = _COL_DE[campo]
-        val = float(sub[col].sum()) if col in sub.columns else 0.0
-        d[campo] = val if val != 0 else None
-        total += val
-    d["total"] = total if total != 0 else None
-    return d
+def _column_defs():
+    defs = [
+        {"field": "concepto", "headerName": "Vendedor / Cliente",
+         "minWidth": 280, "pinned": "left", "filter": False, "sortable": False,
+         "headerClass": "hdr-cartera",
+         "cellStyle": {"function": "params.data.tieneHijos ? {cursor:'pointer'} : {}"}},
+    ]
+    for campo, etiqueta in RANGOS:
+        defs.append({
+            "field": campo,
+            "headerName": etiqueta,
+            "type": "numericColumn",
+            "valueFormatter": FMT_MONEDA,
+            "minWidth": 130,
+            "filter": False, "sortable": False,
+            "headerClass": "hdr-cartera",
+            "cellStyle": {"backgroundColor": COLOR_RANGO[campo]},
+        })
+    defs.append({
+        "field": "total", "headerName": "Total Cartera",
+        "type": "numericColumn", "valueFormatter": FMT_MONEDA,
+        "minWidth": 150, "pinned": "right",
+        "filter": False, "sortable": False,
+        "headerClass": "hdr-cartera",
+    })
+    return defs
 
 
-def construir_arbol_cartera(df):
-    """DataFrame plano con filas de Vendedor (nivel 1) y Cliente
-    (nivel 2), ordenadas por total descendente."""
-    filas = []
-
-    vendedores = df[COL_VENDEDOR].dropna().unique().tolist()
-    tot_vend = []
-    for v in vendedores:
-        sub_v = df[df[COL_VENDEDOR] == v]
-        s = _sumas(sub_v)
-        tot_vend.append((v, s.get("total") or 0, s, sub_v))
-    tot_vend.sort(key=lambda x: x[1], reverse=True)
-
-    for v, _t, s_v, sub_v in tot_vend:
-        id_v = f"n0::{v}"
-        fila_v = {"id": id_v, "parentId": "", "nivel": 1,
-                  "concepto": str(v), "tieneHijos": True, "expandido": False}
-        fila_v.update(s_v)
-        filas.append(fila_v)
-
-        contactos = sub_v[COL_CONTACTO].dropna().unique().tolist()
-        tot_cont = []
-        for c in contactos:
-            sub_c = sub_v[sub_v[COL_CONTACTO] == c]
-            s_c = _sumas(sub_c)
-            tot_cont.append((c, s_c.get("total") or 0, s_c))
-        tot_cont.sort(key=lambda x: x[1], reverse=True)
-
-        for c, _tc, s_c in tot_cont:
-            id_c = f"{id_v}||n1::{c}"
-            fila_c = {"id": id_c, "parentId": id_v, "nivel": 2,
-                      "concepto": str(c), "tieneHijos": False, "expandido": False}
-            fila_c.update(s_c)
-            filas.append(fila_c)
-
-    cols = ["id", "parentId", "nivel", "concepto", "tieneHijos", "expandido"] + CAMPOS + ["total"]
-    return pd.DataFrame(filas, columns=cols)
+def _estilo_filas():
+    return {
+        "function": (
+            "params.data.nivel === 0 ? "
+            "{fontWeight:'bold', backgroundColor:'#173C73', color:'#FFFFFF'} : "
+            "params.data.nivel === 1 ? "
+            "{fontWeight:'bold', backgroundColor:'#FFFFFF', color:'#173C73', "
+            "borderLeft:'5px solid #D4AF37'} : "
+            "{backgroundColor:'#FBF3DC', color:'#173C73'}"
+        )
+    }
 
 
-def total_general_cartera(df):
-    s = _sumas(df)
-    fila = {"id": "total", "parentId": "", "nivel": 0,
-            "concepto": "TOTAL CARTERA", "tieneHijos": False, "expandido": False}
-    fila.update(s)
-    return fila
+def _estilo_grid(alto):
+    return {
+        "width": "100%", "height": alto,
+        "--ag-font-size": "15px",
+        "--ag-header-background-color": AZUL,
+        "--ag-header-foreground-color": "#FFFFFF",
+        "--ag-background-color": "#FFFFFF",
+        "--ag-border-color": "#E7DBB0",
+        "--ag-row-hover-color": "#E5DECB",
+        "--ag-icon-color": "#FFFFFF",
+    }
 
 
-def filas_visibles_cartera(df_arbol, ids_expandidos):
-    if df_arbol is None or len(df_arbol) == 0:
-        return df_arbol
-    ids_expandidos = set(ids_expandidos or [])
-    padres = dict(zip(df_arbol["id"], df_arbol["parentId"]))
+def _altura_dinamica(n):
+    alto = ALTO_ENCABEZADO + (n * ALTO_FILA) + ALTO_FILA + 16
+    return f"{min(alto, ALTO_MAXIMO)}px"
 
-    def es_visible(fid, nivel):
-        if nivel == 1:
-            return True
-        p = padres.get(fid, "")
-        if p == "" or p not in ids_expandidos:
-            return False
-        return es_visible(p, nivel - 1)
 
-    mask = df_arbol.apply(lambda f: es_visible(f["id"], f["nivel"]), axis=1)
-    res = df_arbol[mask].reset_index(drop=True)
-    res["expandido"] = res["id"].isin(ids_expandidos)
+def crear_encabezado_periodo(fecha_corte, semanas_texto):
+    return html.Div(
+        [
+            html.Span("Fecha de corte:  ",
+                      style={"color": DORADO, "fontWeight": "bold", "marginLeft": "24px"}),
+            html.Span(fecha_corte,
+                      style={"color": "#FFFFFF", "fontWeight": "bold", "marginRight": "32px"}),
+            html.Span("Semana(s):  ", style={"color": DORADO, "fontWeight": "bold"}),
+            html.Span(semanas_texto, style={"color": "#FFFFFF", "fontWeight": "bold"}),
+        ],
+        style={"backgroundColor": AZUL, "padding": "12px 16px",
+               "borderRadius": "10px 10px 0 0", "display": "flex",
+               "justifyContent": "flex-end", "flexWrap": "wrap", "fontSize": "15px"},
+    )
 
-    def _texto(f):
-        sangria = "\u00a0" * (f["nivel"] * 6)
-        if f["tieneHijos"]:
-            icono = "▼ " if f["expandido"] else "▶ "
-        elif f["nivel"] > 1:
-            icono = "\u00a0\u00a0\u00a0"
+
+def crear_layout_tabla_cartera():
+    return html.Div(
+        [
+            html.Div(
+                dcc.Markdown(
+                    """<style>
+                    .hdr-cartera, .hdr-cartera .ag-header-cell-text { color:#FFFFFF !important; }
+                    </style>""",
+                    dangerously_allow_html=True,
+                ),
+                style={"display": "none"},
+            ),
+            dcc.Store(id="store-cart-arbol", data=None),
+            dcc.Store(id="store-cart-exp", data=[]),
+            html.Div(id="tabla-cartera-cont"),
+        ]
+    )
+
+
+def _filtrar(df, meses, semanas):
+    if df is None:
+        return df
+    if meses:
+        df = df[df[COL_MES].isin(meses)]
+    if semanas:
+        df = df[df[COL_SEMANA].isin(semanas)]
+    return df
+
+
+def _fecha_corte_texto(df):
+    # la fecha de referencia está en la columna FECHA (igual en todas)
+    if df is not None and "FECHA" in df.columns and len(df):
+        f = pd.to_datetime(df["FECHA"].iloc[0], errors="coerce")
+        if pd.notna(f):
+            return f.strftime("%d/%m/%Y")
+    return "—"
+
+
+def registrar_callbacks_tabla_cartera(app):
+
+    @app.callback(
+        Output("tabla-cartera-cont", "children"),
+        Output("store-cart-arbol", "data"),
+        Input("store-bd-cartera", "data"),
+        Input("store-mes-cartera", "data"),
+        Input("store-semana-cartera", "data"),
+        State("store-cart-exp", "data"),
+    )
+    def construir(marca, meses, semanas, ids_exp):
+        df = db.obtener_df(MODULO)
+        if df is None:
+            return html.Div("Aún no hay datos de Cartera cargados.",
+                            style={"color": "#6C757D"}), None
+        try:
+            df_f = _filtrar(df, meses, semanas)
+            if df_f is None or len(df_f) == 0:
+                return html.Div("No hay datos para el filtro seleccionado.",
+                                style={"color": "#6C757D"}), None
+
+            arbol = construir_arbol_cartera(df_f)
+            total = total_general_cartera(df_f)
+            visibles = filas_visibles_cartera(arbol, ids_exp or [])
+
+            semanas_txt = ", ".join(str(s) for s in sorted(semanas)) if semanas else "Todas"
+
+            grid = dag.AgGrid(
+                id="tabla-cartera-grid",
+                rowData=visibles.to_dict("records"),
+                columnDefs=_column_defs(),
+                getRowId={"function": "params.data.id"},
+                getRowStyle=_estilo_filas(),
+                defaultColDef={"flex": 1, "minWidth": 120, "sortable": False,
+                               "filter": False, "resizable": True},
+                dashGridOptions={"animateRows": False, "rowHeight": ALTO_FILA,
+                                 "headerHeight": ALTO_ENCABEZADO,
+                                 "pinnedBottomRowData": [total],
+                                 "suppressCellFocus": True},
+                className="ag-theme-alpine",
+                style=_estilo_grid(_altura_dinamica(len(visibles))),
+            )
+            contenido = html.Div([
+                crear_encabezado_periodo(_fecha_corte_texto(df_f), semanas_txt),
+                grid,
+            ])
+            return contenido, arbol.to_dict("records")
+        except Exception as e:
+            return html.Div([html.H3("ERROR"), html.Pre(str(e))],
+                            style={"color": "red"}), None
+
+    @app.callback(
+        Output("store-cart-exp", "data"),
+        Input("tabla-cartera-grid", "cellClicked"),
+        State("store-cart-exp", "data"),
+        prevent_initial_call=True,
+    )
+    def alternar(celda, ids_exp):
+        if celda is None:
+            return no_update
+        fid = celda.get("rowId")
+        if fid is None or "||" in fid or fid == "total":
+            return no_update
+        ids = set(ids_exp or [])
+        if fid in ids:
+            ids.discard(fid)
         else:
-            icono = ""
-        return sangria + icono + str(f["concepto"])
+            ids.add(fid)
+        return sorted(ids)
 
-    res["concepto"] = res.apply(_texto, axis=1)
-    return res
+    @app.callback(
+        Output("tabla-cartera-grid", "rowData"),
+        Output("tabla-cartera-grid", "style"),
+        Input("store-cart-exp", "data"),
+        State("store-cart-arbol", "data"),
+        prevent_initial_call=True,
+    )
+    def refrescar(ids_exp, arbol_data):
+        if arbol_data is None:
+            return no_update, no_update
+        arbol = pd.DataFrame(arbol_data)
+        visibles = filas_visibles_cartera(arbol, ids_exp or [])
+        return (visibles.to_dict("records"),
+                _estilo_grid(_altura_dinamica(len(visibles))))
