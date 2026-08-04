@@ -95,6 +95,9 @@ def _tabla_resumen_rango(df):
                          "headerHeight": 40, "domLayout": "autoHeight",
                          "pinnedBottomRowData": [fila_total],
                          "suppressCellFocus": True},
+        getRowStyle={"function":
+            "params.node.rowPinned ? "
+            "{fontWeight:'700', color:'#173C73', backgroundColor:'#F4F1E4'} : {}"},
         defaultColDef={"resizable": True, "sortable": False, "filter": False,
                        "flex": 1, "minWidth": 110},
         className="ag-theme-alpine",
@@ -173,6 +176,9 @@ def _tabla_resumen_ubicacion(df):
                          "domLayout": "autoHeight",
                          "pinnedBottomRowData": [ftot],
                          "suppressCellFocus": True},
+        getRowStyle={"function":
+            "params.node.rowPinned ? "
+            "{fontWeight:'700', color:'#173C73', backgroundColor:'#F4F1E4'} : {}"},
         defaultColDef={"resizable": True, "sortable": False, "filter": False,
                        "flex": 1, "minWidth": 110},
         className="ag-theme-alpine",
