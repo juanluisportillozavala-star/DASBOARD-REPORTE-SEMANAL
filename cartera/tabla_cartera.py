@@ -61,7 +61,6 @@ def _column_defs():
             "minWidth": 130,
             "filter": False, "sortable": False,
             "headerClass": "hdr-cartera",
-            "cellStyle": {"backgroundColor": COLOR_RANGO[campo]},
         })
     defs.append({
         "field": "total", "headerName": "Total Cartera",
