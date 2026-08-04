@@ -1,301 +1,177 @@
 """
 =========================================================
-carga.py  —  CARGA CENTRAL DE BASES DE DATOS (solo admin)
+PROCESAMIENTO DEL MÓDULO INVENTARIO  (v2: cruce de 2 BD)
 =========================================================
-Una sola pantalla donde el admin sube las BD de TODOS los
-módulos. Diseñada para escalar: agregar un módulo nuevo =
-agregar una entrada a MODULOS_CARGA.
+Ahora el inventario se alimenta de DOS archivos que se cruzan
+por el CÓDIGO de producto (ej. "LD008-2"):
 
-Cada módulo declara:
-  clave:      id corto del módulo (= clave en la tabla datasets)
-  titulo:     nombre visible
-  archivos:   lista de archivos que necesita, cada uno con
-              su id y etiqueta
-  procesar:   función que recibe los contenidos (en el orden
-              de 'archivos') y devuelve el DataFrame final a
-              guardar en Supabase. Si el módulo pide fecha, la
-              recibe como segundo argumento.
-  pide_fecha: (opcional) True si el módulo necesita una fecha
-              de referencia que el admin captura al cargar
-              (caso Cartera: la columna N / fecha de corte).
+  1) stock_valuation_layer (tabla dinámica de Odoo):
+     aporta la FECHA de entrada real de cada producto.
+     - Un producto puede tener varias entradas (varias fechas);
+       se toma la MÁS ANTIGUA para medir lento movimiento.
+     - Cantidad y Valor se SUMAN de todas sus entradas.
+
+  2) Quants (stock_quant): aporta la UBICACIÓN de cada producto.
+
+Regla: los productos que NO tengan ubicación en Quants se
+DESCARTAN (no manejamos esas ubicaciones).
+
+La fecha para "DIAS EN ALMACEN" es una fecha de corte MANUAL
+que se captura al cargar (como en Cartera).
+
+Salida: mismas columnas que la versión anterior, para que la
+tabla, KPIs y gráficos no cambien:
+  Ubicación, Producto, Unidad de medida, Cantidad en inventario,
+  Fecha de entrada, Valor, DIAS EN ALMACEN, CATEGORIA
 """
 
-from datetime import date
+import base64
+import io
+import re
+import pandas as pd
+import numpy as np
 
-from dash import Input, Output, State, html, dcc, no_update, ALL, ctx
-import dash_bootstrap_components as dbc
+# columnas de salida (compatibles con tabla_inventario.py)
+COL_PRODUCTO = "Producto"
+COL_UBICACION = "Ubicación"
+COL_UNIDAD = "Unidad de medida"
+COL_CANTIDAD = "Cantidad en inventario"
+COL_FECHA_ENTRADA = "Fecha de entrada"
+COL_VALOR = "Valor"
 
-import db
-from ventas.procesamiento import leer_archivos
-from ingresos.procesamiento import leer_archivo as leer_ingresos
-from inventario.procesamiento import leer_archivo as leer_inventario
-from cartera.procesamiento import leer_archivo as leer_cartera
+CAT_1 = "1-30 días"
+CAT_2 = "31-60 días"
+CAT_3 = "61+ días"
 
-AZUL = "#173C73"
-DORADO = "#D4AF37"
-
-
-# --- adaptadores de procesado por módulo ---
-# Reciben la lista de 'contents' (en el orden de 'archivos').
-# Los módulos con pide_fecha reciben además 'fecha' (str ISO).
-
-def _procesar_ventas(contents_list, fecha=None):
-    catalogo, ventas = contents_list  # orden segun 'archivos' abajo
-    _, df_ventas = leer_archivos(catalogo, ventas)
-    return df_ventas
+_MESES_ES = {"ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
+             "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12}
 
 
-def _procesar_ingresos(contents_list, fecha=None):
-    # Un solo archivo (la BD de ingresos).
-    (bd,) = contents_list
-    return leer_ingresos(bd)
+def _codigo(txt):
+    """Extrae el código entre corchetes: '[LD008-2] ...' -> 'LD008-2'."""
+    if txt is None or (isinstance(txt, float) and pd.isna(txt)):
+        return None
+    m = re.match(r"\s*\[([^\]]+)\]", str(txt))
+    return m.group(1) if m else None
 
 
-def _procesar_inventario(contents_list, fecha=None):
-    # DOS archivos que se cruzan por código de producto:
-    #   valuation (fechas de entrada) + quants (ubicaciones).
-    # La fecha de corte (manual) alimenta los DIAS EN ALMACEN.
-    valuation, quants = contents_list  # orden segun 'archivos'
-    return leer_inventario(valuation, quants, fecha_corte=fecha)
+def _parse_fecha_es(s):
+    """Convierte '21 feb. 2024' a Timestamp."""
+    m = re.match(r"(\d+)\s+(\w+)\.?\s+(\d+)", str(s))
+    if not m:
+        return None
+    dia, mes, anio = int(m.group(1)), m.group(2)[:3].lower(), int(m.group(3))
+    mnum = _MESES_ES.get(mes)
+    if not mnum:
+        return None
+    return pd.Timestamp(year=anio, month=mnum, day=dia)
 
 
-def _procesar_cartera(contents_list, fecha=None):
-    # Un solo archivo + la FECHA de referencia (columna N) que el
-    # admin captura al cargar. Base de todo el aging de cartera.
-    (bd,) = contents_list
-    return leer_cartera(bd, fecha_referencia=fecha)
+def _b64_a_bytes(contents):
+    if contents is None:
+        return None
+    return io.BytesIO(base64.b64decode(contents.split(",")[1]))
 
 
-# --- CATÁLOGO DE MÓDULOS ---
-MODULOS_CARGA = {
-    "ventas": {
-        "titulo": "Ventas",
-        "archivos": [
-            {"id": "catalogo", "label": "Catálogo"},
-            {"id": "bd", "label": "BD Ventas"},
-        ],
-        "procesar": _procesar_ventas,
-    },
-    "ingresos": {
-        "titulo": "Ingresos",
-        "archivos": [
-            {"id": "bd", "label": "BD Ingresos"},
-        ],
-        "procesar": _procesar_ingresos,
-    },
-    "inventario": {
-        "titulo": "Inventario",
-        "archivos": [
-            {"id": "valuation", "label": "BD Valuación (fechas)"},
-            {"id": "quants", "label": "BD Quants (ubicaciones)"},
-        ],
-        "procesar": _procesar_inventario,
-        "pide_fecha": True,
-    },
-    "cartera": {
-        "titulo": "Cartera",
-        "archivos": [
-            {"id": "bd", "label": "BD Cartera"},
-        ],
-        "procesar": _procesar_cartera,
-        "pide_fecha": True,
-    },
-}
+def _leer_valuation(contents):
+    """Lee la tabla dinámica stock_valuation_layer y devuelve, por
+    producto: código, producto, fecha_mas_antigua, cantidad, valor."""
+    import openpyxl
+    wb = openpyxl.load_workbook(_b64_a_bytes(contents), data_only=True)
+    ws = wb[wb.sheetnames[0]]
+
+    # mapear columnas de "Cant. restante" a su fecha (fila 2 = fecha,
+    # fila 3 = tipo). Cada fecha ocupa un par (cant, valor).
+    col_fecha = {}
+    for c in range(2, ws.max_column + 1):
+        f = ws.cell(row=2, column=c).value
+        tipo = ws.cell(row=3, column=c).value
+        if f and f != "Total" and tipo == "Cant. restante":
+            fecha = _parse_fecha_es(f)
+            if fecha is not None:
+                col_fecha[c] = fecha
+
+    registros = []
+    for r in range(5, ws.max_row + 1):
+        prod = ws.cell(row=r, column=1).value
+        cod = _codigo(prod)
+        if not cod:
+            continue
+        fechas, cant_tot, val_tot = [], 0.0, 0.0
+        for c, fecha in col_fecha.items():
+            cant = ws.cell(row=r, column=c).value
+            valor = ws.cell(row=r, column=c + 1).value
+            if cant not in (None, 0):
+                fechas.append(fecha)
+                cant_tot += float(cant or 0)
+                val_tot += float(valor or 0)
+        if fechas:
+            registros.append({
+                "codigo": cod,
+                "producto": str(prod).strip(),
+                "fecha_entrada": min(fechas),   # la MÁS ANTIGUA
+                "cantidad": cant_tot,
+                "valor": val_tot,
+            })
+    wb.close()
+    return pd.DataFrame(registros)
 
 
-def _tarjeta_modulo(clave, cfg):
-    """Una tarjeta por módulo, con sus zonas de subida y botón.
-    Si el módulo pide_fecha, inserta un selector de fecha entre
-    los archivos y el botón de procesar."""
-    uploads = []
-    for arch in cfg["archivos"]:
-        uploads.append(
-            html.Div(
-                [
-                    html.H6(arch["label"],
-                            style={"color": AZUL, "marginBottom": "6px"}),
-                    dcc.Upload(
-                        id={"type": "carga-upload", "modulo": clave,
-                            "archivo": arch["id"]},
-                        multiple=False,
-                        children=html.Button(
-                            [html.I(className="fas fa-folder-open me-2"),
-                             f"Seleccionar {arch['label']}"],
-                            style={"width": "100%", "padding": "10px",
-                                   "borderRadius": "8px",
-                                   "border": f"1px solid {AZUL}",
-                                   "backgroundColor": "white", "color": AZUL,
-                                   "cursor": "pointer"},
-                        ),
-                    ),
-                    html.Div(
-                        id={"type": "carga-nombre", "modulo": clave,
-                            "archivo": arch["id"]},
-                        style={"fontSize": "13px", "color": "#6C757D",
-                               "marginTop": "4px", "marginBottom": "12px"},
-                        children="Ningún archivo seleccionado.",
-                    ),
-                ]
-            )
-        )
-
-    # selector de fecha (solo si el módulo lo pide) — entre archivos y botón
-    bloque_fecha = []
-    if cfg.get("pide_fecha"):
-        bloque_fecha = [
-            html.Div(
-                [
-                    html.H6("Fecha de corte",
-                            style={"color": AZUL, "marginBottom": "6px"}),
-                    html.P("Fecha base para calcular la antigüedad "
-                           "(días en almacén / vencimiento de cartera).",
-                           style={"fontSize": "12px", "color": "#6C757D",
-                                  "marginBottom": "8px"}),
-                    dcc.DatePickerSingle(
-                        id={"type": "carga-fecha", "modulo": clave},
-                        display_format="DD/MM/YYYY",
-                        placeholder="Selecciona la fecha",
-                        date=date.today().isoformat(),
-                        style={"marginBottom": "14px"},
-                    ),
-                ]
-            )
-        ]
-
-    return html.Div(
-        [
-            html.H4(cfg["titulo"],
-                    style={"color": AZUL, "fontWeight": "700",
-                           "marginBottom": "16px"}),
-            *uploads,
-            *bloque_fecha,
-            html.Button(
-                [html.I(className="fas fa-gears me-2"), "Procesar y guardar"],
-                id={"type": "carga-btn", "modulo": clave},
-                n_clicks=0,
-                style={"backgroundColor": AZUL, "color": "white",
-                       "border": "none", "padding": "12px 20px",
-                       "borderRadius": "8px", "fontWeight": "600",
-                       "cursor": "pointer", "width": "100%"},
-            ),
-            html.Div(
-                id={"type": "carga-estado", "modulo": clave},
-                style={"marginTop": "14px", "minHeight": "24px"},
-            ),
-        ],
-        style={"backgroundColor": "white", "padding": "28px",
-               "borderRadius": "14px", "borderTop": f"4px solid {DORADO}",
-               "boxShadow": "0 6px 24px rgba(23,60,115,0.10)",
-               "width": "420px", "maxWidth": "92vw"},
-    )
+def _leer_quants(contents):
+    """Lee Quants y devuelve código -> (ubicación, unidad)."""
+    df = pd.read_excel(_b64_a_bytes(contents))
+    df.columns = [str(c).strip() for c in df.columns]
+    df = df.dropna(subset=[COL_PRODUCTO])
+    df = df[~df[COL_PRODUCTO].astype(str).str.contains("Existencias", case=False, na=False)]
+    df["codigo"] = df[COL_PRODUCTO].apply(_codigo)
+    df["ubicacion"] = df[COL_UBICACION].astype(str).str.split("/").str[0]
+    unidad = df.groupby("codigo")[COL_UNIDAD].first().to_dict() if COL_UNIDAD in df.columns else {}
+    ubic = df.dropna(subset=["codigo"]).groupby("codigo")["ubicacion"].first().to_dict()
+    return ubic, unidad
 
 
-def crear_layout_carga():
-    """Página de carga central: una tarjeta por módulo."""
-    tarjetas = [_tarjeta_modulo(k, cfg) for k, cfg in MODULOS_CARGA.items()]
-    return html.Div(
-        [
-            html.H1("Carga de datos", className="titulo"),
-            html.P("Sube las bases de datos de cada módulo. Reemplazan la "
-                   "versión anterior y quedan disponibles para todo el equipo.",
-                   className="subtitulo"),
-            html.Br(),
-            html.Div(
-                tarjetas,
-                style={"display": "flex", "flexWrap": "wrap", "gap": "24px"},
-            ),
-        ]
-    )
+def procesar_bd_inventario(contents_valuation, contents_quants, fecha_corte=None):
+    """Cruza las dos BD y arma el DataFrame final del módulo.
+    fecha_corte: fecha manual para calcular DIAS EN ALMACEN."""
+    if fecha_corte is None:
+        fecha_corte = pd.Timestamp.today().normalize()
+    else:
+        fecha_corte = pd.Timestamp(fecha_corte).normalize()
+
+    val = _leer_valuation(contents_valuation)
+    if val is None or len(val) == 0:
+        raise Exception("No se pudieron leer productos del archivo de valuación.")
+
+    mapa_ubic, mapa_unidad = _leer_quants(contents_quants)
+
+    # cruzar: pegar ubicación; descartar los que no tengan
+    val["Ubicación"] = val["codigo"].map(mapa_ubic)
+    val = val[val["Ubicación"].notna()].copy()
+    val["Unidad de medida"] = val["codigo"].map(mapa_unidad)
+
+    # días en almacén (fecha de entrada normalizada, como en v1)
+    entrada = pd.to_datetime(val["fecha_entrada"], errors="coerce").dt.normalize()
+    val["DIAS EN ALMACEN"] = (fecha_corte - entrada).dt.days
+
+    val["CATEGORIA"] = pd.cut(
+        val["DIAS EN ALMACEN"], bins=[0, 30, 60, 999999],
+        labels=[CAT_1, CAT_2, CAT_3],
+    ).astype(str)
+
+    # armar salida con los nombres de columna que espera la tabla
+    out = pd.DataFrame({
+        COL_UBICACION: val["Ubicación"],
+        COL_PRODUCTO: val["producto"],
+        COL_UNIDAD: val["Unidad de medida"],
+        COL_CANTIDAD: val["cantidad"],
+        COL_FECHA_ENTRADA: entrada,
+        COL_VALOR: val["valor"],
+        "DIAS EN ALMACEN": val["DIAS EN ALMACEN"],
+        "CATEGORIA": val["CATEGORIA"],
+    }).reset_index(drop=True)
+
+    return out
 
 
-def registrar_callbacks_carga(app):
-
-    # Mostrar el nombre del archivo seleccionado en cada zona
-    @app.callback(
-        Output({"type": "carga-nombre", "modulo": ALL, "archivo": ALL}, "children"),
-        Input({"type": "carga-upload", "modulo": ALL, "archivo": ALL}, "filename"),
-    )
-    def mostrar_nombres(nombres):
-        salida = []
-        for n in nombres:
-            if n:
-                salida.append("✓ " + n)
-            else:
-                salida.append("Ningún archivo seleccionado.")
-        return salida
-
-    # Procesar y guardar en Supabase (un botón por módulo)
-    @app.callback(
-        Output({"type": "carga-estado", "modulo": ALL}, "children"),
-        Input({"type": "carga-btn", "modulo": ALL}, "n_clicks"),
-        State({"type": "carga-upload", "modulo": ALL, "archivo": ALL}, "contents"),
-        State({"type": "carga-upload", "modulo": ALL, "archivo": ALL}, "id"),
-        State({"type": "carga-fecha", "modulo": ALL}, "date"),
-        State({"type": "carga-fecha", "modulo": ALL}, "id"),
-        State("store-sesion", "data"),
-        prevent_initial_call=True,
-    )
-    def procesar_y_guardar(n_clicks_list, contents_all, ids_all,
-                           fechas_all, fechas_ids, sesion):
-        # cuántos módulos hay (para armar la salida del tamaño correcto)
-        claves = list(MODULOS_CARGA.keys())
-        salida = [no_update] * len(claves)
-
-        trigger = ctx.triggered_id
-        if not trigger:
-            return salida
-
-        modulo = trigger["modulo"]
-        idx = claves.index(modulo)
-
-        # Verificar rol admin
-        if not sesion or sesion.get("rol") != "admin":
-            salida[idx] = html.Div("Solo un administrador puede cargar datos.",
-                                   style={"color": "#DC3545"})
-            return salida
-
-        # Recolectar los contents de ESTE módulo, en el orden de 'archivos'
-        cfg = MODULOS_CARGA[modulo]
-        orden = [a["id"] for a in cfg["archivos"]]
-        por_archivo = {}
-        for cont, cid in zip(contents_all, ids_all):
-            if cid["modulo"] == modulo:
-                por_archivo[cid["archivo"]] = cont
-
-        # Validar que estén todos
-        faltan = [a for a in orden if not por_archivo.get(a)]
-        if faltan:
-            salida[idx] = html.Div(
-                "Falta seleccionar: " + ", ".join(faltan),
-                style={"color": "#DC3545"})
-            return salida
-
-        contents_ordenados = [por_archivo[a] for a in orden]
-
-        # Si el módulo pide fecha, recuperarla y validarla
-        fecha = None
-        if cfg.get("pide_fecha"):
-            for f, fid in zip(fechas_all, fechas_ids):
-                if fid["modulo"] == modulo:
-                    fecha = f
-                    break
-            if not fecha:
-                salida[idx] = html.Div(
-                    "Selecciona la fecha de corte antes de procesar.",
-                    style={"color": "#DC3545"})
-                return salida
-
-        try:
-            df = cfg["procesar"](contents_ordenados, fecha)
-            admin = sesion.get("usuario", "admin")
-            db.guardar_dataset(modulo, df, admin)
-            extra = f" (fecha de corte: {fecha})" if fecha else ""
-            salida[idx] = html.Div(
-                [html.I(className="fas fa-circle-check me-2"),
-                 f"Guardado correctamente: {len(df):,} registros.{extra}"],
-                style={"color": "#198754", "fontWeight": "600"})
-        except Exception as e:
-            salida[idx] = html.Div(
-                ["Error al procesar: ", html.Pre(str(e))],
-                style={"color": "#DC3545"})
-        return salida
+def leer_archivo(contents_valuation, contents_quants, fecha_corte=None):
+    return procesar_bd_inventario(contents_valuation, contents_quants, fecha_corte)
