@@ -57,16 +57,19 @@ def registrar_callbacks_principal(app):
 
     # Alterna visibilidad login/app, rellena el sidebar con el rol
     # y muestra el nombre del usuario en el header.
+    # Al iniciar sesión, además fuerza la URL a /dashboard para que
+    # SIEMPRE se entre al Dashboard (no al último módulo que se vio).
     @app.callback(
         Output("vista-login", "style"),
         Output("vista-app", "style"),
         Output("contenedor-sidebar", "children"),
         Output("header-nombre-usuario", "children"),
+        Output("url", "pathname"),
         Input("store-sesion", "data"),
     )
     def alternar_vista(sesion):
         if not sesion:
-            return {"display": "block"}, {"display": "none"}, None, ""
+            return {"display": "block"}, {"display": "none"}, None, "", no_update
         nombre = sesion.get("usuario", "")
         saludo = f"Hola, {nombre}" if nombre else ""
         return (
@@ -74,6 +77,7 @@ def registrar_callbacks_principal(app):
             {"display": "block"},
             crear_sidebar(sesion.get("rol")),
             saludo,
+            "/dashboard",
         )
 
     # Cerrar sesión: limpia store-sesion -> la compuerta vuelve al login.
