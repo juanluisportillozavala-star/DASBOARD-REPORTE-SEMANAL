@@ -1138,3 +1138,15 @@ TARJETAS KPI PERSONALIZADAS
     color: #173C73 !important;
     font-weight: 700 !important;
 }
+/* =========================================================
+   ENCABEZADOS DE GRUPO en tablas de INVENTARIO -> texto blanco
+   Pegar al final de assets/estilos.css
+   Cubre los títulos de grupo ("1-30 días", "31-60 días",
+   "61+ días") que salían en letra oscura sobre el azul.
+   ========================================================= */
+ 
+.hdr-inv .ag-header-cell-text,
+.hdr-inv .ag-header-group-text,
+.ag-theme-alpine .ag-header-group-cell-label .ag-header-group-text {
+    color: #FFFFFF !important;
+}
