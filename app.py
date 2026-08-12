@@ -65,6 +65,25 @@ app = Dash(
 
 server = app.server
 
+# ==========================================================
+# ENDPOINT /ping  —  mantiene DESPIERTA la base de datos
+# ==========================================================
+# Un servicio externo (cron-job.org) visita esta ruta cada
+# pocos días. La consulta mínima "SELECT 1" toca Supabase y
+# evita que el plan gratuito pause el proyecto por inactividad.
+# No afecta el resto de la app.
+import db as _db_ping
+
+@server.route("/ping")
+def ping():
+    try:
+        with _db_ping._conn() as c, c.cursor() as cur:
+            cur.execute("SELECT 1;")
+            cur.fetchone()
+        return "ok", 200
+    except Exception as e:
+        return f"error: {e}", 500
+
 # =========================
 # Layout principal
 # =========================
