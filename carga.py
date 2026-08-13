@@ -26,6 +26,9 @@ from dash import Input, Output, State, html, dcc, no_update, ALL, ctx
 import dash_bootstrap_components as dbc
 
 import db
+from proyeccion_captura import (
+    crear_seccion_proyeccion, registrar_callbacks_proyeccion_captura,
+)
 from ventas.procesamiento import leer_archivos
 from ingresos.procesamiento import leer_archivo as leer_ingresos
 from inventario.procesamiento import leer_archivo as leer_inventario
@@ -191,7 +194,8 @@ def _tarjeta_modulo(clave, cfg):
 
 
 def crear_layout_carga():
-    """Página de carga central: una tarjeta por módulo."""
+    """Página de carga central: una tarjeta por módulo + la
+    sección de captura de proyección (abajo)."""
     tarjetas = [_tarjeta_modulo(k, cfg) for k, cfg in MODULOS_CARGA.items()]
     return html.Div(
         [
@@ -204,11 +208,17 @@ def crear_layout_carga():
                 tarjetas,
                 style={"display": "flex", "flexWrap": "wrap", "gap": "24px"},
             ),
+
+            # sección de captura de proyección (abajo, aparte)
+            crear_seccion_proyeccion(),
         ]
     )
 
 
 def registrar_callbacks_carga(app):
+
+    # callbacks de la captura de proyección
+    registrar_callbacks_proyeccion_captura(app)
 
     # Mostrar el nombre del archivo seleccionado en cada zona
     @app.callback(
