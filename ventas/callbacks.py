@@ -4,14 +4,21 @@ CALLBACKS DEL MÓDULO VENTAS
 =========================================================
 VELOCIDAD: los datos NO viajan en store-bd-ventas. Viven en
 la caché del servidor (db.obtener_df). El store guarda solo
-una marca ligera {"cargado": True, "version": N}. Así el
-navegador no reenvía las 589 filas en cada callback.
+una marca ligera {"cargado": True, "version": N}.
+
+AÑO como filtro maestro: el dropdown de año se llena con los
+años disponibles y arranca en el MÁS RECIENTE. Al cambiar de
+año se reinician mes/semana y se recalculan los KPIs para ese
+año. Mes y semana siempre operan dentro del año elegido.
 """
 
 from dash import Input, Output, State, html, ALL, ctx, no_update
 import pandas as pd
 
-from ventas.filtros import obtener_semanas, filtrar_dataframe
+from ventas.filtros import (
+    obtener_semanas, obtener_meses, obtener_anios,
+    filtrar_anio, filtrar_dataframe,
+)
 
 from ventas.kpis import calcular_kpis
 from ventas.cards import crear_cards
@@ -26,41 +33,73 @@ def _df():
     return db.obtener_df(MODULO)
 
 
+def _df_anio(anio):
+    """DataFrame filtrado al año seleccionado (para KPIs/calendario)."""
+    df = _df()
+    if df is None:
+        return None
+    return filtrar_anio(df, anio)
+
+
 def registrar_callbacks_ventas(app):
 
     # =====================================================
     # CARGAR DESDE SUPABASE AL ENTRAR
-    #
-    # Pone en store-bd-ventas solo una MARCA LIGERA (no las
-    # filas). Si hay datos en la base, marca {"cargado": True,
-    # "version": N}. La versión permite que, si el admin sube
-    # datos nuevos, los navegadores abiertos lo detecten (la
-    # versión del servidor cambia) y recarguen KPIs/tablas.
+    # Marca ligera + llena el dropdown de años y preselecciona
+    # el más reciente. Los KPIs se calculan por año en otro
+    # callback (para que reaccionen al cambio de año).
     # =====================================================
 
     @app.callback(
         Output("store-bd-ventas", "data"),
-        Output("store-kpis", "data"),
+        Output("dropdown-anio", "options"),
+        Output("dropdown-anio", "value"),
         Input("store-bd-ventas", "data"),
+        State("dropdown-anio", "value"),
     )
-    def cargar_desde_bd(marca):
+    def cargar_desde_bd(marca, anio_actual):
         try:
             df = _df()
         except Exception as e_db:
             print(f">>> [DB] No se pudo leer de Supabase: {e_db}", flush=True)
-            return no_update, no_update
+            return no_update, no_update, no_update
 
         if df is None or len(df) == 0:
-            return no_update, no_update
+            return no_update, no_update, no_update
 
         version = db.version_actual(MODULO)
 
-        # Si el store ya tiene la versión vigente, no rehacer nada
-        if marca and isinstance(marca, dict) and marca.get("version") == version:
-            return no_update, no_update
+        anios = obtener_anios(df)
+        opciones = [{"label": str(a), "value": int(a)} for a in anios]
 
-        kpis = calcular_kpis(df)
-        return {"cargado": True, "version": version}, kpis
+        # año seleccionado: conservar el actual si sigue existiendo;
+        # si no, el más reciente
+        if anio_actual in anios:
+            anio_sel = anio_actual
+        else:
+            anio_sel = anios[0] if anios else None
+
+        # Si el store ya tiene la versión vigente, solo asegurar opciones/año
+        if marca and isinstance(marca, dict) and marca.get("version") == version:
+            return no_update, opciones, anio_sel
+
+        return {"cargado": True, "version": version}, opciones, anio_sel
+
+    # =====================================================
+    # KPIs por AÑO
+    # Recalcula los KPIs cada vez que cambia el año (o al cargar).
+    # =====================================================
+
+    @app.callback(
+        Output("store-kpis", "data"),
+        Input("dropdown-anio", "value"),
+        Input("store-bd-ventas", "data"),
+    )
+    def calcular_kpis_anio(anio, marca):
+        df = _df_anio(anio)
+        if df is None or len(df) == 0:
+            return None
+        return calcular_kpis(df)
 
     # =====================================================
     # ACTUALIZAR TARJETAS KPI
@@ -76,6 +115,21 @@ def registrar_callbacks_ventas(app):
         return crear_cards(kpis)
 
     # =====================================================
+    # CAMBIO DE AÑO -> reiniciar mes/semana
+    # Al elegir otro año, se limpia la selección de mes/semana
+    # para no arrastrar meses del año anterior.
+    # =====================================================
+
+    @app.callback(
+        Output("store-mes", "data", allow_duplicate=True),
+        Output("store-semana", "data", allow_duplicate=True),
+        Input("dropdown-anio", "value"),
+        prevent_initial_call=True,
+    )
+    def reiniciar_al_cambiar_anio(anio):
+        return [], []
+
+    # =====================================================
     # SELECCIÓN DE MESES
     # =====================================================
 
@@ -87,9 +141,11 @@ def registrar_callbacks_ventas(app):
         Input("limpiar-meses", "n_clicks"),
         State("store-mes", "data"),
         State("store-semana", "data"),
+        State("dropdown-anio", "value"),
         prevent_initial_call=True,
     )
-    def seleccionar_meses(_, todo_clicks, limpiar_clicks, meses_activos, semanas_activas):
+    def seleccionar_meses(_, todo_clicks, limpiar_clicks, meses_activos,
+                          semanas_activas, anio):
 
         if ctx.triggered_id is None:
             return no_update, no_update
@@ -100,13 +156,13 @@ def registrar_callbacks_ventas(app):
             semanas_activas = []
 
         trigger = ctx.triggered_id
-        df = _df()
+        df = _df_anio(anio)
 
         if trigger == "seleccionar-todos-meses":
             if df is None:
                 return no_update, no_update
             meses_con_datos = sorted(df["Mes"].dropna().astype(int).unique().tolist())
-            semanas_auto = sorted(obtener_semanas(df, meses_con_datos))
+            semanas_auto = sorted(obtener_semanas(df, meses_con_datos, anio))
             return meses_con_datos, semanas_auto
 
         if trigger == "limpiar-meses":
@@ -121,7 +177,7 @@ def registrar_callbacks_ventas(app):
                 meses_activos.append(mes)
             return sorted(meses_activos), no_update
 
-        semanas_del_mes = set(obtener_semanas(df, [mes]))
+        semanas_del_mes = set(obtener_semanas(df, [mes], anio))
 
         if mes in meses_activos:
             meses_activos.remove(mes)
@@ -133,20 +189,21 @@ def registrar_callbacks_ventas(app):
         return sorted(meses_activos), semanas_activas
 
     # =====================================================
-    # PINTAR MESES
+    # PINTAR MESES  (según el año seleccionado)
     # =====================================================
 
     @app.callback(
         Output({"type": "btn-mes", "index": ALL}, "className"),
         Output({"type": "btn-mes", "index": ALL}, "disabled"),
         Input("store-mes", "data"),
+        Input("dropdown-anio", "value"),
         Input("store-bd-ventas", "data"),
     )
-    def pintar_meses(meses_activos, marca):
+    def pintar_meses(meses_activos, anio, marca):
         if meses_activos is None:
             meses_activos = []
 
-        df = _df()
+        df = _df_anio(anio)
         if df is None:
             meses_con_datos = set()
         else:
@@ -171,9 +228,11 @@ def registrar_callbacks_ventas(app):
         Input("limpiar-semanas", "n_clicks"),
         State("store-semana", "data"),
         State("store-mes", "data"),
+        State("dropdown-anio", "value"),
         prevent_initial_call=True,
     )
-    def seleccionar_semanas(_, todo_clicks, limpiar_clicks, semanas_activas, meses_activos):
+    def seleccionar_semanas(_, todo_clicks, limpiar_clicks, semanas_activas,
+                            meses_activos, anio):
 
         if ctx.triggered_id is None:
             return no_update, no_update
@@ -184,7 +243,7 @@ def registrar_callbacks_ventas(app):
             meses_activos = []
 
         trigger = ctx.triggered_id
-        df = _df()
+        df = _df_anio(anio)
 
         if trigger == "seleccionar-todas-semanas":
             if df is None:
@@ -196,7 +255,7 @@ def registrar_callbacks_ventas(app):
         if df is None:
             semanas_visibles = []
         else:
-            semanas_visibles = sorted(obtener_semanas(df, meses_activos))
+            semanas_visibles = sorted(obtener_semanas(df, meses_activos, anio))
 
         primera_semana = semanas_visibles[0] if semanas_visibles else None
 
@@ -222,20 +281,21 @@ def registrar_callbacks_ventas(app):
         return sorted(semanas_activas), mes_resultado
 
     # =====================================================
-    # PINTAR SEMANAS
+    # PINTAR SEMANAS  (según el año seleccionado)
     # =====================================================
 
     @app.callback(
         Output({"type": "btn-semana", "index": ALL}, "className"),
         Output({"type": "btn-semana", "index": ALL}, "disabled"),
         Input("store-semana", "data"),
+        Input("dropdown-anio", "value"),
         Input("store-bd-ventas", "data"),
     )
-    def pintar_semanas(semanas_activas, marca):
+    def pintar_semanas(semanas_activas, anio, marca):
         if semanas_activas is None:
             semanas_activas = []
 
-        df = _df()
+        df = _df_anio(anio)
         if df is None:
             semanas_con_datos = set()
         else:

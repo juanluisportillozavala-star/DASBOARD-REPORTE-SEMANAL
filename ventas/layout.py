@@ -30,6 +30,8 @@ def crear_layout_ventas():
 
             dcc.Store(id="store-kpis"),
 
+            dcc.Store(id="store-anio", data=None),
+
             dcc.Store(id="store-mes", data=[]),
 
             dcc.Store(id="store-semana", data=[]),
@@ -75,7 +77,7 @@ def crear_layout_ventas():
             html.Br(),
 
             # ==========================================
-            # CONTROLES  (calendario mes / semana)
+            # CONTROLES  (año + calendario mes / semana)
             # ==========================================
 
             crear_controles(),

@@ -69,7 +69,7 @@ def leer_archivos(catalogo, ventas):
 # 'Producto 2_x' / 'Producto 2_y').
 
 COLUMNAS_CALCULADAS = [
-    "Mes", "Semana", "Producto 2",
+    "Mes", "Semana", "Año", "Producto 2",
     "TC", "Ut Bruta MN", "Costo Venta MN",
 ]
 
@@ -117,6 +117,13 @@ def procesar_bd_ventas(df_catalogo, df):
     # -----------------------------------------------------
 
     df["Mes"] = df[fecha].dt.month
+
+    # -----------------------------------------------------
+    # AÑO
+    # (para el segmentador de año)
+    # -----------------------------------------------------
+
+    df["Año"] = df[fecha].dt.year
 
     # -----------------------------------------------------
     # SEMANA

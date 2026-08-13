@@ -6,7 +6,9 @@ FÁBRICA DE TABLAS JERÁRQUICAS.
 
 VELOCIDAD: 'construir' lee los datos de la CACHÉ del servidor
 (db.obtener_df) en vez de recibir las 589 filas por el store.
-Así los datos no viajan del navegador en cada filtrada.
+
+AÑO: el callback 'construir' respeta el año seleccionado
+(store-anio), como filtro maestro junto a mes/semana.
 """
 
 from dash import Input, Output, State, html, dcc, no_update, MATCH
@@ -104,14 +106,12 @@ def crear_layout_tabla(clave, niveles, titulo=None):
 def registrar_callbacks_tablas(app):
 
     # 1) Construir tabla cuando cambian filtro u orden.
-    #    Lee los datos de la CACHÉ del servidor (db.obtener_df),
-    #    NO del store. store-bd-ventas es solo Input "señal"
-    #    (su marca ligera cambia de versión al recargar datos).
     @app.callback(
         Output(_id("tabla-cont", MATCH), "children"),
         Output(_id("tabla-arbol", MATCH), "data"),
         Output(_id("tabla-total", MATCH), "data"),
         Input("store-bd-ventas", "data"),
+        Input("store-anio", "data"),
         Input("store-mes", "data"),
         Input("store-semana", "data"),
         Input(_id("tabla-orden", MATCH), "value"),
@@ -119,7 +119,7 @@ def registrar_callbacks_tablas(app):
         State(_id("tabla-clave", MATCH), "data"),
         State(_id("tabla-exp", MATCH), "data"),
     )
-    def construir(marca, meses, semanas, orden, niveles, clave, ids_expandidos):
+    def construir(marca, anio, meses, semanas, orden, niveles, clave, ids_expandidos):
         df = db.obtener_df(MODULO)
         if df is None:
             return (
@@ -128,7 +128,7 @@ def registrar_callbacks_tablas(app):
                 None, None,
             )
         try:
-            df_f = filtrar_dataframe(df, meses=meses, semanas=semanas)
+            df_f = filtrar_dataframe(df, meses=meses, semanas=semanas, anio=anio)
 
             columna, ascendente = _parse_orden(orden)
             if columna != ORDEN_ALFABETICO and columna not in COLUMNAS_ORDEN_VALIDAS:

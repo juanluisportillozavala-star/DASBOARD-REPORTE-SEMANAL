@@ -2,9 +2,12 @@
 =========================================================
 CONTROLES DEL DASHBOARD
 =========================================================
+Incluye el SEGMENTADOR DE AÑO (menú desplegable) como filtro
+maestro, arriba del calendario Mes/Semana. Al elegir un año,
+mes/semana/KPIs/tablas operan dentro de ese año.
 """
 
-from dash import html
+from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 
@@ -15,6 +18,60 @@ def crear_controles():
         dbc.CardBody(
 
             [
+
+                # =====================================================
+                # SEGMENTADOR DE AÑO (filtro maestro)
+                # =====================================================
+
+                dbc.Row(
+
+                    dbc.Col(
+
+                        [
+
+                            html.Div(
+
+                                [
+
+                                    html.H4(
+
+                                        "Año",
+
+                                        className="titulo-filtro"
+
+                                    ),
+
+                                ],
+
+                                className="encabezado-filtro"
+
+                            ),
+
+                            dcc.Dropdown(
+
+                                id="dropdown-anio",
+
+                                options=[],      # las llena el callback
+
+                                value=None,      # el callback pone el más reciente
+
+                                clearable=False,
+
+                                placeholder="Selecciona un año",
+
+                                style={"maxWidth": "220px"},
+
+                            ),
+
+                        ],
+
+                        md=12
+
+                    ),
+
+                    className="mb-3"
+
+                ),
 
                 dbc.Row(
 
