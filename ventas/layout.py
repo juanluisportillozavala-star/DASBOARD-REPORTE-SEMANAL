@@ -13,6 +13,7 @@ import dash_bootstrap_components as dbc
 from ventas.controles import crear_controles
 from ventas.tablas_ventas import crear_layout_tablas_ventas
 from ventas.graficos import crear_layout_graficos
+from ventas.comparativo import crear_layout_comparativo
 
 
 def crear_layout_ventas():
@@ -117,6 +118,36 @@ def crear_layout_ventas():
                 ],
 
                 id="acc-graficos",
+
+                start_collapsed=True
+
+            ),
+
+            html.Br(),
+
+            # ==========================================
+            # COMPARATIVO (periodo A vs periodo B)
+            # ==========================================
+
+            dbc.Accordion(
+
+                [
+
+                    dbc.AccordionItem(
+
+                        [
+
+                            crear_layout_comparativo()
+
+                        ],
+
+                        title="Comparativo de periodos"
+
+                    )
+
+                ],
+
+                id="acc-comparativo",
 
                 start_collapsed=True
 

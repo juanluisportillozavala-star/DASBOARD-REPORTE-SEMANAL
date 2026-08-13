@@ -22,6 +22,7 @@ from callbacks.router_callbacks import registrar_router_callbacks
 from ventas.callbacks import registrar_callbacks_ventas
 from ventas.tablas_ventas import registrar_callbacks_tablas_ventas
 from ventas.graficos import registrar_callbacks_graficos
+from ventas.comparativo import registrar_callbacks_comparativo
 from carga import registrar_callbacks_carga
 
 # Ingresos
@@ -113,6 +114,7 @@ registrar_router_callbacks(app)
 registrar_callbacks_ventas(app)
 registrar_callbacks_tablas_ventas(app)
 registrar_callbacks_graficos(app)
+registrar_callbacks_comparativo(app)
 
 # Carga central
 registrar_callbacks_carga(app)
