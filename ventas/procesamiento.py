@@ -58,12 +58,47 @@ def leer_archivos(catalogo, ventas):
 
 
 # =========================================================
+# COLUMNAS QUE EL SISTEMA CALCULA
+# =========================================================
+# Si la BD que se sube YA trae estas columnas (por ejemplo,
+# alguien subió el archivo con las fórmulas de la derecha ya
+# puestas), se ELIMINAN al inicio para regenerarlas desde
+# cero. Así el archivo puede subirse con o sin fórmulas: las
+# columnas extra formuladas simplemente se ignoran y no
+# rompen el merge del catálogo (antes chocaban y creaban
+# 'Producto 2_x' / 'Producto 2_y').
+
+COLUMNAS_CALCULADAS = [
+    "Mes", "Semana", "Producto 2",
+    "TC", "Ut Bruta MN", "Costo Venta MN",
+]
+
+
+# =========================================================
 # PROCESAMIENTO
 # =========================================================
 
 def procesar_bd_ventas(df_catalogo, df):
 
     df = df.copy()
+
+    # limpiar espacios en los nombres de columna
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # -----------------------------------------------------
+    # QUITAR columnas calculadas que ya vengan en el archivo
+    # (permite subir la BD con o sin fórmulas)
+    # -----------------------------------------------------
+
+    a_quitar = [c for c in COLUMNAS_CALCULADAS if c in df.columns]
+    if a_quitar:
+        df = df.drop(columns=a_quitar)
+
+    # también quitar columnas basura sin nombre (Unnamed) que
+    # a veces se cuelan al final de un Excel formuleado
+    basura = [c for c in df.columns if str(c).startswith("Unnamed")]
+    if basura:
+        df = df.drop(columns=basura)
 
     # -----------------------------------------------------
     # FECHA
@@ -127,6 +162,10 @@ def procesar_bd_ventas(df_catalogo, df):
         }
 
     )
+
+    # quedarnos solo con las 2 columnas del catálogo que usamos,
+    # para que el merge no arrastre columnas extra del catálogo
+    catalogo = catalogo[[codigo, "Producto 2"]]
 
     df = df.merge(
 
