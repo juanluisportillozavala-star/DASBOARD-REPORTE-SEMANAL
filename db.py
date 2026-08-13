@@ -47,6 +47,8 @@ def inicializar_esquema():
                 creado        TIMESTAMP DEFAULT now()
             );
         """)
+    # tablas del módulo Proyección
+    inicializar_esquema_proyeccion()
 
 
 # =========================================================
@@ -232,3 +234,163 @@ def eliminar_usuario_consulta(usuario):
     with _conn() as c, c.cursor() as cur:
         cur.execute("DELETE FROM usuarios WHERE usuario=%s AND rol='consulta';",
                     (usuario,))
+
+
+# =========================================================
+# ===============  MÓDULO PROYECCIÓN  =====================
+# =========================================================
+# Guarda proyecciones mensuales de cantidad por producto, de
+# forma PERMANENTE (histórico acumulado). Dos tablas:
+#
+#   productos_proyeccion : lista maestra editable de productos
+#       (producto TEXT PRIMARY KEY, activo BOOL, orden INT)
+#
+#   proyecciones : la cantidad proyectada por año/mes/producto
+#       (anio INT, mes INT, producto TEXT, cantidad NUMERIC)
+#       PK compuesta (anio, mes, producto)
+
+
+def inicializar_esquema_proyeccion():
+    """Crea las tablas de proyección si no existen. Se llama
+    desde inicializar_esquema(). La primera vez SIEMBRA la lista
+    predeterminada de productos principales (solo si la tabla
+    está vacía; después respeta lo que el admin agregue/quite)."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS productos_proyeccion (
+                producto TEXT PRIMARY KEY,
+                activo   BOOLEAN DEFAULT TRUE,
+                orden    INTEGER DEFAULT 0
+            );
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS proyecciones (
+                anio     INTEGER NOT NULL,
+                mes      INTEGER NOT NULL,
+                producto TEXT NOT NULL,
+                cantidad NUMERIC DEFAULT 0,
+                PRIMARY KEY (anio, mes, producto)
+            );
+        """)
+        # sembrar lista predeterminada SOLO si la tabla está vacía
+        cur.execute("SELECT COUNT(*) FROM productos_proyeccion;")
+        if cur.fetchone()[0] == 0:
+            for i, prod in enumerate(_PRODUCTOS_SEMILLA):
+                cur.execute(
+                    "INSERT INTO productos_proyeccion (producto, activo, orden) "
+                    "VALUES (%s, TRUE, %s) ON CONFLICT (producto) DO NOTHING;",
+                    (prod, i),
+                )
+
+
+# Lista PREDETERMINADA de productos principales (semilla inicial).
+# El admin puede agregar o quitar desde la pantalla de captura;
+# esta lista solo se usa la PRIMERA vez, para no arrancar vacío.
+_PRODUCTOS_SEMILLA = [
+    "HIPOCLORITO DE CALCIO GRANULAR HTH",
+    "PERCARBONATO DE SODIO PROVOX",
+    "ESTIREN ACRILICA",
+    "ACIDO FOSFORICO CLARIFICADO 85%",
+    "ALCOHOL POLIVINILICO PVOH 08850",
+    "PROTEINA VEGETAL PVH 11307",
+    "LESS 70%",
+    "NONIL FENOL 10 MOLES",
+    "BIOXIDO DE TITANIO",
+    "TWEEN 20",
+    "XILOL",
+    "ALCOHOL TRIDECILICO 8 MOLES",
+    "ACIDO ACETICO GLACIAL ALIMENTICIO",
+    "POTASA CAUSTICA EN ESCAMA",
+    "CARBONATO DE POTASIO LIGERO ROT",
+    "EDTA",
+]
+
+
+# -------- LISTA MAESTRA DE PRODUCTOS --------
+
+def listar_productos_proyeccion(solo_activos=True):
+    """Devuelve la lista maestra de productos proyectables."""
+    with _conn() as c, c.cursor() as cur:
+        if solo_activos:
+            cur.execute("SELECT producto, activo, orden FROM productos_proyeccion "
+                        "WHERE activo=TRUE ORDER BY orden, producto;")
+        else:
+            cur.execute("SELECT producto, activo, orden FROM productos_proyeccion "
+                        "ORDER BY orden, producto;")
+        filas = cur.fetchall()
+    return [{"producto": f[0], "activo": f[1], "orden": f[2]} for f in filas]
+
+
+def agregar_producto_proyeccion(producto):
+    """Agrega un producto a la lista maestra (o lo reactiva)."""
+    producto = (producto or "").strip()
+    if not producto:
+        raise ValueError("El nombre del producto no puede estar vacío.")
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""
+            INSERT INTO productos_proyeccion (producto, activo, orden)
+            VALUES (%s, TRUE, COALESCE(
+                (SELECT MAX(orden)+1 FROM productos_proyeccion), 0))
+            ON CONFLICT (producto)
+            DO UPDATE SET activo = TRUE;
+        """, (producto,))
+
+
+def quitar_producto_proyeccion(producto):
+    """Desactiva un producto de la lista maestra (no borra su
+    histórico de proyecciones, solo lo saca de la lista activa)."""
+    producto = (producto or "").strip()
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("UPDATE productos_proyeccion SET activo=FALSE "
+                    "WHERE producto=%s;", (producto,))
+
+
+# -------- PROYECCIONES POR MES --------
+
+def guardar_proyeccion(anio, mes, proyeccion_por_producto):
+    """Guarda (upsert) la proyección de un mes.
+    proyeccion_por_producto: dict {producto: cantidad}.
+    Sobrescribe solo ese año/mes/producto; el resto del
+    histórico queda intacto."""
+    anio = int(anio); mes = int(mes)
+    with _conn() as c, c.cursor() as cur:
+        for producto, cantidad in proyeccion_por_producto.items():
+            producto = (producto or "").strip()
+            if not producto:
+                continue
+            try:
+                cant = float(cantidad) if cantidad not in (None, "") else 0.0
+            except (ValueError, TypeError):
+                cant = 0.0
+            cur.execute("""
+                INSERT INTO proyecciones (anio, mes, producto, cantidad)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (anio, mes, producto)
+                DO UPDATE SET cantidad = EXCLUDED.cantidad;
+            """, (anio, mes, producto, cant))
+
+
+def leer_proyeccion(anio, mes):
+    """Devuelve dict {producto: cantidad} de un año/mes."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT producto, cantidad FROM proyecciones "
+                    "WHERE anio=%s AND mes=%s;", (int(anio), int(mes)))
+        filas = cur.fetchall()
+    return {f[0]: float(f[1]) for f in filas}
+
+
+def anios_con_proyeccion():
+    """Años que ya tienen alguna proyección guardada."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT DISTINCT anio FROM proyecciones ORDER BY anio DESC;")
+        filas = cur.fetchall()
+    return [int(f[0]) for f in filas]
+
+
+def meses_con_proyeccion(anio):
+    """Meses con proyección para un año dado."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT DISTINCT mes FROM proyecciones "
+                    "WHERE anio=%s ORDER BY mes;", (int(anio),))
+        filas = cur.fetchall()
+    return [int(f[0]) for f in filas]
