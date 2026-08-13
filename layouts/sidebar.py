@@ -48,6 +48,8 @@ def crear_sidebar(rol=None):
 
         item("Ventas", "fas fa-chart-line", "/ventas"),
 
+        item("Proyección", "fas fa-bullseye", "/proyeccion"),
+
         item("Ingresos", "fas fa-wallet", "/ingresos"),
 
         item("Cartera", "fas fa-users", "/cartera"),

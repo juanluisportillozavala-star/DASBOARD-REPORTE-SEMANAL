@@ -40,6 +40,9 @@ from configuracion import registrar_callbacks_configuracion
 from cartera.callbacks import registrar_callbacks_cartera
 from cartera.tabla_cartera import registrar_callbacks_tabla_cartera
 
+# Proyección
+from proyeccion.vista import registrar_callbacks_proyeccion
+
 # =========================
 # Crear aplicación
 # =========================
@@ -133,6 +136,9 @@ registrar_callbacks_configuracion(app)
 # Cartera
 registrar_callbacks_cartera(app)
 registrar_callbacks_tabla_cartera(app)
+
+# Proyección
+registrar_callbacks_proyeccion(app)
 
 # =========================
 # Ejecutar
