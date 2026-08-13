@@ -77,16 +77,28 @@ server = app.server
 # evita que el plan gratuito pause el proyecto por inactividad.
 # No afecta el resto de la app.
 import db as _db_ping
+from flask import Response
 
 @server.route("/ping")
 def ping():
+    # Respuesta MÍNIMA para el cron anti-pausa: cuerpo de 1 byte
+    # ("o") y encabezados reducidos, para no superar el límite de
+    # tamaño de cron-job.org ("salida demasiado grande"). Igual
+    # toca Supabase (SELECT 1) para mantenerla despierta.
     try:
         with _db_ping._conn() as c, c.cursor() as cur:
             cur.execute("SELECT 1;")
             cur.fetchone()
-        return "ok", 200
-    except Exception as e:
-        return f"error: {e}", 500
+        cuerpo = "o"
+        codigo = 200
+    except Exception:
+        cuerpo = "e"
+        codigo = 500
+    resp = Response(cuerpo, status=codigo, mimetype="text/plain")
+    # quitar encabezados que abultan la respuesta
+    resp.headers["Content-Type"] = "text/plain"
+    resp.headers.pop("Set-Cookie", None)
+    return resp
 
 # =========================
 # Layout principal
