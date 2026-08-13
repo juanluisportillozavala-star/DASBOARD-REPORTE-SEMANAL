@@ -235,57 +235,20 @@ def eliminar_usuario_consulta(usuario):
         cur.execute("DELETE FROM usuarios WHERE usuario=%s AND rol='consulta';",
                     (usuario,))
 
-
 # =========================================================
 # ===============  MÓDULO PROYECCIÓN  =====================
 # =========================================================
-# Guarda proyecciones mensuales de cantidad por producto, de
-# forma PERMANENTE (histórico acumulado). Dos tablas:
+# La proyección se guarda por AÑO/MES/PRODUCTO. La LISTA de
+# productos es POR MES: los productos de un mes son los que
+# tienen fila en la proyección de ese mes. Un mes que aún no
+# se ha tocado arranca con la lista PREDETERMINADA (semilla).
 #
-#   productos_proyeccion : lista maestra editable de productos
-#       (producto TEXT PRIMARY KEY, activo BOOL, orden INT)
-#
-#   proyecciones : la cantidad proyectada por año/mes/producto
-#       (anio INT, mes INT, producto TEXT, cantidad NUMERIC)
-#       PK compuesta (anio, mes, producto)
+#   proyecciones : (anio INT, mes INT, producto TEXT,
+#                   cantidad NUMERIC)  PK (anio, mes, producto)
 
 
-def inicializar_esquema_proyeccion():
-    """Crea las tablas de proyección si no existen. Se llama
-    desde inicializar_esquema(). La primera vez SIEMBRA la lista
-    predeterminada de productos principales (solo si la tabla
-    está vacía; después respeta lo que el admin agregue/quite)."""
-    with _conn() as c, c.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS productos_proyeccion (
-                producto TEXT PRIMARY KEY,
-                activo   BOOLEAN DEFAULT TRUE,
-                orden    INTEGER DEFAULT 0
-            );
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS proyecciones (
-                anio     INTEGER NOT NULL,
-                mes      INTEGER NOT NULL,
-                producto TEXT NOT NULL,
-                cantidad NUMERIC DEFAULT 0,
-                PRIMARY KEY (anio, mes, producto)
-            );
-        """)
-        # sembrar lista predeterminada SOLO si la tabla está vacía
-        cur.execute("SELECT COUNT(*) FROM productos_proyeccion;")
-        if cur.fetchone()[0] == 0:
-            for i, prod in enumerate(_PRODUCTOS_SEMILLA):
-                cur.execute(
-                    "INSERT INTO productos_proyeccion (producto, activo, orden) "
-                    "VALUES (%s, TRUE, %s) ON CONFLICT (producto) DO NOTHING;",
-                    (prod, i),
-                )
-
-
-# Lista PREDETERMINADA de productos principales (semilla inicial).
-# El admin puede agregar o quitar desde la pantalla de captura;
-# esta lista solo se usa la PRIMERA vez, para no arrancar vacío.
+# Lista PREDETERMINADA de productos principales (semilla).
+# Se usa para PRECARGAR un mes que aún no tiene nada guardado.
 _PRODUCTOS_SEMILLA = [
     "HIPOCLORITO DE CALCIO GRANULAR HTH",
     "PERCARBONATO DE SODIO PROVOX",
@@ -306,62 +269,85 @@ _PRODUCTOS_SEMILLA = [
 ]
 
 
-# -------- LISTA MAESTRA DE PRODUCTOS --------
-
-def listar_productos_proyeccion(solo_activos=True):
-    """Devuelve la lista maestra de productos proyectables."""
-    with _conn() as c, c.cursor() as cur:
-        if solo_activos:
-            cur.execute("SELECT producto, activo, orden FROM productos_proyeccion "
-                        "WHERE activo=TRUE ORDER BY orden, producto;")
-        else:
-            cur.execute("SELECT producto, activo, orden FROM productos_proyeccion "
-                        "ORDER BY orden, producto;")
-        filas = cur.fetchall()
-    return [{"producto": f[0], "activo": f[1], "orden": f[2]} for f in filas]
+def productos_semilla():
+    """Devuelve la lista predeterminada (para precargar un mes
+    nuevo). Copia, para no exponer la lista interna."""
+    return list(_PRODUCTOS_SEMILLA)
 
 
-def agregar_producto_proyeccion(producto):
-    """Agrega un producto a la lista maestra (o lo reactiva)."""
-    producto = (producto or "").strip()
-    if not producto:
-        raise ValueError("El nombre del producto no puede estar vacío.")
+def inicializar_esquema_proyeccion():
+    """Crea la tabla de proyecciones si no existe. Se llama
+    desde inicializar_esquema()."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("""
-            INSERT INTO productos_proyeccion (producto, activo, orden)
-            VALUES (%s, TRUE, COALESCE(
-                (SELECT MAX(orden)+1 FROM productos_proyeccion), 0))
-            ON CONFLICT (producto)
-            DO UPDATE SET activo = TRUE;
-        """, (producto,))
+            CREATE TABLE IF NOT EXISTS proyecciones (
+                anio     INTEGER NOT NULL,
+                mes      INTEGER NOT NULL,
+                producto TEXT NOT NULL,
+                cantidad NUMERIC DEFAULT 0,
+                PRIMARY KEY (anio, mes, producto)
+            );
+        """)
 
 
-def quitar_producto_proyeccion(producto):
-    """Desactiva un producto de la lista maestra (no borra su
-    histórico de proyecciones, solo lo saca de la lista activa)."""
-    producto = (producto or "").strip()
+# -------- PROYECCIÓN / LISTA POR MES --------
+
+def leer_proyeccion(anio, mes):
+    """Devuelve dict {producto: cantidad} de un año/mes.
+    Vacío si ese mes aún no tiene nada guardado."""
     with _conn() as c, c.cursor() as cur:
-        cur.execute("UPDATE productos_proyeccion SET activo=FALSE "
-                    "WHERE producto=%s;", (producto,))
+        cur.execute("SELECT producto, cantidad FROM proyecciones "
+                    "WHERE anio=%s AND mes=%s ORDER BY producto;",
+                    (int(anio), int(mes)))
+        filas = cur.fetchall()
+    return {f[0]: float(f[1]) for f in filas}
 
 
-# -------- PROYECCIONES POR MES --------
+def listar_productos_mes(anio, mes):
+    """Lista de productos de un mes (los que tienen fila en ese
+    mes). Si el mes está vacío, devuelve la lista PREDETERMINADA
+    (semilla) para arrancar."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT producto FROM proyecciones "
+                    "WHERE anio=%s AND mes=%s ORDER BY producto;",
+                    (int(anio), int(mes)))
+        filas = cur.fetchall()
+    if filas:
+        return [f[0] for f in filas]
+    return productos_semilla()
+
 
 def guardar_proyeccion(anio, mes, proyeccion_por_producto):
-    """Guarda (upsert) la proyección de un mes.
-    proyeccion_por_producto: dict {producto: cantidad}.
-    Sobrescribe solo ese año/mes/producto; el resto del
-    histórico queda intacto."""
+    """Guarda (reemplaza) la proyección de un mes. Deja el mes
+    EXACTAMENTE con los productos recibidos: inserta/actualiza
+    los que vienen y BORRA los que ya no estén (así 'quitar' un
+    producto de ese mes se persiste). El histórico de OTROS
+    meses no se toca."""
     anio = int(anio); mes = int(mes)
+    limpio = {}
+    for producto, cantidad in proyeccion_por_producto.items():
+        producto = (producto or "").strip()
+        if not producto:
+            continue
+        try:
+            cant = float(cantidad) if cantidad not in (None, "") else 0.0
+        except (ValueError, TypeError):
+            cant = 0.0
+        limpio[producto] = cant
+
     with _conn() as c, c.cursor() as cur:
-        for producto, cantidad in proyeccion_por_producto.items():
-            producto = (producto or "").strip()
-            if not producto:
-                continue
-            try:
-                cant = float(cantidad) if cantidad not in (None, "") else 0.0
-            except (ValueError, TypeError):
-                cant = 0.0
+        # borrar del mes los productos que ya no están en la lista
+        if limpio:
+            cur.execute(
+                "DELETE FROM proyecciones WHERE anio=%s AND mes=%s "
+                "AND producto NOT IN %s;",
+                (anio, mes, tuple(limpio.keys())),
+            )
+        else:
+            cur.execute("DELETE FROM proyecciones WHERE anio=%s AND mes=%s;",
+                        (anio, mes))
+        # upsert de los que vienen
+        for producto, cant in limpio.items():
             cur.execute("""
                 INSERT INTO proyecciones (anio, mes, producto, cantidad)
                 VALUES (%s, %s, %s, %s)
@@ -370,13 +356,28 @@ def guardar_proyeccion(anio, mes, proyeccion_por_producto):
             """, (anio, mes, producto, cant))
 
 
-def leer_proyeccion(anio, mes):
-    """Devuelve dict {producto: cantidad} de un año/mes."""
+def agregar_producto_mes(anio, mes, producto):
+    """Agrega un producto a un mes concreto (con cantidad 0 si
+    no existía). Solo afecta a ESE mes."""
+    producto = (producto or "").strip()
+    if not producto:
+        raise ValueError("El nombre del producto no puede estar vacío.")
     with _conn() as c, c.cursor() as cur:
-        cur.execute("SELECT producto, cantidad FROM proyecciones "
-                    "WHERE anio=%s AND mes=%s;", (int(anio), int(mes)))
-        filas = cur.fetchall()
-    return {f[0]: float(f[1]) for f in filas}
+        cur.execute("""
+            INSERT INTO proyecciones (anio, mes, producto, cantidad)
+            VALUES (%s, %s, %s, 0)
+            ON CONFLICT (anio, mes, producto) DO NOTHING;
+        """, (int(anio), int(mes), producto))
+
+
+def quitar_producto_mes(anio, mes, producto):
+    """Quita un producto de un mes concreto (borra su fila de
+    ese mes). Solo afecta a ESE mes; otros meses no se tocan."""
+    producto = (producto or "").strip()
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("DELETE FROM proyecciones "
+                    "WHERE anio=%s AND mes=%s AND producto=%s;",
+                    (int(anio), int(mes), producto))
 
 
 def anios_con_proyeccion():

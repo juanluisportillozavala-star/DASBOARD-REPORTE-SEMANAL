@@ -2,18 +2,11 @@
 =========================================================
 proyeccion_captura.py  —  CAPTURA DE PROYECCIONES (admin)
 =========================================================
-Sección dentro de Carga de datos donde el admin:
-  • Elige AÑO + MES.
-  • Ve la lista de productos (la maestra editable) con un
-    campo de CANTIDAD para capturar la proyección de ese mes.
-  • Guarda (se conserva para siempre en Supabase).
-  • Agrega o quita productos de la lista maestra.
-
-Los datos se guardan con db.guardar_proyeccion (upsert por
-año/mes/producto: conserva el histórico de otros meses).
+Sección dentro de Carga de datos. La LISTA de productos es
+POR MES: agregar o quitar un producto afecta SOLO al mes
+seleccionado. Un mes que aún no se ha tocado arranca con la
+lista predeterminada (semilla).
 """
-
-from datetime import date
 
 from dash import Input, Output, State, html, dcc, no_update, ALL, ctx
 import dash_bootstrap_components as dbc
@@ -22,6 +15,8 @@ import db
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
+
+ANIOS = list(range(2025, 2036))   # 2025 .. 2035
 
 MESES = [
     (1, "Enero"), (2, "Febrero"), (3, "Marzo"), (4, "Abril"),
@@ -43,8 +38,8 @@ def _input_num(producto, valor=None):
 
 def crear_seccion_proyeccion():
     """Sección grande de captura de proyecciones (para Carga)."""
-    anio_actual = date.today().year
-    anios = list(range(anio_actual - 1, anio_actual + 2))  # año-1 .. año+1
+    from datetime import date
+    anio_actual = date.today().year if date.today().year in ANIOS else ANIOS[0]
 
     return html.Div(
         [
@@ -54,11 +49,10 @@ def crear_seccion_proyeccion():
             html.H2("Proyección de ventas",
                     style={"color": AZUL, "fontWeight": "700"}),
             html.P("Captura la proyección mensual de cantidad por producto. "
-                   "Se guarda de forma permanente para tener referencia "
-                   "histórica.",
+                   "La lista de productos es por mes: agregar o quitar afecta "
+                   "solo al mes seleccionado. Se guarda de forma permanente.",
                    style={"color": "#6C757D", "marginBottom": "20px"}),
 
-            # selectores año + mes
             html.Div(
                 [
                     html.Div(
@@ -69,7 +63,7 @@ def crear_seccion_proyeccion():
                                                      "marginBottom": "4px"}),
                             dcc.Dropdown(
                                 id="proy-anio",
-                                options=[{"label": str(a), "value": a} for a in anios],
+                                options=[{"label": str(a), "value": a} for a in ANIOS],
                                 value=anio_actual, clearable=False,
                                 style={"width": "140px"},
                             ),
@@ -94,7 +88,6 @@ def crear_seccion_proyeccion():
                        "alignItems": "flex-end", "flexWrap": "wrap"},
             ),
 
-            # tabla de captura (lista de productos + cantidad)
             dbc.Card(
                 dbc.CardBody(
                     [
@@ -117,14 +110,13 @@ def crear_seccion_proyeccion():
                     ]
                 ),
                 className="card-premium",
-                style={"marginBottom": "24px", "maxWidth": "560px"},
+                style={"marginBottom": "24px", "maxWidth": "620px"},
             ),
 
-            # gestión de la lista maestra
             dbc.Card(
                 dbc.CardBody(
                     [
-                        html.H5("Gestionar lista de productos",
+                        html.H5("Agregar producto a este mes",
                                 style={"color": AZUL, "fontWeight": "700",
                                        "marginBottom": "14px"}),
                         html.Div(
@@ -150,16 +142,16 @@ def crear_seccion_proyeccion():
                             ],
                             style={"marginBottom": "8px"},
                         ),
-                        html.P("Escribe el nombre EXACTO como aparece en Ventas "
+                        html.P("El producto se agrega SOLO al mes seleccionado. "
+                               "Escribe el nombre EXACTO como aparece en Ventas "
                                "(Producto), para que el facturado cruce bien.",
                                style={"fontSize": "12px", "color": "#6C757D"}),
                         html.Div(id="proy-msg-lista",
-                                 style={"minHeight": "20px", "marginBottom": "8px"}),
-                        html.Div(id="proy-lista-productos"),
+                                 style={"minHeight": "20px"}),
                     ]
                 ),
                 className="card-premium",
-                style={"maxWidth": "560px"},
+                style={"maxWidth": "620px"},
             ),
         ]
     )
@@ -167,7 +159,7 @@ def crear_seccion_proyeccion():
 
 def registrar_callbacks_proyeccion_captura(app):
 
-    # ---- construir la tabla de captura al cambiar año/mes o refrescar ----
+    # construir la tabla de captura (lista del mes + botón quitar por fila)
     @app.callback(
         Output("proy-tabla-captura", "children"),
         Input("proy-anio", "value"),
@@ -175,21 +167,30 @@ def registrar_callbacks_proyeccion_captura(app):
         Input("proy-refresco", "data"),
     )
     def construir_tabla(anio, mes, _r):
-        productos = db.listar_productos_proyeccion(solo_activos=True)
+        if not anio or not mes:
+            return html.Div("Selecciona año y mes.", style={"color": "#6C757D"})
+        productos = db.listar_productos_mes(anio, mes)
+        guardado = db.leer_proyeccion(anio, mes)
         if not productos:
-            return html.Div("No hay productos en la lista. Agrega abajo.",
+            return html.Div("No hay productos. Agrega abajo.",
                             style={"color": "#6C757D"})
-        guardado = db.leer_proyeccion(anio, mes) if (anio and mes) else {}
 
         filas = []
-        for p in productos:
-            nombre = p["producto"]
+        for nombre in productos:
             filas.append(
                 html.Div(
                     [
                         html.Span(nombre, style={"flex": "1", "color": AZUL,
                                                  "fontWeight": "500"}),
                         _input_num(nombre, guardado.get(nombre)),
+                        html.Button(
+                            html.I(className="fas fa-trash"),
+                            id={"type": "proy-quitar", "producto": nombre},
+                            n_clicks=0, title="Quitar de este mes",
+                            style={"backgroundColor": "transparent",
+                                   "border": "none", "color": "#C0392B",
+                                   "cursor": "pointer", "marginLeft": "10px"},
+                        ),
                     ],
                     style={"display": "flex", "alignItems": "center",
                            "justifyContent": "space-between",
@@ -199,106 +200,81 @@ def registrar_callbacks_proyeccion_captura(app):
             )
         return html.Div(filas)
 
-    # ---- guardar proyección ----
+    # guardar proyección del mes
     @app.callback(
         Output("proy-msg-guardar", "children"),
+        Output("proy-refresco", "data", allow_duplicate=True),
         Input("proy-btn-guardar", "n_clicks"),
         State("proy-anio", "value"),
         State("proy-mes", "value"),
         State({"type": "proy-cant", "producto": ALL}, "value"),
         State({"type": "proy-cant", "producto": ALL}, "id"),
+        State("proy-refresco", "data"),
         State("store-sesion", "data"),
         prevent_initial_call=True,
     )
-    def guardar(n, anio, mes, valores, ids, sesion):
+    def guardar(n, anio, mes, valores, ids, refresco, sesion):
         if not sesion or sesion.get("rol") != "admin":
             return html.Span("Solo un administrador puede guardar.",
-                             style={"color": "#C0392B"})
+                             style={"color": "#C0392B"}), no_update
         if not anio or not mes:
             return html.Span("Selecciona año y mes.",
-                             style={"color": "#C0392B"})
+                             style={"color": "#C0392B"}), no_update
         proy = {}
         for val, cid in zip(valores, ids):
             proy[cid["producto"]] = val if val is not None else 0
         try:
             db.guardar_proyeccion(anio, mes, proy)
-            return html.Span(f"Proyección guardada para {mes:02d}/{anio}.",
-                             style={"color": "#198754", "fontWeight": "600"})
+            return (html.Span(f"Proyección guardada para {mes:02d}/{anio}.",
+                              style={"color": "#198754", "fontWeight": "600"}),
+                    (refresco or 0) + 1)
         except Exception as e:
-            return html.Span(f"Error: {e}", style={"color": "#C0392B"})
+            return html.Span(f"Error: {e}", style={"color": "#C0392B"}), no_update
 
-    # ---- lista de productos (con botón quitar) ----
-    @app.callback(
-        Output("proy-lista-productos", "children"),
-        Input("proy-refresco", "data"),
-    )
-    def mostrar_lista(_r):
-        productos = db.listar_productos_proyeccion(solo_activos=True)
-        if not productos:
-            return html.Div("Lista vacía.", style={"color": "#6C757D"})
-        filas = []
-        for p in productos:
-            nombre = p["producto"]
-            filas.append(
-                html.Div(
-                    [
-                        html.Span(nombre, style={"flex": "1", "color": AZUL}),
-                        html.Button(
-                            html.I(className="fas fa-trash"),
-                            id={"type": "proy-quitar", "producto": nombre},
-                            n_clicks=0,
-                            title="Quitar de la lista",
-                            style={"backgroundColor": "transparent",
-                                   "border": "none", "color": "#C0392B",
-                                   "cursor": "pointer"},
-                        ),
-                    ],
-                    style={"display": "flex", "alignItems": "center",
-                           "justifyContent": "space-between",
-                           "padding": "5px 0",
-                           "borderBottom": "1px solid #EEF2F7"},
-                )
-            )
-        return html.Div(filas)
-
-    # ---- agregar producto ----
+    # agregar producto SOLO a este mes
     @app.callback(
         Output("proy-msg-lista", "children"),
         Output("proy-refresco", "data", allow_duplicate=True),
         Output("proy-nuevo-producto", "value"),
         Input("proy-btn-agregar", "n_clicks"),
         State("proy-nuevo-producto", "value"),
+        State("proy-anio", "value"),
+        State("proy-mes", "value"),
         State("proy-refresco", "data"),
         State("store-sesion", "data"),
         prevent_initial_call=True,
     )
-    def agregar(n, nombre, refresco, sesion):
+    def agregar(n, nombre, anio, mes, refresco, sesion):
         if not sesion or sesion.get("rol") != "admin":
             return html.Span("No autorizado.", style={"color": "#C0392B"}), no_update, no_update
+        if not anio or not mes:
+            return html.Span("Selecciona año y mes.", style={"color": "#C0392B"}), no_update, no_update
         try:
-            db.agregar_producto_proyeccion(nombre)
-            return (html.Span(f"'{nombre.strip()}' agregado.",
+            db.agregar_producto_mes(anio, mes, nombre)
+            return (html.Span(f"'{(nombre or '').strip()}' agregado a {mes:02d}/{anio}.",
                               style={"color": "#198754"}),
                     (refresco or 0) + 1, "")
         except Exception as e:
             return html.Span(f"Error: {e}", style={"color": "#C0392B"}), no_update, no_update
 
-    # ---- quitar producto ----
+    # quitar producto SOLO de este mes
     @app.callback(
         Output("proy-refresco", "data", allow_duplicate=True),
         Input({"type": "proy-quitar", "producto": ALL}, "n_clicks"),
+        State("proy-anio", "value"),
+        State("proy-mes", "value"),
         State("proy-refresco", "data"),
         State("store-sesion", "data"),
         prevent_initial_call=True,
     )
-    def quitar(clicks, refresco, sesion):
+    def quitar(clicks, anio, mes, refresco, sesion):
         if not sesion or sesion.get("rol") != "admin":
             return no_update
         if not ctx.triggered_id or not any(clicks):
             return no_update
         producto = ctx.triggered_id["producto"]
         try:
-            db.quitar_producto_proyeccion(producto)
+            db.quitar_producto_mes(anio, mes, producto)
         except Exception:
             return no_update
         return (refresco or 0) + 1
