@@ -842,11 +842,18 @@ MESES
 
     display:grid;
 
-    grid-template-columns:repeat(3,70px);
+    /* RESPONSIVO: mismos criterios que las semanas. Antes era
+       repeat(3,70px) fijo (210px) y cuando la columna se angostaba
+       la 3a columna de meses se desbordaba y se encimaba sobre las
+       semanas. Ahora acomoda tantos meses de 70px como quepan y los
+       demás bajan de renglón; nunca se desborda. */
+    grid-template-columns:repeat(auto-fill,70px);
 
     gap:12px;
 
     justify-content:flex-start;
+
+    overflow-x:hidden;
 
 }
 
@@ -1193,4 +1200,71 @@ TARJETAS KPI PERSONALIZADAS
 /* la columna Producto siempre a la izquierda (ambas tablas) */
 .hdr-proy-izq .ag-header-cell-label {
     justify-content: flex-start !important;
+}
+
+/* =========================================================
+   ROBUSTEZ RESPONSIVA DEL CALENDARIO (Mes / Semana)
+   Aplica a Ventas, Ingresos, Cartera y Saldo Proveedor
+   (todos comparten estas clases).
+   - Las rejillas NUNCA se desbordan (auto-fill + overflow-x oculto).
+   - En tablet/celular los cuadros se achican para que quepan más.
+   ========================================================= */
+
+/* seguridad: que ninguna rejilla del calendario empuje hacia los lados */
+.grid-meses,
+.grid-semanas{
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+/* TABLET (hasta 992px): cuadros un poco más chicos */
+@media (max-width:992px){
+
+    .grid-meses{
+        grid-template-columns:repeat(auto-fill,64px);
+        gap:10px;
+    }
+    .cuadro-mes{
+        width:64px;
+        height:40px;
+    }
+
+    .grid-semanas{
+        grid-template-columns:repeat(auto-fill,40px);
+        gap:10px;
+        max-height:240px;
+    }
+    .cuadro-semana{
+        width:40px;
+        height:40px;
+    }
+}
+
+/* CELULAR (hasta 576px): cuadros compactos, más por fila */
+@media (max-width:576px){
+
+    .grid-meses{
+        grid-template-columns:repeat(auto-fill,minmax(52px,1fr));
+        gap:8px;
+    }
+    .cuadro-mes{
+        width:100%;
+        min-width:52px;
+        height:38px;
+    }
+
+    .grid-semanas{
+        grid-template-columns:repeat(auto-fill,minmax(38px,1fr));
+        gap:8px;
+        max-height:260px;
+    }
+    .cuadro-semana{
+        width:100%;
+        min-width:38px;
+        height:38px;
+    }
+
+    .titulo-filtro{
+        font-size:16px;
+    }
 }
