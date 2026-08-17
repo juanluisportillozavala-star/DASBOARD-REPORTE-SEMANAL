@@ -2,10 +2,12 @@
 =========================================================
 TARJETAS KPI
 =========================================================
-Cada tarjeta muestra: ícono, título, valor, y una BARRA DE
-PROGRESO hacia el objetivo anual con su porcentaje y la meta.
-La barra se pinta verde si se alcanzó el objetivo (>=100%),
-dorada si va en progreso.
+Cada tarjeta: ícono, título, valor, y barra de progreso hacia
+el objetivo anual con su % y meta.
+
+RESPONSIVO: 4 por fila en pantallas grandes (lg), 2 por fila
+en medianas (sm), 1 por fila en celular (xs). El valor usa un
+tamaño de fuente flexible y no se corta (se ajusta al ancho).
 """
 
 from dash import html
@@ -17,39 +19,25 @@ VERDE = "#28A745"
 
 
 def _barra_progreso(pct, objetivo_texto):
-    """Barra de avance hacia el objetivo + % + meta."""
-    pct_barra = min(pct, 100)          # la barra no pasa de 100% visual
+    pct_barra = min(pct, 100)
     color = VERDE if pct >= 100 else DORADO
     pct_txt = f"{pct:.0f}%"
-
     return html.Div(
         [
-            # barra
             html.Div(
                 html.Div(
-                    style={
-                        "width": f"{pct_barra}%",
-                        "height": "8px",
-                        "backgroundColor": color,
-                        "borderRadius": "6px",
-                        "transition": "width 0.4s ease",
-                    },
+                    style={"width": f"{pct_barra}%", "height": "8px",
+                           "backgroundColor": color, "borderRadius": "6px",
+                           "transition": "width 0.4s ease"},
                 ),
-                style={
-                    "width": "100%",
-                    "height": "8px",
-                    "backgroundColor": "#E9ECEF",
-                    "borderRadius": "6px",
-                    "overflow": "hidden",
-                    "marginTop": "10px",
-                },
+                style={"width": "100%", "height": "8px",
+                       "backgroundColor": "#E9ECEF", "borderRadius": "6px",
+                       "overflow": "hidden", "marginTop": "10px"},
             ),
-            # % y meta
             html.Div(
                 [
-                    html.Span(pct_txt,
-                              style={"fontWeight": "700", "color": color,
-                                     "fontSize": "13px"}),
+                    html.Span(pct_txt, style={"fontWeight": "700",
+                                              "color": color, "fontSize": "13px"}),
                     html.Span(f" · Meta: {objetivo_texto}",
                               style={"color": "#6C757D", "fontSize": "12px"}),
                 ],
@@ -60,89 +48,72 @@ def _barra_progreso(pct, objetivo_texto):
 
 
 def crear_card(icono, titulo, valor, color, pct=None, objetivo_texto=None):
-
     cuerpo = [
         html.Div(
             [
+                # ícono
                 html.Div(
-                    html.I(
-                        className=icono,
-                        style={"fontSize": "34px", "color": color},
-                    ),
-                    style={"width": "60px", "display": "flex",
-                           "alignItems": "center", "justifyContent": "center"},
+                    html.I(className=icono,
+                           style={"fontSize": "30px", "color": color}),
+                    style={"width": "48px", "minWidth": "48px",
+                           "display": "flex", "alignItems": "center",
+                           "justifyContent": "center"},
                 ),
+                # texto (título + valor)
                 html.Div(
                     [
-                        html.Div(
-                            titulo,
-                            style={"fontSize": "15px", "color": "#6C757D",
-                                   "fontWeight": "600"},
-                        ),
+                        html.Div(titulo,
+                                 style={"fontSize": "14px", "color": "#6C757D",
+                                        "fontWeight": "600",
+                                        "lineHeight": "1.2"}),
                         html.Div(
                             valor,
-                            style={"fontSize": "28px", "fontWeight": "bold",
-                                   "color": AZUL, "marginTop": "5px"},
+                            style={
+                                # tamaño FLEXIBLE: se adapta al ancho de la
+                                # tarjeta (entre 18px y 26px) y no se corta.
+                                "fontSize": "clamp(18px, 2.2vw, 26px)",
+                                "fontWeight": "bold", "color": AZUL,
+                                "marginTop": "4px",
+                                "whiteSpace": "nowrap",
+                                "overflow": "hidden",
+                                "textOverflow": "ellipsis",
+                            },
+                            title=valor,   # tooltip con el valor completo
                         ),
                     ],
-                    style={"flex": "1"},
+                    style={"flex": "1", "minWidth": "0"},  # minWidth 0 = permite achicar
                 ),
             ],
-            style={"display": "flex", "alignItems": "center"},
+            style={"display": "flex", "alignItems": "center", "gap": "10px"},
         ),
     ]
-
-    # barra de progreso (si hay objetivo)
     if pct is not None and objetivo_texto is not None:
         cuerpo.append(_barra_progreso(pct, objetivo_texto))
 
     return dbc.Card(
         dbc.CardBody(cuerpo),
         className="card-premium",
-        style={"borderLeft": f"6px solid {color}"},
+        style={"borderLeft": f"6px solid {color}", "height": "100%"},
     )
 
 
 def crear_cards(kpis):
-
-    return dbc.Row(
-        [
-            dbc.Col(
-                crear_card(
-                    "fas fa-dollar-sign", "Venta Total",
-                    kpis["venta_total"], "#28A745",
-                    pct=kpis.get("venta_pct"),
-                    objetivo_texto=kpis.get("venta_obj"),
-                ),
-                md=3,
-            ),
-            dbc.Col(
-                crear_card(
-                    "fas fa-chart-line", "Utilidad Bruta",
-                    kpis["utilidad_bruta"], "#0D6EFD",
-                    pct=kpis.get("utilidad_pct"),
-                    objetivo_texto=kpis.get("utilidad_obj"),
-                ),
-                md=3,
-            ),
-            dbc.Col(
-                crear_card(
-                    "fas fa-percent", "Margen Bruto",
-                    kpis["margen"], "#F39C12",
-                    pct=kpis.get("margen_pct"),
-                    objetivo_texto=kpis.get("margen_obj"),
-                ),
-                md=3,
-            ),
-            dbc.Col(
-                crear_card(
-                    "fas fa-weight-hanging", "Pesos por Kilo",
-                    kpis["peso_kilo"], "#8E44AD",
-                    pct=kpis.get("peso_kilo_pct"),
-                    objetivo_texto=kpis.get("peso_kilo_obj"),
-                ),
-                md=3,
-            ),
-        ],
-        className="g-4",
-    )
+    defs = [
+        ("fas fa-dollar-sign", "Venta Total", kpis["venta_total"], "#28A745",
+         kpis.get("venta_pct"), kpis.get("venta_obj")),
+        ("fas fa-chart-line", "Utilidad Bruta", kpis["utilidad_bruta"], "#0D6EFD",
+         kpis.get("utilidad_pct"), kpis.get("utilidad_obj")),
+        ("fas fa-percent", "Margen Bruto", kpis["margen"], "#F39C12",
+         kpis.get("margen_pct"), kpis.get("margen_obj")),
+        ("fas fa-weight-hanging", "Pesos por Kilo", kpis["peso_kilo"], "#8E44AD",
+         kpis.get("peso_kilo_pct"), kpis.get("peso_kilo_obj")),
+    ]
+    columnas = [
+        dbc.Col(
+            crear_card(ic, tit, val, col, pct=p, objetivo_texto=obj),
+            xs=12, sm=6, lg=3,          # celular 1, tablet 2, grande 4
+            className="mb-3",           # separación vertical al apilarse
+        )
+        for (ic, tit, val, col, p, obj) in defs
+    ]
+    return dbc.Row(columnas, className="g-3")
