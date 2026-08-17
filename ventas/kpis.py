@@ -31,6 +31,12 @@ def formato_moneda(valor):
     return f"${valor:,.2f}"
 
 
+def formato_moneda_entero(valor):
+    """Moneda SIN centavos (redondeada a pesos enteros).
+    Se usa en Venta Total y Utilidad Bruta."""
+    return f"${valor:,.0f}"
+
+
 def formato_porcentaje(valor):
     return f"{valor:.2f}%"
 
@@ -53,8 +59,8 @@ def calcular_kpis(df):
 
     if df is None or df.empty:
         return {
-            "venta_total": "$0.00",
-            "utilidad_bruta": "$0.00",
+            "venta_total": "$0",
+            "utilidad_bruta": "$0",
             "margen": "0.00%",
             "peso_kilo": "$0.00",
             # avances
@@ -63,8 +69,8 @@ def calcular_kpis(df):
             "margen_pct": 0.0,
             "peso_kilo_pct": 0.0,
             # objetivos (texto)
-            "venta_obj": formato_moneda(OBJETIVOS["venta"]),
-            "utilidad_obj": formato_moneda(OBJETIVOS["utilidad"]),
+            "venta_obj": formato_moneda_entero(OBJETIVOS["venta"]),
+            "utilidad_obj": formato_moneda_entero(OBJETIVOS["utilidad"]),
             "margen_obj": formato_porcentaje(OBJETIVOS["margen"]),
             "peso_kilo_obj": formato_moneda(OBJETIVOS["peso_kilo"]),
         }
@@ -80,8 +86,8 @@ def calcular_kpis(df):
 
     return {
         # valores formateados
-        "venta_total": formato_moneda(venta_total),
-        "utilidad_bruta": formato_moneda(utilidad_bruta),
+        "venta_total": formato_moneda_entero(venta_total),
+        "utilidad_bruta": formato_moneda_entero(utilidad_bruta),
         "margen": formato_porcentaje(margen),
         "peso_kilo": formato_moneda(peso_kilo),
         # % de avance vs objetivo (para la barra)
@@ -90,8 +96,8 @@ def calcular_kpis(df):
         "margen_pct": _avance(margen, OBJETIVOS["margen"]),
         "peso_kilo_pct": _avance(peso_kilo, OBJETIVOS["peso_kilo"]),
         # objetivos como texto (para mostrar "meta: X")
-        "venta_obj": formato_moneda(OBJETIVOS["venta"]),
-        "utilidad_obj": formato_moneda(OBJETIVOS["utilidad"]),
+        "venta_obj": formato_moneda_entero(OBJETIVOS["venta"]),
+        "utilidad_obj": formato_moneda_entero(OBJETIVOS["utilidad"]),
         "margen_obj": formato_porcentaje(OBJETIVOS["margen"]),
         "peso_kilo_obj": formato_moneda(OBJETIVOS["peso_kilo"]),
     }
