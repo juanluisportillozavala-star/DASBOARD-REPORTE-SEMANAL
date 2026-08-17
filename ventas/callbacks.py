@@ -252,13 +252,6 @@ def registrar_callbacks_ventas(app):
             meses_de_esas = sorted(df["Mes"].dropna().astype(int).unique().tolist())
             return semanas_todas, meses_de_esas
 
-        if df is None:
-            semanas_visibles = []
-        else:
-            semanas_visibles = sorted(obtener_semanas(df, meses_activos, anio))
-
-        primera_semana = semanas_visibles[0] if semanas_visibles else None
-
         if trigger == "limpiar-semanas":
             return [], []
 
@@ -266,15 +259,31 @@ def registrar_callbacks_ventas(app):
         mes_resultado = no_update
 
         if semana in semanas_activas:
-            if semana == primera_semana:
-                return no_update, no_update
+            # ---- QUITAR semana (cualquiera, incluida la primera) ----
             semanas_activas.remove(semana)
+            # si al mes de esta semana ya no le queda NINGUNA semana
+            # activa, apagar ese mes (para que no quede pegado).
+            if df is not None:
+                fila_semana = df[df["Semana"] == semana]
+                if not fila_semana.empty:
+                    mes_de_la_semana = int(
+                        fila_semana["Mes"].dropna().astype(int).iloc[0])
+                    semanas_de_ese_mes = set(
+                        obtener_semanas(df, [mes_de_la_semana], anio))
+                    quedan = [s for s in semanas_activas
+                              if s in semanas_de_ese_mes]
+                    if not quedan and mes_de_la_semana in meses_activos:
+                        mes_resultado = sorted(
+                            [m for m in meses_activos
+                             if m != mes_de_la_semana])
         else:
+            # ---- AGREGAR semana (enciende su mes si no estaba) ----
             semanas_activas.append(semana)
             if df is not None:
                 fila_semana = df[df["Semana"] == semana]
                 if not fila_semana.empty:
-                    mes_de_la_semana = int(fila_semana["Mes"].dropna().astype(int).iloc[0])
+                    mes_de_la_semana = int(
+                        fila_semana["Mes"].dropna().astype(int).iloc[0])
                     if mes_de_la_semana not in meses_activos:
                         mes_resultado = sorted(meses_activos + [mes_de_la_semana])
 
