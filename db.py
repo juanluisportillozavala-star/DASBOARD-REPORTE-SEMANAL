@@ -49,6 +49,8 @@ def inicializar_esquema():
         """)
     # tablas del módulo Proyección
     inicializar_esquema_proyeccion()
+    # tabla del histórico mensual de inventario
+    inicializar_esquema_inventario_historico()
 
 
 # =========================================================
@@ -392,6 +394,98 @@ def meses_con_proyeccion(anio):
     """Meses con proyección para un año dado."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT mes FROM proyecciones "
+                    "WHERE anio=%s ORDER BY mes;", (int(anio),))
+        filas = cur.fetchall()
+    return [int(f[0]) for f in filas]
+
+
+# =========================================================
+# ==========  HISTÓRICO MENSUAL DE INVENTARIO  ============
+# =========================================================
+# Foto mensual del inventario YA PROCESADO (mismas columnas que
+# el inventario actual), guardada como JSONB con llave (anio, mes).
+# Es INDEPENDIENTE del inventario semanal (tabla datasets); sirve
+# de referencia para ver cómo va cambiando el inventario mes a mes.
+#
+#   inventario_historico : (anio INT, mes INT, datos JSONB,
+#       fecha_corte TEXT, actualizado TIMESTAMP, subido_por TEXT)
+#       PK (anio, mes)
+#
+# Reutiliza _normalizar_para_json (Timestamp->texto, NaN->None).
+
+
+def inicializar_esquema_inventario_historico():
+    """Crea la tabla del histórico de inventario si no existe.
+    Se llama desde inicializar_esquema()."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS inventario_historico (
+                anio        INTEGER NOT NULL,
+                mes         INTEGER NOT NULL,
+                datos       JSONB NOT NULL,
+                fecha_corte TEXT,
+                actualizado TIMESTAMP DEFAULT now(),
+                subido_por  TEXT,
+                PRIMARY KEY (anio, mes)
+            );
+        """)
+
+
+def guardar_inventario_historico(anio, mes, df, admin=None, fecha_corte=None):
+    """Guarda (reemplaza) la foto de inventario de un año/mes.
+    df: DataFrame ya procesado (mismas columnas que el inventario
+    actual). Si ya existía ese año/mes, se SOBRESCRIBE."""
+    registros = _normalizar_para_json(df).to_dict("records")
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""
+            INSERT INTO inventario_historico
+                (anio, mes, datos, fecha_corte, subido_por, actualizado)
+            VALUES (%s, %s, %s, %s, %s, now())
+            ON CONFLICT (anio, mes)
+            DO UPDATE SET datos=EXCLUDED.datos,
+                          fecha_corte=EXCLUDED.fecha_corte,
+                          subido_por=EXCLUDED.subido_por,
+                          actualizado=now();
+        """, (int(anio), int(mes), Json(registros), fecha_corte, admin))
+
+
+def leer_inventario_historico(anio, mes):
+    """DataFrame de la foto guardada de ese año/mes, o None si no
+    existe. (Sin caché: el histórico se consulta bajo demanda.)"""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT datos FROM inventario_historico "
+                    "WHERE anio=%s AND mes=%s;", (int(anio), int(mes)))
+        fila = cur.fetchone()
+    return pd.DataFrame(fila[0]) if fila else None
+
+
+def info_inventario_historico(anio, mes):
+    """Metadatos de una foto: fecha de corte, cuándo se guardó y
+    quién. None si no existe ese año/mes."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT fecha_corte, actualizado, subido_por "
+                    "FROM inventario_historico WHERE anio=%s AND mes=%s;",
+                    (int(anio), int(mes)))
+        fila = cur.fetchone()
+    if not fila:
+        return None
+    return {"fecha_corte": fila[0], "actualizado": fila[1],
+            "subido_por": fila[2]}
+
+
+def anios_con_historico_inv():
+    """Años que ya tienen alguna foto de inventario guardada."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT DISTINCT anio FROM inventario_historico "
+                    "ORDER BY anio DESC;")
+        filas = cur.fetchall()
+    return [int(f[0]) for f in filas]
+
+
+def meses_con_historico_inv(anio):
+    """Meses con foto de inventario para un año dado (ascendente)."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT DISTINCT mes FROM inventario_historico "
                     "WHERE anio=%s ORDER BY mes;", (int(anio),))
         filas = cur.fetchall()
     return [int(f[0]) for f in filas]

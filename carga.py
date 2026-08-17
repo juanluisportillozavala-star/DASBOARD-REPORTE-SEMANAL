@@ -29,6 +29,10 @@ import db
 from proyeccion_captura import (
     crear_seccion_proyeccion, registrar_callbacks_proyeccion_captura,
 )
+from inventario_historico_captura import (
+    crear_seccion_historico_inventario,
+    registrar_callbacks_historico_captura,
+)
 from ventas.procesamiento import leer_archivos
 from ingresos.procesamiento import leer_archivo as leer_ingresos
 from inventario.procesamiento import leer_archivo as leer_inventario
@@ -211,6 +215,9 @@ def crear_layout_carga():
 
             # sección de captura de proyección (abajo, aparte)
             crear_seccion_proyeccion(),
+
+            # sección de captura del histórico de inventario (abajo, aparte)
+            crear_seccion_historico_inventario(),
         ]
     )
 
@@ -219,6 +226,9 @@ def registrar_callbacks_carga(app):
 
     # callbacks de la captura de proyección
     registrar_callbacks_proyeccion_captura(app)
+
+    # callbacks de la captura del histórico de inventario
+    registrar_callbacks_historico_captura(app)
 
     # Mostrar el nombre del archivo seleccionado en cada zona
     @app.callback(

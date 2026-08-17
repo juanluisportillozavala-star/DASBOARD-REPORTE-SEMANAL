@@ -2,19 +2,26 @@
 =========================================================
 CALLBACKS DEL MÓDULO INVENTARIO
 =========================================================
-Solo el callback de "cargar señal al entrar": pone la marca
-ligera {cargado, version} en store-bd-inventario leyendo de la
-caché. Los KPIs, gráficos, filtro y tabla están en
-inventario/tabla_inventario.py.
+- Callback de "cargar señal al entrar": pone la marca ligera
+  {cargado, version} en store-bd-inventario leyendo de la caché.
+  Los KPIs, gráficos, filtro y tabla están en
+  inventario/tabla_inventario.py.
+- Además engancha aquí los callbacks de la pestaña HISTÓRICO
+  (inventario/historico.py), para no tener que tocar app.py.
 """
 
 from dash import Input, Output, no_update
 import db
 
+from inventario.historico import registrar_callbacks_historico_inv
+
 MODULO = "inventario"
 
 
 def registrar_callbacks_inventario_carga(app):
+    # callbacks de la pestaña Histórico (consulta por año/mes)
+    registrar_callbacks_historico_inv(app)
+
     @app.callback(
         Output("store-bd-inventario", "data"),
         Input("store-bd-inventario", "data"),
