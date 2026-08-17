@@ -5,9 +5,13 @@ TARJETAS KPI
 Cada tarjeta: ícono, título, valor, y barra de progreso hacia
 el objetivo anual con su % y meta.
 
-RESPONSIVO: 4 por fila en pantallas grandes (lg), 2 por fila
-en medianas (sm), 1 por fila en celular (xs). El valor usa un
-tamaño de fuente flexible y no se corta (se ajusta al ancho).
+RESPONSIVO:
+  - Celular (xs)          -> 1 tarjeta por fila
+  - Laptop / monitor (md) -> 2 tarjetas por fila  (layout que se ve bien)
+  - Monitor ANCHO (xxl)   -> 4 tarjetas por fila  (solo >=1400px, donde caben)
+
+El valor (monto) NUNCA se recorta: usa fuente flexible y, si hiciera
+falta, baja de renglón; jamás se corta con "...".
 """
 
 from dash import html
@@ -65,18 +69,25 @@ def crear_card(icono, titulo, valor, color, pct=None, objetivo_texto=None):
                         html.Div(titulo,
                                  style={"fontSize": "14px", "color": "#6C757D",
                                         "fontWeight": "600",
-                                        "lineHeight": "1.2"}),
+                                        "lineHeight": "1.2",
+                                        # el título parte SOLO entre palabras,
+                                        # nunca a media palabra ("Ven ta")
+                                        "wordBreak": "normal",
+                                        "overflowWrap": "normal"}),
                         html.Div(
                             valor,
                             style={
                                 # tamaño FLEXIBLE: se adapta al ancho de la
-                                # tarjeta (entre 18px y 26px) y no se corta.
-                                "fontSize": "clamp(18px, 2.2vw, 26px)",
+                                # tarjeta (entre 20px y 26px).
+                                "fontSize": "clamp(20px, 1.8vw, 26px)",
                                 "fontWeight": "bold", "color": AZUL,
                                 "marginTop": "4px",
-                                "whiteSpace": "nowrap",
-                                "overflow": "hidden",
-                                "textOverflow": "ellipsis",
+                                "lineHeight": "1.15",
+                                # SIN nowrap/ellipsis: el monto se ve completo.
+                                # Si algún día no cupiera, baja de renglón; nunca
+                                # se recorta con "...".
+                                "wordBreak": "normal",
+                                "overflowWrap": "normal",
                             },
                             title=valor,   # tooltip con el valor completo
                         ),
@@ -111,7 +122,7 @@ def crear_cards(kpis):
     columnas = [
         dbc.Col(
             crear_card(ic, tit, val, col, pct=p, objetivo_texto=obj),
-            xs=12, sm=6, lg=3,          # celular 1, tablet 2, grande 4
+            xs=12, md=6, xxl=3,         # celular 1, laptop 2, monitor ancho 4
             className="mb-3",           # separación vertical al apilarse
         )
         for (ic, tit, val, col, p, obj) in defs
