@@ -889,13 +889,20 @@ SEMANAS
 
     display:grid;
 
-    grid-template-columns:repeat(13,minmax(60px,1fr));
+    /* RESPONSIVO: en vez de 13 columnas fijas (que se desbordaban y
+       generaban scroll horizontal), acomoda tantas semanas de 44px
+       como quepan; las demás bajan de renglón solas. */
+    grid-template-columns:repeat(auto-fill,44px);
+
+    justify-content:flex-start;
 
     gap:12px;
 
-    max-height:185px;
+    max-height:220px;
 
     overflow-y:auto;
+
+    overflow-x:hidden;   /* mata el scroll horizontal que tapaba números */
 
     padding-right:6px;
 
@@ -934,6 +941,14 @@ SEMANAS
     border-color:#c7ccd4 !important;
     background-color:#f4f5f7 !important;
 
+}
+
+/* Anula el gridRow/gridColumn que algunos controles.py fijan inline
+   (forzaban 13 columnas). Con !important gana sobre el estilo inline
+   y deja que auto-fill de .grid-semanas coloque cada semana sola. */
+.cuadro-semana{
+    grid-row:auto !important;
+    grid-column:auto !important;
 }
 
 .cuadro-semana:hover{
