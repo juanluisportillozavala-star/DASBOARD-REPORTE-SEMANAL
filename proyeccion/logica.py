@@ -61,14 +61,26 @@ def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes):
     detalle_varios: lista de productos vendidos fuera de la lista.
     """
     ventas = _ventas_del_periodo(df_ventas, anio, mes)
-    productos_proy = set(proyeccion.keys())
+
+    # separar la meta de VARIOS (si el usuario la capturó) del resto.
+    # VARIOS no es un producto que se cruce con ventas: es el grupo de
+    # todo lo vendido fuera de la lista.
+    meta_varios = 0.0
+    proy_productos = {}
+    for k, v in proyeccion.items():
+        if str(k).strip().upper() == "VARIOS":
+            meta_varios = float(v or 0)
+        else:
+            proy_productos[k] = v
+
+    productos_proy = set(proy_productos.keys())
 
     filas = []
     tot_proy = tot_fact = tot_util = 0.0
 
-    # 1) productos de la proyección
-    for prod in proyeccion:
-        proy_cant = float(proyeccion.get(prod) or 0)
+    # 1) productos de la proyección (sin VARIOS)
+    for prod in proy_productos:
+        proy_cant = float(proy_productos.get(prod) or 0)
         v = ventas.get(prod, {})
         fact = float(v.get("cantidad", 0))
         util = float(v.get("utilidad", 0))
@@ -91,9 +103,11 @@ def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes):
                 "util_unit": round(v["utilidad"] / v["cantidad"], 2) if v["cantidad"] else 0,
             })
 
-    if varios_cant or varios_util:
-        # VARIOS no tiene proyección (0); su avance no aplica
-        filas.append(_fila("VARIOS", 0.0, varios_cant, varios_util))
+    # la fila VARIOS aparece si hay ventas fuera de lista O si el usuario
+    # le puso una meta. Usa esa meta como proyección -> calcula % avance.
+    if varios_cant or varios_util or meta_varios:
+        filas.append(_fila("VARIOS", meta_varios, varios_cant, varios_util))
+        tot_proy += meta_varios
         tot_fact += varios_cant
         tot_util += varios_util
 

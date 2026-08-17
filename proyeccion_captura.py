@@ -32,6 +32,8 @@ import db
 AZUL = "#173C73"
 DORADO = "#D4AF37"
 
+VARIOS = "VARIOS"   # grupo especial: meta editable, siempre al final
+
 ANIOS = list(range(2025, 2036))   # 2025 .. 2035
 
 MESES = [
@@ -41,20 +43,27 @@ MESES = [
 ]
 
 
-def _fila_producto(nombre, valor):
-    """Una fila: nombre + input de cantidad + botón quitar."""
-    return html.Div(
-        [
-            html.Span(nombre, style={"flex": "1", "color": AZUL,
-                                     "fontWeight": "500"}),
-            dcc.Input(
-                id={"type": "proy-cant", "producto": nombre},
-                type="number", min=0, step="any",
-                value=valor if valor not in (None, 0) else None,
-                placeholder="0",
-                style={"width": "140px", "padding": "6px 8px",
-                       "borderRadius": "6px", "border": "1px solid #CBD5E1"},
-            ),
+def _fila_producto(nombre, valor, fija=False):
+    """Una fila: nombre + input de cantidad + botón quitar.
+    Si fija=True (caso VARIOS), NO lleva botón de quitar y el
+    nombre va en cursiva/gris."""
+    elementos = [
+        html.Span(nombre,
+                  style={"flex": "1",
+                         "color": "#6C757D" if fija else AZUL,
+                         "fontWeight": "500",
+                         "fontStyle": "italic" if fija else "normal"}),
+        dcc.Input(
+            id={"type": "proy-cant", "producto": nombre},
+            type="number", min=0, step="any",
+            value=valor if valor not in (None, 0) else None,
+            placeholder="0",
+            style={"width": "140px", "padding": "6px 8px",
+                   "borderRadius": "6px", "border": "1px solid #CBD5E1"},
+        ),
+    ]
+    if not fija:
+        elementos.append(
             html.Button(
                 html.I(className="fas fa-trash"),
                 id={"type": "proy-quitar", "producto": nombre},
@@ -62,21 +71,35 @@ def _fila_producto(nombre, valor):
                 style={"backgroundColor": "transparent", "border": "none",
                        "color": "#C0392B", "cursor": "pointer",
                        "marginLeft": "10px"},
-            ),
-        ],
+            )
+        )
+    else:
+        # espacio para alinear con las filas que sí tienen botón
+        elementos.append(html.Span(style={"width": "34px",
+                                           "marginLeft": "10px"}))
+    return html.Div(
+        elementos,
         style={"display": "flex", "alignItems": "center",
                "justifyContent": "space-between", "padding": "6px 0",
-               "borderBottom": "1px solid #EEF2F7"},
+               "borderBottom": "1px solid #EEF2F7",
+               "backgroundColor": "#FAFAF5" if fija else "transparent"},
     )
 
 
 def _render_tabla(lista):
-    """lista: [{'producto': nombre, 'cantidad': valor}, ...]"""
-    if not lista:
-        return html.Div("No hay productos. Agrega uno abajo.",
-                        style={"color": "#6C757D"})
-    return html.Div([_fila_producto(x["producto"], x.get("cantidad"))
-                     for x in lista])
+    """lista: [{'producto': nombre, 'cantidad': valor}, ...]
+    VARIOS se muestra SIEMPRE al final como fila fija (su meta es
+    editable pero no se puede quitar)."""
+    # separar VARIOS (si viene en la lista) del resto
+    normales = [x for x in (lista or []) if x["producto"].strip().upper() != VARIOS]
+    varios = next((x for x in (lista or [])
+                   if x["producto"].strip().upper() == VARIOS), None)
+    varios_val = varios.get("cantidad") if varios else None
+
+    filas = [_fila_producto(x["producto"], x.get("cantidad")) for x in normales]
+    # VARIOS siempre al final, fijo
+    filas.append(_fila_producto(VARIOS, varios_val, fija=True))
+    return html.Div(filas)
 
 
 def crear_seccion_proyeccion():
@@ -225,12 +248,19 @@ def registrar_callbacks_proyeccion_captura(app):
         guardado = db.leer_proyeccion(anio, mes)   # {} si vacío
         if guardado:
             productos = db.listar_productos_mes(anio, mes)
+            # VARIOS no va en la lista normal; se muestra fijo al final.
+            # Su meta (si existe) se conserva y el render la coloca.
             lista = [{"producto": p, "cantidad": guardado.get(p, 0)}
-                     for p in productos]
+                     for p in productos
+                     if p.strip().upper() != VARIOS]
+            if VARIOS in guardado:
+                lista.append({"producto": VARIOS,
+                              "cantidad": guardado.get(VARIOS, 0)})
         else:
-            # mes nuevo: los 16 predeterminados con cantidad 0
+            # mes nuevo: los predeterminados con cantidad 0
             lista = [{"producto": p, "cantidad": 0}
-                     for p in db.productos_semilla()]
+                     for p in db.productos_semilla()
+                     if p.strip().upper() != VARIOS]
         return lista, {"anio": anio, "mes": mes}
 
     # 2) Render de la tabla según el store
@@ -274,6 +304,10 @@ def registrar_callbacks_proyeccion_captura(app):
                 x["cantidad"] = actuales[x["producto"]]
         # evitar duplicados (ignorando may/min y espacios)
         existentes = {x["producto"].strip().upper() for x in lista}
+        if nombre.upper() == VARIOS:
+            return no_update, html.Span(
+                "«VARIOS» ya está fijo al final, no hace falta agregarlo.",
+                style={"color": "#C0392B"}), ""
         if nombre.upper() in existentes:
             return no_update, html.Span(f"'{nombre}' ya está en la lista.",
                                         style={"color": "#C0392B"}), ""
@@ -330,11 +364,18 @@ def registrar_callbacks_proyeccion_captura(app):
         proy = {}
         for x in (lista or []):
             p = x["producto"]
+            if p.strip().upper() == VARIOS:
+                continue  # VARIOS se maneja aparte, desde los inputs
             proy[p] = actuales.get(p, x.get("cantidad", 0))
+        # VARIOS: su meta viene del input fijo (aunque no esté en el store).
+        # Solo se guarda si tiene meta > 0, para no ensuciar meses sin uso.
+        varios_meta = actuales.get(VARIOS, 0) or 0
+        if varios_meta and float(varios_meta) > 0:
+            proy[VARIOS] = varios_meta
         try:
             db.guardar_proyeccion(anio, mes, proy)
             return html.Span(f"Proyección guardada para {mes:02d}/{anio}: "
-                             f"{len(proy)} productos.",
+                             f"{len(proy)} línea(s).",
                              style={"color": "#198754", "fontWeight": "600"})
         except Exception as e:
             return html.Span(f"Error: {e}", style={"color": "#C0392B"})
