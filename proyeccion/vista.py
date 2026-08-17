@@ -94,47 +94,65 @@ def crear_layout_proyeccion():
 def _col_defs():
     return [
         {"field": "producto", "headerName": "Producto", "minWidth": 260,
-         "pinned": "left", "sortable": False, "filter": False,
+         "pinned": "left", "sortable": True, "filter": False,
          "headerClass": "hdr-proy",
          "cellStyle": {"function":
-             "params.data.producto === 'VARIOS' ? {fontStyle:'italic', color:'#6C757D'} : {}"}},
+             "params.data.producto === 'VARIOS' ? {fontStyle:'italic', color:'#6C757D', textAlign:'left'} : {textAlign:'left'}"}},
         {"field": "proyeccion", "headerName": "Proyección", "type": "numericColumn",
-         "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": False,
-         "filter": False, "headerClass": "hdr-proy"},
+         "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": True,
+         "filter": False, "headerClass": "hdr-proy",
+         "cellStyle": {"textAlign": "center"}},
         {"field": "facturado", "headerName": "Facturado", "type": "numericColumn",
-         "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": False,
-         "filter": False, "headerClass": "hdr-proy"},
+         "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": True,
+         "filter": False, "headerClass": "hdr-proy",
+         "cellStyle": {"textAlign": "center"}},
         {"field": "diferencia", "headerName": "Diferencia", "type": "numericColumn",
-         "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": False,
+         "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": True,
          "filter": False, "headerClass": "hdr-proy",
          "cellStyle": {"function":
-             "params.value < 0 ? {color:'#C0392B'} : {color:'#198754'}"}},
+             "params.value < 0 ? {color:'#C0392B', textAlign:'center'} : {color:'#198754', textAlign:'center'}"}},
         {"field": "avance", "headerName": "% Avance", "type": "numericColumn",
-         "valueFormatter": FMT_PCT, "minWidth": 110, "sortable": False,
+         "valueFormatter": FMT_PCT, "minWidth": 110, "sortable": True,
          "filter": False, "headerClass": "hdr-proy",
          "cellStyle": {"function":
-             "params.value == null ? {} : (params.value >= 100 ? {color:'#198754',fontWeight:'700'} : {color:'#173C73'})"}},
+             "params.value == null ? {textAlign:'center'} : (params.value >= 100 ? {color:'#198754',fontWeight:'700',textAlign:'center'} : {color:'#173C73',textAlign:'center'})"}},
         {"field": "utilidad", "headerName": "Utilidad", "type": "numericColumn",
-         "valueFormatter": FMT_MONEDA, "minWidth": 140, "sortable": False,
-         "filter": False, "headerClass": "hdr-proy"},
+         "valueFormatter": FMT_MONEDA, "minWidth": 140, "sortable": True,
+         "filter": False, "headerClass": "hdr-proy",
+         "cellStyle": {"textAlign": "center"}},
         {"field": "util_unit", "headerName": "Util Unit", "type": "numericColumn",
-         "valueFormatter": FMT_MONEDA, "minWidth": 120, "sortable": False,
-         "filter": False, "headerClass": "hdr-proy"},
+         "valueFormatter": FMT_MONEDA, "minWidth": 120, "sortable": True,
+         "filter": False, "headerClass": "hdr-proy",
+         "cellStyle": {"textAlign": "center"}},
     ]
 
 
 def _grid(filas, fila_total):
+    # Separar VARIOS de las filas normales: va FIJADO abajo (con el
+    # total) para que el ordenamiento por columnas no lo mezcle entre
+    # los productos. Orden de las filas fijadas: VARIOS y luego TOTAL.
+    normales = [f for f in filas if f.get("producto") != "VARIOS"]
+    fila_varios = next((f for f in filas if f.get("producto") == "VARIOS"), None)
+
+    pinned = []
+    if fila_varios is not None:
+        pinned.append(fila_varios)
+    pinned.append(fila_total)
+
     return dag.AgGrid(
-        rowData=filas,
+        rowData=normales,
         columnDefs=_col_defs(),
         dashGridOptions={"animateRows": False, "rowHeight": 34,
                          "headerHeight": 40, "domLayout": "autoHeight",
-                         "pinnedBottomRowData": [fila_total],
+                         "pinnedBottomRowData": pinned,
                          "suppressCellFocus": True},
         getRowStyle={"function":
-            "params.node.rowPinned ? "
-            "{fontWeight:'700', color:'#173C73', backgroundColor:'#F4F1E4'} : {}"},
-        defaultColDef={"resizable": True, "sortable": False, "filter": False,
+            "params.node.rowPinned ? ("
+            "params.data.producto === 'VARIOS' ? "
+            "{fontStyle:'italic', color:'#6C757D', backgroundColor:'#FAFAF5'} : "
+            "{fontWeight:'700', color:'#173C73', backgroundColor:'#F4F1E4'}"
+            ") : {}"},
+        defaultColDef={"resizable": True, "sortable": True, "filter": False,
                        "flex": 1, "minWidth": 110},
         className="ag-theme-alpine",
         style={"width": "100%", "--ag-header-background-color": AZUL,
@@ -146,25 +164,42 @@ def _grid_varios(detalle):
     if not detalle:
         return html.Div("No hay productos varios en este periodo.",
                         style={"color": "#6C757D"})
+
+    # fila TOTAL de la tabla de detalle
+    tot_fact = sum(float(d.get("facturado", 0)) for d in detalle)
+    tot_util = sum(float(d.get("utilidad", 0)) for d in detalle)
+    tot_uu = (tot_util / tot_fact) if tot_fact else 0
+    fila_total = {"producto": "TOTAL", "facturado": round(tot_fact, 2),
+                  "utilidad": round(tot_util, 2), "util_unit": round(tot_uu, 2)}
+
+    # estilo: centrar todo menos la 1a columna (Producto)
+    centrar = {"textAlign": "center"}
+    izq = {"textAlign": "left"}
+
     return dag.AgGrid(
         rowData=detalle,
         columnDefs=[
             {"field": "producto", "headerName": "Producto", "minWidth": 260,
-             "flex": 2, "sortable": False, "filter": False, "headerClass": "hdr-proy"},
+             "flex": 2, "sortable": True, "filter": False,
+             "headerClass": "hdr-proy", "cellStyle": izq},
             {"field": "facturado", "headerName": "Facturado", "type": "numericColumn",
-             "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": False,
-             "filter": False, "headerClass": "hdr-proy"},
+             "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": True,
+             "filter": False, "headerClass": "hdr-proy", "cellStyle": centrar},
             {"field": "utilidad", "headerName": "Utilidad", "type": "numericColumn",
-             "valueFormatter": FMT_MONEDA, "minWidth": 140, "sortable": False,
-             "filter": False, "headerClass": "hdr-proy"},
+             "valueFormatter": FMT_MONEDA, "minWidth": 140, "sortable": True,
+             "filter": False, "headerClass": "hdr-proy", "cellStyle": centrar},
             {"field": "util_unit", "headerName": "Util Unit", "type": "numericColumn",
-             "valueFormatter": FMT_MONEDA, "minWidth": 120, "sortable": False,
-             "filter": False, "headerClass": "hdr-proy"},
+             "valueFormatter": FMT_MONEDA, "minWidth": 120, "sortable": True,
+             "filter": False, "headerClass": "hdr-proy", "cellStyle": centrar},
         ],
         dashGridOptions={"animateRows": False, "rowHeight": 32,
                          "headerHeight": 38, "domLayout": "autoHeight",
+                         "pinnedBottomRowData": [fila_total],
                          "suppressCellFocus": True},
-        defaultColDef={"resizable": True, "sortable": False, "filter": False,
+        getRowStyle={"function":
+            "params.node.rowPinned ? "
+            "{fontWeight:'700', color:'#173C73', backgroundColor:'#F4F1E4'} : {}"},
+        defaultColDef={"resizable": True, "sortable": True, "filter": False,
                        "flex": 1, "minWidth": 110},
         className="ag-theme-alpine",
         style={"width": "100%", "--ag-header-background-color": AZUL,
