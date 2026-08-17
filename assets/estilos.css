@@ -1164,18 +1164,18 @@ TARJETAS KPI PERSONALIZADAS
 }
 /* =========================================================
    ENCABEZADOS CENTRADOS en las tablas de PROYECCIÓN
-   Pegar al final de assets/estilos.css
-   Centra el texto de los encabezados (las columnas numéricas
-   de AG Grid alinean el header a la derecha por defecto; esto
-   lo centra para que coincida con las celdas centradas).
-   No afecta la 1a columna (Producto), que queda a la izquierda.
+   Pegar al final de assets/estilos.css (REEMPLAZA la versión
+   anterior de este bloque si ya la habías pegado).
+   Centra el texto de los encabezados numéricos. La columna
+   Producto (clase hdr-proy-izq) queda a la IZQUIERDA en ambas
+   tablas, esté o no fijada.
    ========================================================= */
 
 .hdr-proy .ag-header-cell-label {
     justify-content: center;
 }
 
-/* la columna Producto (fijada a la izquierda) sí alineada a la izquierda */
-.ag-theme-alpine .ag-pinned-left-header .hdr-proy .ag-header-cell-label {
-    justify-content: flex-start;
+/* la columna Producto siempre a la izquierda (ambas tablas) */
+.hdr-proy-izq .ag-header-cell-label {
+    justify-content: flex-start !important;
 }

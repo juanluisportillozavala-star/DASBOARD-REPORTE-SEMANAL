@@ -95,7 +95,7 @@ def _col_defs():
     return [
         {"field": "producto", "headerName": "Producto", "minWidth": 260,
          "pinned": "left", "sortable": True, "filter": False,
-         "headerClass": "hdr-proy",
+         "headerClass": "hdr-proy hdr-proy-izq",
          "cellStyle": {"function":
              "params.data.producto === 'VARIOS' ? {fontStyle:'italic', color:'#6C757D', textAlign:'left'} : {textAlign:'left'}"}},
         {"field": "proyeccion", "headerName": "Proyección", "type": "numericColumn",
@@ -181,7 +181,7 @@ def _grid_varios(detalle):
         columnDefs=[
             {"field": "producto", "headerName": "Producto", "minWidth": 260,
              "flex": 2, "sortable": True, "filter": False,
-             "headerClass": "hdr-proy", "cellStyle": izq},
+             "headerClass": "hdr-proy hdr-proy-izq", "cellStyle": izq},
             {"field": "facturado", "headerName": "Facturado", "type": "numericColumn",
              "valueFormatter": FMT_NUM, "minWidth": 120, "sortable": True,
              "filter": False, "headerClass": "hdr-proy", "cellStyle": centrar},
