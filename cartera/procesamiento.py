@@ -25,6 +25,7 @@ Fórmulas replicadas:
 
 import base64
 import io
+from datetime import date
 import pandas as pd
 import numpy as np
 
@@ -45,6 +46,25 @@ TEXTO_CONTADO = "<p>Términos de pago: pago inmediato</p>"
 # nombres de las columnas de aging (para la tabla)
 RANGOS = ["Vencido >90 días", "Vencido 61-90 días", "Vencido 31-60 días",
           "Vencido 0-30 días", "Por vencer", "Vigente"]
+
+
+def _weeknum_excel(d):
+    """WEEKNUM(fecha) como Excel (sistema 1, el de por defecto):
+    la semana 1 es la que CONTIENE el 1 de enero y las semanas
+    empiezan en DOMINGO.
+
+    OJO: NO es lo mismo que isocalendar().week de Python (ese
+    empieza en lunes y numera distinto), por eso la semana salía
+    diferente a la tabla dinámica. Validado contra la BD Cartera
+    real: coincide 100% con =WEEKNUM del Excel.
+    """
+    if isinstance(d, pd.Timestamp):
+        d = d.date()
+    jan1 = date(d.year, 1, 1)
+    dias = (d - jan1).days
+    # weekday(): lunes=0 .. domingo=6  ->  domingo=0 .. sábado=6
+    dow_jan1 = (jan1.weekday() + 1) % 7
+    return (dias + dow_jan1) // 7 + 1
 
 
 def leer_excel(contents, sheet_name="DESCARGA"):
@@ -99,9 +119,11 @@ def procesar_bd_cartera(df, fecha_referencia):
         return "Vigente"
     df["Estatus"] = df[COL_VENCIMIENTO].apply(_estatus)
 
-    # Q, R: Mes y Semana de la FECHA de referencia (iguales para todas)
+    # Q, R: Mes y Semana de la FECHA de referencia (iguales para todas).
+    # Semana = WEEKNUM(FECHA) estilo Excel (NO isocalendar), para que
+    # coincida con la tabla dinámica.
     df["Mes"] = FECHA.month
-    df["Semana"] = int(FECHA.isocalendar().week)
+    df["Semana"] = _weeknum_excel(FECHA)
 
     # S: Dias vencido
     df["Dias vencido"] = np.where(
