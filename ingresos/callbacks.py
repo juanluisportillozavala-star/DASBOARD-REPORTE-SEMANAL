@@ -165,12 +165,6 @@ def registrar_callbacks_ingresos(app):
             meses = sorted(df[COL_MES].dropna().astype(int).unique().tolist())
             return semanas, meses
 
-        if df is None:
-            visibles = []
-        else:
-            visibles = sorted(_semanas_de_meses(df, meses_activos))
-        primera = visibles[0] if visibles else None
-
         if trigger == "limpiar-semanas-ingresos":
             return [], []
 
@@ -178,10 +172,22 @@ def registrar_callbacks_ingresos(app):
         mes_result = no_update
 
         if semana in semanas_activas:
-            if semana == primera:
-                return no_update, no_update
+            # ---- QUITAR semana (cualquiera, incluida la primera) ----
             semanas_activas.remove(semana)
+            # si al mes de esta semana ya no le queda NINGUNA semana
+            # activa, apagar ese mes (para que no quede pegado).
+            if df is not None:
+                fila = df[df[COL_SEMANA] == semana]
+                if not fila.empty:
+                    mes_de = int(fila[COL_MES].dropna().astype(int).iloc[0])
+                    semanas_de_ese_mes = set(_semanas_de_meses(df, [mes_de]))
+                    quedan = [s for s in semanas_activas
+                              if s in semanas_de_ese_mes]
+                    if not quedan and mes_de in meses_activos:
+                        mes_result = sorted(
+                            [m for m in meses_activos if m != mes_de])
         else:
+            # ---- AGREGAR semana (enciende su mes si no estaba) ----
             semanas_activas.append(semana)
             if df is not None:
                 fila = df[df[COL_SEMANA] == semana]
