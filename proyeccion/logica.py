@@ -5,10 +5,14 @@ proyeccion/logica.py
 Cruza la PROYECCIÓN guardada (año/mes) con lo FACTURADO en
 Ventas, para armar la tabla de cumplimiento.
 
-Del módulo Ventas se toma, por producto (Producto 2) y para
-el año/mes elegido:
-  • cantidad facturada (suma)
-  • utilidad bruta (suma)
+Ahora la proyección es POR VENDEDOR:
+  • Vista "Acumulado": proyección = suma de los 3 vendedores;
+    ventas = TODAS (sin filtrar por vendedor).
+  • Vista de un vendedor: su proyección; ventas SOLO de ese
+    vendedor (se filtra por la columna Vendedor de Ventas).
+
+Del módulo Ventas se toma, por producto (Producto 2) y para el
+año/mes elegido: cantidad facturada (suma) y utilidad (suma).
 
 Los productos vendidos que NO están en la lista de proyección
 se agrupan en VARIOS (y se listan aparte en el detalle).
@@ -22,9 +26,9 @@ MES_COL = "Mes"
 ANIO_COL = "Año"
 
 
-def _ventas_del_periodo(df_ventas, anio, mes):
-    """Filtra ventas por año+mes y agrega por producto:
-    cantidad facturada y utilidad."""
+def _ventas_del_periodo(df_ventas, anio, mes, vendedor=None):
+    """Filtra ventas por año+mes (y por vendedor si se indica) y
+    agrega por producto: cantidad facturada y utilidad."""
     if df_ventas is None or len(df_ventas) == 0:
         return {}
 
@@ -33,6 +37,10 @@ def _ventas_del_periodo(df_ventas, anio, mes):
         d = d[d[ANIO_COL] == int(anio)]
     if MES_COL in d.columns and mes is not None:
         d = d[d[MES_COL] == int(mes)]
+
+    # filtro por vendedor (solo para las pestañas de un vendedor)
+    if vendedor and C.RAW_VENDEDOR in d.columns:
+        d = d[d[C.RAW_VENDEDOR].astype(str).str.strip() == str(vendedor).strip()]
 
     if len(d) == 0:
         return {}
@@ -52,19 +60,15 @@ def _ventas_del_periodo(df_ventas, anio, mes):
     }
 
 
-def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes):
+def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes, vendedor=None):
     """
     proyeccion: dict {producto: cantidad_proyectada} (de db).
+    vendedor:   None -> Acumulado (ventas totales);
+                nombre -> ventas SOLO de ese vendedor.
     Devuelve (filas_tabla, fila_total, detalle_varios).
-
-    filas_tabla: lista de dicts con las columnas de la tabla.
-    detalle_varios: lista de productos vendidos fuera de la lista.
     """
-    ventas = _ventas_del_periodo(df_ventas, anio, mes)
+    ventas = _ventas_del_periodo(df_ventas, anio, mes, vendedor)
 
-    # separar la meta de VARIOS (si el usuario la capturó) del resto.
-    # VARIOS no es un producto que se cruce con ventas: es el grupo de
-    # todo lo vendido fuera de la lista.
     meta_varios = 0.0
     proy_productos = {}
     for k, v in proyeccion.items():
@@ -78,7 +82,6 @@ def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes):
     filas = []
     tot_proy = tot_fact = tot_util = 0.0
 
-    # 1) productos de la proyección (sin VARIOS)
     for prod in proy_productos:
         proy_cant = float(proy_productos.get(prod) or 0)
         v = ventas.get(prod, {})
@@ -89,7 +92,6 @@ def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes):
         tot_fact += fact
         tot_util += util
 
-    # 2) VARIOS: productos vendidos que NO están en la proyección
     varios_cant = varios_util = 0.0
     detalle_varios = []
     for prod, v in ventas.items():
@@ -103,8 +105,6 @@ def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes):
                 "util_unit": round(v["utilidad"] / v["cantidad"], 2) if v["cantidad"] else 0,
             })
 
-    # la fila VARIOS aparece si hay ventas fuera de lista O si el usuario
-    # le puso una meta. Usa esa meta como proyección -> calcula % avance.
     if varios_cant or varios_util or meta_varios:
         filas.append(_fila("VARIOS", meta_varios, varios_cant, varios_util))
         tot_proy += meta_varios
@@ -120,7 +120,7 @@ def construir_tabla_proyeccion(proyeccion, df_ventas, anio, mes):
 
 def _fila(producto, proy, fact, util):
     diferencia = fact - proy
-    avance = (fact / proy * 100) if proy else None   # None = no aplica (varios)
+    avance = (fact / proy * 100) if proy else None
     util_unit = (util / fact) if fact else 0.0
     return {
         "producto": producto,

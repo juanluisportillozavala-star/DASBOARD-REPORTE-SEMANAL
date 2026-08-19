@@ -2,11 +2,14 @@
 =========================================================
 proyeccion/vista.py  —  MÓDULO PROYECCIÓN (visualización)
 =========================================================
-Muestra el cumplimiento de la proyección de un año/mes:
-  Producto | Proyección | Facturado | Diferencia | % Avance
-           | Utilidad | Util Unit
-La fila VARIOS agrupa lo vendido fuera de la lista, y abajo
-una tabla con el detalle de esos productos varios.
+Muestra el cumplimiento de la proyección de un año/mes con
+pestañas:
+  • Acumulado         -> los 3 vendedores sumados vs ventas totales
+  • ILSE / FREDY / MATEO -> cada vendedor vs SUS ventas
+
+Cada tabla: Producto | Proyección | Facturado | Diferencia |
+% Avance | Utilidad | Util Unit. La fila VARIOS agrupa lo
+vendido fuera de la lista, con su detalle abajo.
 
 Lee la proyección de db y las ventas de la caché del servidor.
 """
@@ -15,9 +18,12 @@ from dash import Input, Output, State, html, dcc, no_update
 import dash_ag_grid as dag
 
 import db
+from db import VENDEDORES
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
+
+ACUMULADO = "ACUMULADO"
 
 MESES = [
     (1, "Enero"), (2, "Febrero"), (3, "Marzo"), (4, "Abril"),
@@ -73,8 +79,16 @@ def crear_layout_proyeccion():
                         ],
                     ),
                 ],
-                style={"display": "flex", "gap": "20px", "marginBottom": "24px",
+                style={"display": "flex", "gap": "20px", "marginBottom": "18px",
                        "alignItems": "flex-end", "flexWrap": "wrap"},
+            ),
+
+            # pestañas: Acumulado + un vendedor cada una
+            dcc.Tabs(
+                id="proy-ver-tab", value=ACUMULADO,
+                children=[dcc.Tab(label="Acumulado", value=ACUMULADO)]
+                         + [dcc.Tab(label=v, value=v) for v in VENDEDORES],
+                style={"marginBottom": "16px"},
             ),
 
             html.Div(id="proy-ver-tabla"),
@@ -128,9 +142,6 @@ def _col_defs():
 
 
 def _grid(filas, fila_total):
-    # Separar VARIOS de las filas normales: va FIJADO abajo (con el
-    # total) para que el ordenamiento por columnas no lo mezcle entre
-    # los productos. Orden de las filas fijadas: VARIOS y luego TOTAL.
     normales = [f for f in filas if f.get("producto") != "VARIOS"]
     fila_varios = next((f for f in filas if f.get("producto") == "VARIOS"), None)
 
@@ -165,14 +176,12 @@ def _grid_varios(detalle):
         return html.Div("No hay productos varios en este periodo.",
                         style={"color": "#6C757D"})
 
-    # fila TOTAL de la tabla de detalle
     tot_fact = sum(float(d.get("facturado", 0)) for d in detalle)
     tot_util = sum(float(d.get("utilidad", 0)) for d in detalle)
     tot_uu = (tot_util / tot_fact) if tot_fact else 0
     fila_total = {"producto": "TOTAL", "facturado": round(tot_fact, 2),
                   "utilidad": round(tot_util, 2), "util_unit": round(tot_uu, 2)}
 
-    # estilo: centrar todo menos la 1a columna (Producto)
     centrar = {"textAlign": "center"}
     izq = {"textAlign": "left"}
 
@@ -244,22 +253,33 @@ def registrar_callbacks_proyeccion(app):
         val = actual if actual in meses else meses[0]
         return ops, val
 
-    # construir la tabla de cumplimiento + detalle de varios
+    # construir la tabla de cumplimiento + detalle de varios,
+    # según la pestaña activa (Acumulado o un vendedor)
     @app.callback(
         Output("proy-ver-tabla", "children"),
         Output("proy-ver-varios", "children"),
         Input("proy-ver-anio", "value"),
         Input("proy-ver-mes", "value"),
+        Input("proy-ver-tab", "value"),
     )
-    def construir(anio, mes):
+    def construir(anio, mes, tab):
         if not anio or not mes:
             return (html.Div("Selecciona año y mes.", style={"color": "#6C757D"}),
                     "")
-        proyeccion = db.leer_proyeccion(anio, mes)
+
+        if tab == ACUMULADO:
+            proyeccion = db.leer_proyeccion_acumulada(anio, mes)
+            vendedor = None
+        else:
+            proyeccion = db.leer_proyeccion(anio, mes, tab)
+            vendedor = tab
+
         if not proyeccion:
-            return (html.Div("No hay proyección guardada para este periodo.",
+            quien = "este periodo" if tab == ACUMULADO else f"{tab} en este periodo"
+            return (html.Div(f"No hay proyección guardada para {quien}.",
                              style={"color": "#6C757D"}), "")
+
         df_ventas = db.obtener_df("ventas")
         filas, total, varios = construir_tabla_proyeccion(
-            proyeccion, df_ventas, anio, mes)
+            proyeccion, df_ventas, anio, mes, vendedor)
         return _grid(filas, total), _grid_varios(varios)

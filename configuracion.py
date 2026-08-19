@@ -6,6 +6,10 @@ Contiene el PANEL DE USUARIOS DE CONSULTA: listar, crear,
 cambiar contraseña y eliminar usuarios de rol 'consulta'.
 Los admin NO se pueden modificar desde aquí (protegidos en db.py).
 
+Al crear un usuario se le puede asignar un VENDEDOR (nombre
+exacto como en Ventas); ese usuario podrá editar la proyección
+de ese vendedor en «Captura de proyecciones».
+
 Seguridad: el enlace solo aparece para admin y cada operación
 valida el rol en el servidor (store-sesion) antes de ejecutarse.
 """
@@ -14,6 +18,7 @@ from dash import Input, Output, State, html, dcc, no_update, ctx, ALL
 import dash_ag_grid as dag
 
 import db
+from db import VENDEDORES
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
@@ -92,6 +97,19 @@ def crear_layout_configuracion():
             _tarjeta("Crear usuario de consulta", [
                 _input("config-nuevo-usuario", "Nombre de usuario"),
                 _input_password("config-nuevo-password", "Contraseña", "config-ojo-nuevo"),
+                html.Label("Vendedor (opcional)",
+                           style={"fontWeight": "600", "color": AZUL,
+                                  "display": "block", "marginBottom": "4px"}),
+                html.P("Si asignas un vendedor, este usuario podrá editar la "
+                       "proyección de ese vendedor.",
+                       style={"fontSize": "12px", "color": "#6C757D",
+                              "marginBottom": "6px"}),
+                dcc.Dropdown(
+                    id="config-nuevo-vendedor",
+                    options=[{"label": v, "value": v} for v in VENDEDORES],
+                    placeholder="Sin vendedor",
+                    style={"marginBottom": "12px"},
+                ),
                 _boton("Crear usuario", "config-btn-crear"),
                 html.Div(id="config-msg-crear",
                          style={"marginTop": "12px", "minHeight": "22px"}),
@@ -133,12 +151,14 @@ def _tabla_usuarios(usuarios):
         return html.Div("No hay usuarios de consulta.",
                         style={"color": "#6C757D"})
     filas = [{"usuario": u["usuario"],
+              "vendedor": u.get("vendedor") or "—",
               "creado": str(u["creado"])[:10] if u["creado"] else ""}
              for u in usuarios]
     return dag.AgGrid(
         rowData=filas,
         columnDefs=[
             {"field": "usuario", "headerName": "Usuario", "flex": 2},
+            {"field": "vendedor", "headerName": "Vendedor", "flex": 2},
             {"field": "creado", "headerName": "Creado", "flex": 1},
         ],
         dashGridOptions={"domLayout": "autoHeight", "rowHeight": 34,
@@ -203,16 +223,20 @@ def registrar_callbacks_configuracion(app):
         Input("config-btn-crear", "n_clicks"),
         State("config-nuevo-usuario", "value"),
         State("config-nuevo-password", "value"),
+        State("config-nuevo-vendedor", "value"),
         State("store-sesion", "data"),
         State("config-refresco", "data"),
         prevent_initial_call=True,
     )
-    def crear(n, usuario, password, sesion, refresco):
+    def crear(n, usuario, password, vendedor, sesion, refresco):
         if not _es_admin(sesion):
             return html.Span("No autorizado.", style={"color": "#C0392B"}), no_update
         try:
-            db.crear_usuario_consulta(usuario, password)
-            return (html.Span(f"Usuario '{usuario.strip()}' creado.",
+            db.crear_usuario_consulta(usuario, password, vendedor)
+            etq = f"Usuario '{usuario.strip()}' creado."
+            if vendedor:
+                etq = f"Usuario '{usuario.strip()}' creado (vendedor: {vendedor})."
+            return (html.Span(etq,
                               style={"color": "#198754", "fontWeight": "600"}),
                     (refresco or 0) + 1)
         except Exception as e:

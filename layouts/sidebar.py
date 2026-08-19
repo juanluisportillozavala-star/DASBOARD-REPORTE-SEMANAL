@@ -50,6 +50,11 @@ def crear_sidebar(rol=None):
 
         item("Proyección", "fas fa-bullseye", "/proyeccion"),
 
+        # Captura de proyecciones: la usan los vendedores (cada quien
+        # edita la suya) y el admin. La edición se valida en el
+        # servidor, así que es seguro mostrarla a todos.
+        item("Captura de proyecciones", "fas fa-pen-to-square", "/captura-proyeccion"),
+
         item("Ingresos", "fas fa-wallet", "/ingresos"),
 
         item("Cartera", "fas fa-users", "/cartera"),

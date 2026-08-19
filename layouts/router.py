@@ -14,6 +14,7 @@ from inventario.layout import crear_layout_inventario
 from configuracion import crear_layout_configuracion
 from cartera.layout import crear_layout_cartera
 from proyeccion.vista import crear_layout_proyeccion
+from captura_proyeccion import crear_layout_captura_proyeccion
 
 
 def pagina_temporal(nombre):
@@ -52,6 +53,10 @@ def crear_router(pathname):
     elif pathname == "/proyeccion":
 
         return crear_layout_proyeccion()
+
+    elif pathname == "/captura-proyeccion":
+
+        return crear_layout_captura_proyeccion()
 
     elif pathname == "/cargar":
 

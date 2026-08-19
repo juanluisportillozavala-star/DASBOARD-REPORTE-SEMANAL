@@ -26,9 +26,6 @@ from dash import Input, Output, State, html, dcc, no_update, ALL, ctx
 import dash_bootstrap_components as dbc
 
 import db
-from proyeccion_captura import (
-    crear_seccion_proyeccion, registrar_callbacks_proyeccion_captura,
-)
 from inventario_historico_captura import (
     crear_seccion_historico_inventario,
     registrar_callbacks_historico_captura,
@@ -213,9 +210,6 @@ def crear_layout_carga():
                 style={"display": "flex", "flexWrap": "wrap", "gap": "24px"},
             ),
 
-            # sección de captura de proyección (abajo, aparte)
-            crear_seccion_proyeccion(),
-
             # sección de captura del histórico de inventario (abajo, aparte)
             crear_seccion_historico_inventario(),
         ]
@@ -223,9 +217,6 @@ def crear_layout_carga():
 
 
 def registrar_callbacks_carga(app):
-
-    # callbacks de la captura de proyección
-    registrar_callbacks_proyeccion_captura(app)
 
     # callbacks de la captura del histórico de inventario
     registrar_callbacks_historico_captura(app)

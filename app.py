@@ -43,6 +43,9 @@ from cartera.tabla_cartera import registrar_callbacks_tabla_cartera
 # Proyección
 from proyeccion.vista import registrar_callbacks_proyeccion
 
+# Captura de proyecciones (por vendedor)
+from captura_proyeccion import registrar_callbacks_captura_proyeccion
+
 # =========================
 # Crear aplicación
 # =========================
@@ -151,6 +154,9 @@ registrar_callbacks_tabla_cartera(app)
 
 # Proyección
 registrar_callbacks_proyeccion(app)
+
+# Captura de proyecciones (por vendedor)
+registrar_callbacks_captura_proyeccion(app)
 
 # =========================
 # Ejecutar

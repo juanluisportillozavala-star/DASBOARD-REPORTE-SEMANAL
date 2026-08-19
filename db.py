@@ -47,6 +47,10 @@ def inicializar_esquema():
                 creado        TIMESTAMP DEFAULT now()
             );
         """)
+        # identidad de vendedor por usuario (para la captura de
+        # proyecciones). Un usuario puede tener asignado el nombre
+        # EXACTO del vendedor como aparece en Ventas.
+        cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS vendedor TEXT;")
     # tablas del módulo Proyección
     inicializar_esquema_proyeccion()
     # tabla del histórico mensual de inventario
@@ -160,13 +164,15 @@ def crear_usuario(usuario, password, rol="consulta"):
 
 def verificar_login(usuario, password):
     with _conn() as c, c.cursor() as cur:
-        cur.execute("SELECT password_hash, rol FROM usuarios WHERE usuario=%s;",
-                    (usuario,))
+        cur.execute("SELECT password_hash, rol, vendedor FROM usuarios "
+                    "WHERE usuario=%s;", (usuario,))
         fila = cur.fetchone()
     if not fila:
         return None
     if bcrypt.checkpw(password.encode(), fila[0].encode()):
-        return {"usuario": usuario, "rol": fila[1]}
+        # la sesión lleva el vendedor asignado (o None) para saber
+        # qué proyección puede editar este usuario.
+        return {"usuario": usuario, "rol": fila[1], "vendedor": fila[2]}
     return None
 
 
@@ -182,11 +188,11 @@ def listar_usuarios_consulta():
     NO incluye admins."""
     with _conn() as c, c.cursor() as cur:
         cur.execute(
-            "SELECT usuario, creado FROM usuarios WHERE rol='consulta' "
+            "SELECT usuario, creado, vendedor FROM usuarios WHERE rol='consulta' "
             "ORDER BY usuario;"
         )
         filas = cur.fetchall()
-    return [{"usuario": f[0], "creado": f[1]} for f in filas]
+    return [{"usuario": f[0], "creado": f[1], "vendedor": f[2]} for f in filas]
 
 
 def _rol_de(usuario):
@@ -196,11 +202,15 @@ def _rol_de(usuario):
     return fila[0] if fila else None
 
 
-def crear_usuario_consulta(usuario, password):
+def crear_usuario_consulta(usuario, password, vendedor=None):
     """Crea un usuario de consulta. Falla si el nombre ya existe
-    (con cualquier rol) para no pisar un admin por accidente."""
+    (con cualquier rol) para no pisar un admin por accidente.
+    vendedor: (opcional) nombre EXACTO del vendedor como aparece
+    en Ventas; si se asigna, ese usuario podrá editar la
+    proyección de ese vendedor."""
     usuario = (usuario or "").strip()
     password = (password or "").strip()
+    vendedor = (vendedor or "").strip() or None
     if not usuario or not password:
         raise ValueError("Usuario y contraseña son obligatorios.")
     if _rol_de(usuario) is not None:
@@ -208,9 +218,9 @@ def crear_usuario_consulta(usuario, password):
     h = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     with _conn() as c, c.cursor() as cur:
         cur.execute(
-            "INSERT INTO usuarios (usuario, password_hash, rol) "
-            "VALUES (%s, %s, 'consulta');",
-            (usuario, h),
+            "INSERT INTO usuarios (usuario, password_hash, rol, vendedor) "
+            "VALUES (%s, %s, 'consulta', %s);",
+            (usuario, h, vendedor),
         )
 
 
@@ -277,55 +287,94 @@ def productos_semilla():
     return list(_PRODUCTOS_SEMILLA)
 
 
+# Los 3 vendedores. El nombre debe ser EXACTO como aparece en la
+# columna Vendedor de Ventas (para que el cruce por vendedor cuadre).
+# Si algún nombre difiere en Ventas, corregirlo AQUÍ (un solo lugar).
+VENDEDORES = ["ILSE GARCÍA", "FREDY SALAS", "MATEO LÓPEZ"]
+
+
 def inicializar_esquema_proyeccion():
-    """Crea la tabla de proyecciones si no existe. Se llama
-    desde inicializar_esquema()."""
+    """Crea la tabla de proyecciones (por vendedor) si no existe.
+    MIGRACIÓN: si existe la versión vieja SIN columna 'vendedor',
+    se limpia (drop) y se recrea con el nuevo esquema, ya que la
+    proyección ahora se guarda por vendedor. Idempotente: una vez
+    migrada, no se vuelve a borrar."""
     with _conn() as c, c.cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS proyecciones (
-                anio     INTEGER NOT NULL,
-                mes      INTEGER NOT NULL,
-                producto TEXT NOT NULL,
-                cantidad NUMERIC DEFAULT 0,
-                PRIMARY KEY (anio, mes, producto)
-            );
-        """)
+        cur.execute("SELECT 1 FROM information_schema.tables "
+                    "WHERE table_name='proyecciones';")
+        existe = cur.fetchone() is not None
+        if existe:
+            cur.execute("SELECT 1 FROM information_schema.columns "
+                        "WHERE table_name='proyecciones' "
+                        "AND column_name='vendedor';")
+            tiene_vendedor = cur.fetchone() is not None
+            if not tiene_vendedor:
+                # versión vieja (sin vendedor): limpiar y recrear
+                cur.execute("DROP TABLE proyecciones;")
+                existe = False
+        if not existe:
+            cur.execute("""
+                CREATE TABLE proyecciones (
+                    anio     INTEGER NOT NULL,
+                    mes      INTEGER NOT NULL,
+                    vendedor TEXT NOT NULL,
+                    producto TEXT NOT NULL,
+                    cantidad NUMERIC DEFAULT 0,
+                    PRIMARY KEY (anio, mes, vendedor, producto)
+                );
+            """)
 
 
 # -------- PROYECCIÓN / LISTA POR MES --------
 
-def leer_proyeccion(anio, mes):
-    """Devuelve dict {producto: cantidad} de un año/mes.
-    Vacío si ese mes aún no tiene nada guardado."""
+def leer_proyeccion(anio, mes, vendedor):
+    """Devuelve dict {producto: cantidad} de un año/mes para UN
+    vendedor. Vacío si ese vendedor no tiene nada en ese mes."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT producto, cantidad FROM proyecciones "
-                    "WHERE anio=%s AND mes=%s ORDER BY producto;",
+                    "WHERE anio=%s AND mes=%s AND vendedor=%s "
+                    "ORDER BY producto;",
+                    (int(anio), int(mes), vendedor))
+        filas = cur.fetchall()
+    return {f[0]: float(f[1]) for f in filas}
+
+
+def leer_proyeccion_acumulada(anio, mes):
+    """Suma la proyección de TODOS los vendedores por producto
+    (para la vista Acumulado). Devuelve {producto: cantidad_total}."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT producto, SUM(cantidad) FROM proyecciones "
+                    "WHERE anio=%s AND mes=%s GROUP BY producto "
+                    "ORDER BY producto;",
                     (int(anio), int(mes)))
         filas = cur.fetchall()
     return {f[0]: float(f[1]) for f in filas}
 
 
-def listar_productos_mes(anio, mes):
-    """Lista de productos de un mes (los que tienen fila en ese
-    mes). Si el mes está vacío, devuelve la lista PREDETERMINADA
-    (semilla) para arrancar."""
+def listar_productos_mes(anio, mes, vendedor):
+    """Lista de productos de un mes para un vendedor. Si ese
+    vendedor no tiene nada en el mes, devuelve la lista
+    PREDETERMINADA (semilla) para arrancar."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT producto FROM proyecciones "
-                    "WHERE anio=%s AND mes=%s ORDER BY producto;",
-                    (int(anio), int(mes)))
+                    "WHERE anio=%s AND mes=%s AND vendedor=%s "
+                    "ORDER BY producto;",
+                    (int(anio), int(mes), vendedor))
         filas = cur.fetchall()
     if filas:
         return [f[0] for f in filas]
     return productos_semilla()
 
 
-def guardar_proyeccion(anio, mes, proyeccion_por_producto):
-    """Guarda (reemplaza) la proyección de un mes. Deja el mes
-    EXACTAMENTE con los productos recibidos: inserta/actualiza
-    los que vienen y BORRA los que ya no estén (así 'quitar' un
-    producto de ese mes se persiste). El histórico de OTROS
-    meses no se toca."""
+def guardar_proyeccion(anio, mes, vendedor, proyeccion_por_producto):
+    """Guarda (reemplaza) la proyección de un mes para UN vendedor.
+    Deja ese (mes, vendedor) EXACTAMENTE con los productos
+    recibidos: inserta/actualiza los que vienen y BORRA los que ya
+    no estén. No toca a otros vendedores ni otros meses."""
     anio = int(anio); mes = int(mes)
+    vendedor = (vendedor or "").strip()
+    if not vendedor:
+        raise ValueError("Falta el vendedor.")
     limpio = {}
     for producto, cantidad in proyeccion_por_producto.items():
         producto = (producto or "").strip()
@@ -338,52 +387,30 @@ def guardar_proyeccion(anio, mes, proyeccion_por_producto):
         limpio[producto] = cant
 
     with _conn() as c, c.cursor() as cur:
-        # borrar del mes los productos que ya no están en la lista
+        # borrar de ese (mes, vendedor) los productos que ya no están
         if limpio:
             cur.execute(
                 "DELETE FROM proyecciones WHERE anio=%s AND mes=%s "
-                "AND producto NOT IN %s;",
-                (anio, mes, tuple(limpio.keys())),
+                "AND vendedor=%s AND producto NOT IN %s;",
+                (anio, mes, vendedor, tuple(limpio.keys())),
             )
         else:
-            cur.execute("DELETE FROM proyecciones WHERE anio=%s AND mes=%s;",
-                        (anio, mes))
+            cur.execute("DELETE FROM proyecciones "
+                        "WHERE anio=%s AND mes=%s AND vendedor=%s;",
+                        (anio, mes, vendedor))
         # upsert de los que vienen
         for producto, cant in limpio.items():
             cur.execute("""
-                INSERT INTO proyecciones (anio, mes, producto, cantidad)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (anio, mes, producto)
+                INSERT INTO proyecciones (anio, mes, vendedor, producto, cantidad)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (anio, mes, vendedor, producto)
                 DO UPDATE SET cantidad = EXCLUDED.cantidad;
-            """, (anio, mes, producto, cant))
-
-
-def agregar_producto_mes(anio, mes, producto):
-    """Agrega un producto a un mes concreto (con cantidad 0 si
-    no existía). Solo afecta a ESE mes."""
-    producto = (producto or "").strip()
-    if not producto:
-        raise ValueError("El nombre del producto no puede estar vacío.")
-    with _conn() as c, c.cursor() as cur:
-        cur.execute("""
-            INSERT INTO proyecciones (anio, mes, producto, cantidad)
-            VALUES (%s, %s, %s, 0)
-            ON CONFLICT (anio, mes, producto) DO NOTHING;
-        """, (int(anio), int(mes), producto))
-
-
-def quitar_producto_mes(anio, mes, producto):
-    """Quita un producto de un mes concreto (borra su fila de
-    ese mes). Solo afecta a ESE mes; otros meses no se tocan."""
-    producto = (producto or "").strip()
-    with _conn() as c, c.cursor() as cur:
-        cur.execute("DELETE FROM proyecciones "
-                    "WHERE anio=%s AND mes=%s AND producto=%s;",
-                    (int(anio), int(mes), producto))
+            """, (anio, mes, vendedor, producto, cant))
 
 
 def anios_con_proyeccion():
-    """Años que ya tienen alguna proyección guardada."""
+    """Años que ya tienen alguna proyección guardada (de cualquier
+    vendedor)."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT anio FROM proyecciones ORDER BY anio DESC;")
         filas = cur.fetchall()
@@ -391,7 +418,7 @@ def anios_con_proyeccion():
 
 
 def meses_con_proyeccion(anio):
-    """Meses con proyección para un año dado."""
+    """Meses con proyección para un año dado (de cualquier vendedor)."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT DISTINCT mes FROM proyecciones "
                     "WHERE anio=%s ORDER BY mes;", (int(anio),))
