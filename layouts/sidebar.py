@@ -34,7 +34,7 @@ def item(nombre, icono, ruta):
     )
 
 
-def crear_sidebar(rol=None):
+def crear_sidebar(rol=None, vendedor=None):
 
     # Ítems que TODOS ven (admin y consulta)
     items = [
@@ -50,11 +50,6 @@ def crear_sidebar(rol=None):
 
         item("Proyección", "fas fa-bullseye", "/proyeccion"),
 
-        # Captura de proyecciones: la usan los vendedores (cada quien
-        # edita la suya) y el admin. La edición se valida en el
-        # servidor, así que es seguro mostrarla a todos.
-        item("Captura de proyecciones", "fas fa-pen-to-square", "/captura-proyeccion"),
-
         item("Ingresos", "fas fa-wallet", "/ingresos"),
 
         item("Cartera", "fas fa-users", "/cartera"),
@@ -66,6 +61,18 @@ def crear_sidebar(rol=None):
         item("Reportes", "fas fa-file-lines", "/reportes"),
 
     ]
+
+    # Captura de proyecciones: solo la ven el ADMIN o un usuario con
+    # VENDEDOR asignado (los que de verdad pueden editar algo). A un
+    # usuario de consulta sin vendedor se le oculta el ítem.
+    if rol == "admin" or vendedor:
+
+        # se inserta después de "Proyección" (posición 4 de la lista)
+        items.insert(
+            4,
+            item("Captura de proyecciones", "fas fa-pen-to-square",
+                 "/captura-proyeccion"),
+        )
 
     # Ítems SOLO para admin: carga de datos y configuración
     if rol == "admin":

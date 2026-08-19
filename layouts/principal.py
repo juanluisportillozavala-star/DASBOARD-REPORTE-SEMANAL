@@ -75,7 +75,7 @@ def registrar_callbacks_principal(app):
         return (
             {"display": "none"},
             {"display": "block"},
-            crear_sidebar(sesion.get("rol")),
+            crear_sidebar(sesion.get("rol"), sesion.get("vendedor")),
             saludo,
             "/dashboard",
         )
