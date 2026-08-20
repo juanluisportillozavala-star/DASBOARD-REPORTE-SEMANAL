@@ -27,7 +27,7 @@ def crear_layout_saldo_proveedor():
             dcc.Store(id="store-semana-sp", data=[]),
 
             html.H1("Saldo Proveedor", className="titulo"),
-            html.P("Cuentas por pagar por proveedor (aging).",
+            html.P("Cuentas por pagar por proveedor.",
                    className="subtitulo"),
             html.Br(),
 

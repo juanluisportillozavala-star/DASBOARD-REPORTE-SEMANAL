@@ -1268,3 +1268,15 @@ TARJETAS KPI PERSONALIZADAS
         font-size:16px;
     }
 }
+/* =========================================================
+   ENCABEZADOS de la tabla de SALDO PROVEEDOR -> texto blanco
+   Pegar al final de assets/estilos.css
+   Cubre los títulos de aging (Vencido >60, 31-60, 0-30, Vigente)
+   que salían en letra oscura sobre el fondo azul.
+   ========================================================= */
+
+.hdr-sp,
+.hdr-sp .ag-header-cell-text,
+.ag-theme-alpine .hdr-sp .ag-header-cell-text {
+    color: #FFFFFF !important;
+}
