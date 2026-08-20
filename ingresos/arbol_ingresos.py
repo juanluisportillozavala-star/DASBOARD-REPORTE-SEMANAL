@@ -2,127 +2,90 @@
 =========================================================
 ingresos/arbol_ingresos.py
 =========================================================
-Árbol jerárquico de Ingresos: Vendedor -> Cliente (contacto),
-expandible, con columnas cruzadas Contado/Crédito x
-Vencido/Vigente + Total general.
+Árbol jerárquico de Ingresos: Vendedor -> Cliente, expandible,
+con columnas cruzadas (Términos de pago × Estatus) + Total.
 
-Produce filas PLANAS con el MISMO esquema base que el motor de
-Ventas (id, parentId, nivel, concepto, tieneHijos, expandido)
-para poder reutilizar el diseño premium (getRowStyle por nivel)
-y la expansión por clic. Las columnas de datos son las 4 cruces
-y el total, en vez de Cantidad/Venta/Margen.
+Cambios vs versión anterior:
+  • El ESTATUS ya NO se calcula: se usa el que trae la BD Cobranza
+    (columna "Estatus": Vigente / Vencido).
+  • Nombres de columna de la BD Cobranza: Importe -> "IMPORTE",
+    cliente -> "Cliente", términos -> "TERMINOS DE PAGO".
+  • Columnas DINÁMICAS: la matriz solo muestra las combinaciones
+    (Términos × Estatus) que existan en los datos filtrados,
+    ordenadas Contado→Crédito y Vigente→Vencido (ver
+    combos_presentes()).
 
-ESTATUS (Vigente/Vencido) es DINÁMICO: se calcula aquí según el
-mes de corte que se pase (el más alto seleccionado en el
-calendario), comparando el mes de vencimiento de cada factura.
+Produce filas PLANAS con el mismo esquema base (id, parentId,
+nivel, concepto, tieneHijos, expandido) para reutilizar el
+diseño premium y la expansión por clic.
 """
 
 import pandas as pd
 
-COL_IMPORTE = "Importe sin impuestos firmado"
+COL_IMPORTE = "IMPORTE"
 COL_VENDEDOR = "Vendedor"
-COL_CONTACTO = "Contacto"
+COL_CLIENTE = "Cliente"
 COL_TERMINOS = "TERMINOS DE PAGO"     # Contado / Crédito
-COL_MES_VENC = "MES_VENCIMIENTO"
-COL_VENCIMIENTO = "Fecha de vencimiento"
-COL_ULTIMO_PAGO = "Fecha último pago"
+COL_ESTATUS = "ESTATUS"               # Vigente / Vencido (de la BD)
 
+# orden deseado: Contado antes que Crédito; Vigente antes que Vencido
 TERMINOS = ["Contado", "Crédito"]
 ESTATUS = ["Vigente", "Vencido"]
 
-# nombres de campo para las 4 columnas cruzadas + total
+
 def _campo(t, e):
     return f"{t}|{e}"
 
+
+# todas las combinaciones posibles (por si algo las necesita)
 CAMPOS_CRUCE = [_campo(t, e) for t in TERMINOS for e in ESTATUS]
 
 
-def _anio_reporte(df):
-    """Año del reporte = año MÁS COMÚN de la fecha de último pago.
-    (Se conserva por compatibilidad; ya no se usa para el estatus.)"""
-    fechas = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce").dropna()
-    if len(fechas) == 0:
-        return pd.Timestamp.today().year
-    return int(fechas.dt.year.mode().iloc[0])
-
-
-def fecha_corte(df, meses):
-    """(Compatibilidad) Devuelve una fecha de referencia. Ya NO se
-    usa para clasificar vigente/vencido — el estatus ahora se calcula
-    por factura (vencimiento vs último pago). Se mantiene por si algún
-    texto de la UI la usa."""
-    anio = _anio_reporte(df)
-    if meses:
-        mes = max(meses)
-    else:
-        fp = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce").dropna()
-        mes = int(fp.dt.month.max()) if len(fp) else 12
-    return pd.Timestamp(year=anio, month=mes, day=1) + pd.offsets.MonthEnd(0)
-
-
-def mes_corte(df, meses):
-    return fecha_corte(df, meses)
-
-
-def _con_estatus(df, corte=None):
-    """Clasifica cada factura por su PROPIO par de fechas:
-      Vigente  si fin_de_mes(Fecha de vencimiento) >= fin_de_mes(Fecha último pago)
-               (es decir, se pagó dentro del mes de vencimiento o antes)
-      Vencido  si venció en un mes anterior al del pago (pago tardío).
-
-    El estatus es FIJO por factura: NO depende del mes de corte ni del
-    calendario. El parámetro 'corte' se ignora (se deja por
-    compatibilidad con las llamadas existentes).
-    """
-    df = df.copy()
-    venc = pd.to_datetime(df[COL_VENCIMIENTO], errors="coerce")
-    pago = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce")
-
-    fin_venc = venc + pd.offsets.MonthEnd(0)
-    fin_pago = pago + pd.offsets.MonthEnd(0)
-
-    def clasificar(fv, fp):
-        if pd.isna(fv) or pd.isna(fp):
-            return None
-        return "Vigente" if fv >= fp else "Vencido"
-
-    df["_ESTATUS"] = [clasificar(fv, fp) for fv, fp in zip(fin_venc, fin_pago)]
-    return df
-
-
-def _sumas_cruce(sub):
-    """Dict {campo_cruce: suma} para un subconjunto de filas."""
-    d = {}
-    total = 0.0
+def combos_presentes(df):
+    """Lista de (termino, estatus) que TIENEN datos en df, en el
+    orden Contado→Crédito, Vigente→Vencido. Sirve para armar las
+    columnas dinámicas (como la tabla dinámica de Excel: solo salen
+    las combinaciones que existen)."""
+    if df is None or len(df) == 0:
+        return []
+    presentes = []
     for t in TERMINOS:
         for e in ESTATUS:
-            monto = sub[(sub[COL_TERMINOS] == t) & (sub["_ESTATUS"] == e)][COL_IMPORTE].sum()
-            monto = float(monto) if monto and not pd.isna(monto) else 0.0
-            d[_campo(t, e)] = monto if monto != 0 else None
-            total += monto
+            hay = df[(df[COL_TERMINOS] == t) & (df[COL_ESTATUS] == e)]
+            if len(hay) and float(hay[COL_IMPORTE].sum()) != 0:
+                presentes.append((t, e))
+    return presentes
+
+
+def _sumas_cruce(sub, combos):
+    """Dict {campo_cruce: suma} para un subconjunto, solo de los
+    combos indicados, + total."""
+    d = {}
+    total = 0.0
+    for t, e in combos:
+        monto = sub[(sub[COL_TERMINOS] == t) & (sub[COL_ESTATUS] == e)][COL_IMPORTE].sum()
+        monto = float(monto) if monto and not pd.isna(monto) else 0.0
+        d[_campo(t, e)] = monto if monto != 0 else None
+        total += monto
     d["total"] = total if total != 0 else None
     return d
 
 
-def construir_arbol_ingresos(df, meses):
-    """
-    Devuelve un DataFrame plano (filas de Vendedor y Cliente)
-    con columnas: id, parentId, nivel, concepto, tieneHijos,
-    expandido, los 4 cruces y total. Ordenado por total
-    descendente dentro de cada nivel.
-    """
-    # ESTATUS fijo por factura (vencimiento vs último pago); no
-    # depende del calendario. El filtro de meses ya se aplicó antes.
-    df = _con_estatus(df)
+def construir_arbol_ingresos(df, meses=None):
+    """DataFrame plano (Vendedor y Cliente) con columnas: id,
+    parentId, nivel, concepto, tieneHijos, expandido, los cruces
+    presentes y total. Ordenado por total desc dentro de cada nivel.
+    El filtro de año/mes/semana ya se aplicó antes."""
+    combos = combos_presentes(df)
+    campos = [_campo(t, e) for t, e in combos]
 
     filas = []
 
-    # nivel 1: vendedores, ordenados por total desc
     vendedores = df[COL_VENDEDOR].dropna().unique().tolist()
     tot_por_vend = []
     for v in vendedores:
         sub_v = df[df[COL_VENDEDOR] == v]
-        sumas_v = _sumas_cruce(sub_v)
+        sumas_v = _sumas_cruce(sub_v, combos)
         tot_por_vend.append((v, sumas_v.get("total") or 0, sumas_v, sub_v))
     tot_por_vend.sort(key=lambda x: x[1], reverse=True)
 
@@ -133,30 +96,30 @@ def construir_arbol_ingresos(df, meses):
         fila_v.update(sumas_v)
         filas.append(fila_v)
 
-        # nivel 2: contactos de ese vendedor, ordenados por total desc
-        contactos = sub_v[COL_CONTACTO].dropna().unique().tolist()
-        tot_por_cont = []
-        for c in contactos:
-            sub_c = sub_v[sub_v[COL_CONTACTO] == c]
-            sumas_c = _sumas_cruce(sub_c)
-            tot_por_cont.append((c, sumas_c.get("total") or 0, sumas_c))
-        tot_por_cont.sort(key=lambda x: x[1], reverse=True)
+        clientes = sub_v[COL_CLIENTE].dropna().unique().tolist()
+        tot_por_cli = []
+        for c in clientes:
+            sub_c = sub_v[sub_v[COL_CLIENTE] == c]
+            sumas_c = _sumas_cruce(sub_c, combos)
+            tot_por_cli.append((c, sumas_c.get("total") or 0, sumas_c))
+        tot_por_cli.sort(key=lambda x: x[1], reverse=True)
 
-        for c, _tc, sumas_c in tot_por_cont:
+        for c, _tc, sumas_c in tot_por_cli:
             id_c = f"{id_v}||n1::{c}"
             fila_c = {"id": id_c, "parentId": id_v, "nivel": 2,
                       "concepto": str(c), "tieneHijos": False, "expandido": False}
             fila_c.update(sumas_c)
             filas.append(fila_c)
 
-    cols = ["id", "parentId", "nivel", "concepto", "tieneHijos", "expandido"] + CAMPOS_CRUCE + ["total"]
+    cols = (["id", "parentId", "nivel", "concepto", "tieneHijos", "expandido"]
+            + campos + ["total"])
     return pd.DataFrame(filas, columns=cols)
 
 
-def total_general_ingresos(df, meses):
-    """Fila TOTAL GENERAL (nivel 0) con los cruces globales."""
-    d = _con_estatus(df)
-    sumas = _sumas_cruce(d)
+def total_general_ingresos(df, meses=None):
+    """Fila TOTAL GENERAL (nivel 0) con los cruces presentes."""
+    combos = combos_presentes(df)
+    sumas = _sumas_cruce(df, combos)
     fila = {"id": "total", "parentId": "", "nivel": 0,
             "concepto": "TOTAL GENERAL", "tieneHijos": False, "expandido": False}
     fila.update(sumas)

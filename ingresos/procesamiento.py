@@ -1,89 +1,118 @@
 """
 =========================================================
-PROCESAMIENTO DEL MÓDULO INGRESOS
+PROCESAMIENTO DEL MÓDULO INGRESOS  (BD Cobranza)
 =========================================================
-Toma la BD cruda (tal como se sube) y agrega 4 columnas
-calculadas, replicando las fórmulas del Excel:
+Ahora la BD que se sube es la hoja "BD Cobranza" del reporte,
+YA FORMULADA. Este procesamiento la lee tal cual y deja un
+DataFrame limpio con las columnas que necesita la matriz.
 
-  ESTATUS          Vigente si fin-de-mes(Fecha vencimiento) >=
-                   fin-de-mes(fecha_corte); si no, Vencido.
-                   fecha_corte = DÍA DE LA CARGA (se congela;
-                   no cambia hasta la próxima carga).
-  TERMINOS DE PAGO Contado si la descripción es "pago inmediato";
-                   si no, Crédito.
-  MES              mes de la Fecha último pago.
-  SEMANA           semana ISO de la Fecha último pago.
+Columnas de la BD Cobranza (los nombres pueden traer espacios):
+  Fecha de factura | Número | Cliente | Importe | IVA | Total |
+  Fecha de vencimiento | Estado de pago | Fecha último pago |
+  Vendedor | Términos de pago | Estatus | Mes | Semana
+
+Se toma:
+  • Importe  -> valor que suma la matriz (SIN IVA, columna D).
+  • Vendedor -> filas nivel 1.
+  • Cliente  -> filas nivel 2.
+  • Términos de pago (Contado / Crédito)  -> tal cual.
+  • Estatus (Vigente / Vencido)           -> tal cual (de la BD).
+
+Se RECALCULAN (por seguridad, por si las fórmulas no vinieran
+recalculadas):
+  • MES    = MONTH(Fecha último pago)
+  • SEMANA = WEEKNUM(Fecha último pago)  (estilo Excel, no ISO)
+  • AÑO    = YEAR(Fecha último pago)
+
+Nombres de salida (los que usan arbol_ingresos / tabla):
+  IMPORTE, Vendedor, Cliente, TERMINOS DE PAGO, ESTATUS,
+  MES, SEMANA, AÑO
 """
 
 import base64
 import io
+from datetime import date
 import pandas as pd
 
 
-# Nombres de columna de la BD cruda (tal como llegan del Excel)
-COL_VENCIMIENTO = "Fecha de vencimiento"
-COL_DESCRIPCION = "Términos de pago/Descripción de la factura"
-COL_ULTIMO_PAGO = "Fecha último pago"
-COL_IMPORTE = "Importe sin impuestos firmado"
-COL_VENDEDOR = "Vendedor"
+def _buscar_col(df, *candidatos):
+    """Devuelve el nombre real de la primera columna que coincida
+    (ignorando espacios y mayúsculas). None si no está."""
+    norm = {str(c).strip().lower(): c for c in df.columns}
+    for cand in candidatos:
+        k = cand.strip().lower()
+        if k in norm:
+            return norm[k]
+    return None
 
-TEXTO_CONTADO = "<p>Términos de pago: pago inmediato</p>"
+
+def _weeknum_excel(d):
+    """WEEKNUM(fecha) como Excel (sistema 1): la semana 1 es la que
+    contiene el 1 de enero y las semanas empiezan en DOMINGO.
+    (No es isocalendar de Python.)"""
+    if pd.isna(d):
+        return None
+    if isinstance(d, pd.Timestamp):
+        d = d.date()
+    jan1 = date(d.year, 1, 1)
+    dias = (d - jan1).days
+    dow_jan1 = (jan1.weekday() + 1) % 7
+    return (dias + dow_jan1) // 7 + 1
 
 
 def leer_excel(contents):
-    """Convierte el contents de un dcc.Upload (base64) a DataFrame."""
+    """Convierte el contents de un dcc.Upload (base64) a DataFrame.
+    Intenta la hoja 'BD Cobranza'; si no está, usa la primera."""
     if contents is None:
         return None
     contenido = contents.split(",")[1]
     archivo = base64.b64decode(contenido)
-    return pd.read_excel(io.BytesIO(archivo))
-
-
-def _fin_de_mes(fecha):
-    """Último día del mes (equivalente a EOMONTH(x, 0))."""
-    return fecha + pd.offsets.MonthEnd(0)
+    xls = pd.ExcelFile(io.BytesIO(archivo))
+    hoja = "BD Cobranza" if "BD Cobranza" in xls.sheet_names else xls.sheet_names[0]
+    return pd.read_excel(xls, sheet_name=hoja)
 
 
 def procesar_bd_ingresos(df, fecha_corte=None):
-    """
-    df: BD cruda de ingresos.
-
-    NOTA: ESTATUS (Vigente/Vencido) YA NO se calcula aquí. Se
-    calcula dinámicamente en la tabla según el mes de corte del
-    calendario (el mes más alto seleccionado). Aquí solo se
-    preparan las columnas que NO dependen del filtro: TERMINOS,
-    MES, SEMANA, y se conserva la Fecha de vencimiento (que la
-    tabla usa para el cálculo dinámico del estatus).
-
-    fecha_corte: se mantiene el parámetro por compatibilidad,
-    pero ya no se usa para ESTATUS.
-    """
+    """Limpia la BD Cobranza y deja las columnas que usa la matriz.
+    fecha_corte se ignora (se deja por compatibilidad de firma)."""
     df = df.copy()
+    df.columns = [str(c).strip() for c in df.columns]
 
-    df[COL_VENCIMIENTO] = pd.to_datetime(df[COL_VENCIMIENTO], errors="coerce")
-    df[COL_ULTIMO_PAGO] = pd.to_datetime(df[COL_ULTIMO_PAGO], errors="coerce")
+    c_importe = _buscar_col(df, "Importe", "Importe ")
+    c_vendedor = _buscar_col(df, "Vendedor")
+    c_cliente = _buscar_col(df, "Cliente")
+    c_terminos = _buscar_col(df, "Términos de pago", "Terminos de pago")
+    c_estatus = _buscar_col(df, "Estatus")
+    c_pago = _buscar_col(df, "Fecha último pago", "Fecha ultimo pago")
 
-    # MES_VENCIMIENTO: mes de la fecha de vencimiento. Lo usa la tabla
-    # para calcular ESTATUS dinámicamente (vigente/vencido según el
-    # mes de corte del calendario). ESTATUS ya NO se congela aquí.
-    df["MES_VENCIMIENTO"] = df[COL_VENCIMIENTO].dt.month
+    faltan = [n for n, c in [("Importe", c_importe), ("Vendedor", c_vendedor),
+                             ("Cliente", c_cliente), ("Términos de pago", c_terminos),
+                             ("Estatus", c_estatus), ("Fecha último pago", c_pago)]
+              if c is None]
+    if faltan:
+        raise Exception("A la BD Cobranza le faltan columnas: " + ", ".join(faltan))
 
-    # TERMINOS DE PAGO
-    df["TERMINOS DE PAGO"] = df[COL_DESCRIPCION].apply(
-        lambda x: "Contado" if str(x) == TEXTO_CONTADO else "Crédito"
-    )
+    # quedarnos solo con filas reales (con vendedor)
+    df = df[df[c_vendedor].notna()].copy()
 
-    # MES y SEMANA (de la Fecha último pago)
-    df["MES"] = df[COL_ULTIMO_PAGO].dt.month
-    df["SEMANA"] = df[COL_ULTIMO_PAGO].dt.isocalendar().week.astype("Int64")
+    out = pd.DataFrame()
+    out["Vendedor"] = df[c_vendedor].astype(str).str.strip()
+    out["Cliente"] = df[c_cliente].astype(str).str.strip()
+    out["IMPORTE"] = pd.to_numeric(df[c_importe], errors="coerce").fillna(0.0)
+    out["TERMINOS DE PAGO"] = df[c_terminos].astype(str).str.strip()
+    out["ESTATUS"] = df[c_estatus].astype(str).str.strip()
 
-    return df
+    # periodo recalculado desde la Fecha último pago
+    pago = pd.to_datetime(df[c_pago], errors="coerce")
+    out["MES"] = pago.dt.month.astype("Int64")
+    out["AÑO"] = pago.dt.year.astype("Int64")
+    out["SEMANA"] = pago.apply(_weeknum_excel).astype("Int64")
+
+    return out.reset_index(drop=True)
 
 
 def leer_archivo(contents, fecha_corte=None):
-    """Lee el Excel subido y lo procesa. Devuelve el DataFrame
-    con las 4 columnas calculadas."""
     df = leer_excel(contents)
     if df is None or df.empty:
-        raise Exception("La BD de Ingresos está vacía o no se pudo leer.")
+        raise Exception("La BD de Ingresos (Cobranza) está vacía o no se pudo leer.")
     return procesar_bd_ingresos(df, fecha_corte=fecha_corte)

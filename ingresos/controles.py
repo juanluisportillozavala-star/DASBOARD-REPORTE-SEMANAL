@@ -2,12 +2,11 @@
 =========================================================
 CONTROLES DEL MÓDULO INGRESOS
 =========================================================
-Calendario Mes/Semana propio de Ingresos. Mismos estilos que
-Ventas, pero con IDs con sufijo "-ingresos" para no chocar con
-los callbacks de Ventas (ambos módulos coexisten).
+Segmentador de AÑO (filtro maestro, como Ventas) + calendario
+Mes/Semana. IDs con sufijo "-ingresos" para no chocar con Ventas.
 """
 
-from dash import html
+from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 
@@ -18,6 +17,30 @@ def crear_controles_ingresos():
         dbc.CardBody(
 
             [
+
+                # =====================================================
+                # SEGMENTADOR DE AÑO (filtro maestro)
+                # =====================================================
+                dbc.Row(
+                    dbc.Col(
+                        [
+                            html.Div(
+                                [html.H4("Año", className="titulo-filtro")],
+                                className="encabezado-filtro",
+                            ),
+                            dcc.Dropdown(
+                                id="dropdown-anio-ingresos",
+                                options=[],      # las llena el callback
+                                value=None,      # el callback pone el más reciente
+                                clearable=False,
+                                placeholder="Selecciona un año",
+                                style={"maxWidth": "220px"},
+                            ),
+                        ],
+                        md=12,
+                    ),
+                    className="mb-3",
+                ),
 
                 dbc.Row(
 
@@ -200,14 +223,6 @@ def crear_controles_ingresos():
                                             outline=True,
 
                                             className="cuadro-semana",
-
-                                            style={
-
-                                                "gridRow": (i - 1) // 13 + 1,
-
-                                                "gridColumn": (i - 1) % 13 + 1
-
-                                            }
 
                                         )
 
