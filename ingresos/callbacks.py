@@ -262,3 +262,4 @@ def registrar_callbacks_ingresos(app):
             clases.append("cuadro-semana activo" if s in semanas_activas else "cuadro-semana")
             deshab.append(s not in con_datos)
         return clases, deshab
+    
