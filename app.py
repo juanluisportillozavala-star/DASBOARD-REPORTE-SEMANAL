@@ -46,6 +46,10 @@ from proyeccion.vista import registrar_callbacks_proyeccion
 # Captura de proyecciones (por vendedor)
 from captura_proyeccion import registrar_callbacks_captura_proyeccion
 
+# Saldo Proveedor
+from saldo_proveedor.callbacks import registrar_callbacks_sp_calendario
+from saldo_proveedor.tabla_sp import registrar_callbacks_sp
+
 # =========================
 # Crear aplicación
 # =========================
@@ -157,6 +161,10 @@ registrar_callbacks_proyeccion(app)
 
 # Captura de proyecciones (por vendedor)
 registrar_callbacks_captura_proyeccion(app)
+
+# Saldo Proveedor
+registrar_callbacks_sp_calendario(app)
+registrar_callbacks_sp(app)
 
 # =========================
 # Ejecutar

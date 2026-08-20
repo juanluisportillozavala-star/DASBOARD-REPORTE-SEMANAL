@@ -34,6 +34,7 @@ from ventas.procesamiento import leer_archivos
 from ingresos.procesamiento import leer_archivo as leer_ingresos
 from inventario.procesamiento import leer_archivo as leer_inventario
 from cartera.procesamiento import leer_archivo as leer_cartera
+from saldo_proveedor.procesamiento import leer_archivo as leer_saldo_prov
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
@@ -70,6 +71,12 @@ def _procesar_cartera(contents_list, fecha=None):
     return leer_cartera(bd)
 
 
+def _procesar_saldo_proveedor(contents_list, fecha=None):
+    # Un solo archivo (BD CxP ya formulada). Sin fecha de corte.
+    (bd,) = contents_list
+    return leer_saldo_prov(bd)
+
+
 # --- CATÁLOGO DE MÓDULOS ---
 MODULOS_CARGA = {
     "ventas": {
@@ -102,6 +109,13 @@ MODULOS_CARGA = {
             {"id": "bd", "label": "BD Cartera"},
         ],
         "procesar": _procesar_cartera,
+    },
+    "saldo_proveedor": {
+        "titulo": "Saldo Proveedor",
+        "archivos": [
+            {"id": "bd", "label": "BD CxP"},
+        ],
+        "procesar": _procesar_saldo_proveedor,
     },
 }
 
