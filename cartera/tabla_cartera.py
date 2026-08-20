@@ -4,8 +4,13 @@ cartera/tabla_cartera.py
 =========================================================
 Tabla jerárquica de Cartera (Vendedor -> Cliente, expandible)
 con los 7 rangos de aging + Total. Diseño premium (encabezado
-azul, marcador dorado por nivel, franja de fecha de corte, fila
-TOTAL CARTERA) y SEMÁFORO en los rangos vencidos (rojos/naranja).
+azul, marcador dorado por nivel, franja de periodo, fila TOTAL
+CARTERA).
+
+Réplica de la tabla dinámica "Cartera" del Excel:
+  • SOLO términos = Crédito.
+  • Columnas de aging FIJAS.
+  • Filtros: Año (maestro) + calendario Mes/Semana.
 
 Lee de la caché del servidor (db.obtener_df).
 """
@@ -21,8 +26,10 @@ from cartera.arbol_cartera import (
 )
 
 MODULO = "cartera"
-COL_MES = "Mes"
-COL_SEMANA = "Semana"
+COL_MES = "MES"
+COL_SEMANA = "SEMANA"
+COL_ANIO = "AÑO"
+COL_TERMINOS = "TERMINOS DE PAGO"
 
 AZUL = "#173C73"
 DORADO = "#D4AF37"
@@ -30,17 +37,6 @@ DORADO = "#D4AF37"
 ALTO_FILA = 34
 ALTO_ENCABEZADO = 38
 ALTO_MAXIMO = 600
-
-# color de fondo por rango (semáforo): vencidos en rojos/naranja,
-# por vencer amarillo, vigente verde.
-COLOR_RANGO = {
-    "v90":   "#F5B7B1",   # rojo fuerte (>90)
-    "v6190": "#F8C9A4",   # naranja
-    "v3160": "#FAD7A0",   # naranja claro
-    "v030":  "#FCF3CF",   # amarillo pálido
-    "porv":  "#FDEBD0",   # crema
-    "vig":   "#D5F5E3",   # verde
-}
 
 FMT_MONEDA = {"function": "params.value == null ? '' : '$' + d3.format(',.2f')(params.value)"}
 
@@ -103,12 +99,12 @@ def _altura_dinamica(n):
     return f"{min(alto, ALTO_MAXIMO)}px"
 
 
-def crear_encabezado_periodo(fecha_corte, semanas_texto):
+def crear_encabezado_periodo(anio_txt, semanas_texto):
     return html.Div(
         [
-            html.Span("Fecha de corte:  ",
+            html.Span("Año:  ",
                       style={"color": DORADO, "fontWeight": "bold", "marginLeft": "24px"}),
-            html.Span(fecha_corte,
+            html.Span(anio_txt,
                       style={"color": "#FFFFFF", "fontWeight": "bold", "marginRight": "32px"}),
             html.Span("Semana(s):  ", style={"color": DORADO, "fontWeight": "bold"}),
             html.Span(semanas_texto, style={"color": "#FFFFFF", "fontWeight": "bold"}),
@@ -138,23 +134,19 @@ def crear_layout_tabla_cartera():
     )
 
 
-def _filtrar(df, meses, semanas):
+def _filtrar(df, anio, meses, semanas):
     if df is None:
         return df
+    # SOLO Crédito (como la tabla dinámica)
+    if COL_TERMINOS in df.columns:
+        df = df[df[COL_TERMINOS] == "Crédito"]
+    if anio:
+        df = df[df[COL_ANIO] == int(anio)]
     if meses:
         df = df[df[COL_MES].isin(meses)]
     if semanas:
         df = df[df[COL_SEMANA].isin(semanas)]
     return df
-
-
-def _fecha_corte_texto(df):
-    # la fecha de referencia está en la columna FECHA (igual en todas)
-    if df is not None and "FECHA" in df.columns and len(df):
-        f = pd.to_datetime(df["FECHA"].iloc[0], errors="coerce")
-        if pd.notna(f):
-            return f.strftime("%d/%m/%Y")
-    return "—"
 
 
 def registrar_callbacks_tabla_cartera(app):
@@ -163,17 +155,18 @@ def registrar_callbacks_tabla_cartera(app):
         Output("tabla-cartera-cont", "children"),
         Output("store-cart-arbol", "data"),
         Input("store-bd-cartera", "data"),
+        Input("dropdown-anio-cartera", "value"),
         Input("store-mes-cartera", "data"),
         Input("store-semana-cartera", "data"),
         State("store-cart-exp", "data"),
     )
-    def construir(marca, meses, semanas, ids_exp):
+    def construir(marca, anio, meses, semanas, ids_exp):
         df = db.obtener_df(MODULO)
         if df is None:
             return html.Div("Aún no hay datos de Cartera cargados.",
                             style={"color": "#6C757D"}), None
         try:
-            df_f = _filtrar(df, meses, semanas)
+            df_f = _filtrar(df, anio, meses, semanas)
             if df_f is None or len(df_f) == 0:
                 return html.Div("No hay datos para el filtro seleccionado.",
                                 style={"color": "#6C757D"}), None
@@ -183,6 +176,7 @@ def registrar_callbacks_tabla_cartera(app):
             visibles = filas_visibles_cartera(arbol, ids_exp or [])
 
             semanas_txt = ", ".join(str(s) for s in sorted(semanas)) if semanas else "Todas"
+            anio_txt = str(anio) if anio else "—"
 
             grid = dag.AgGrid(
                 id="tabla-cartera-grid",
@@ -200,7 +194,7 @@ def registrar_callbacks_tabla_cartera(app):
                 style=_estilo_grid(_altura_dinamica(len(visibles))),
             )
             contenido = html.Div([
-                crear_encabezado_periodo(_fecha_corte_texto(df_f), semanas_txt),
+                crear_encabezado_periodo(anio_txt, semanas_txt),
                 grid,
             ])
             return contenido, arbol.to_dict("records")

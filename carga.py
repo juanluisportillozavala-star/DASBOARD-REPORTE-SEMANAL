@@ -64,10 +64,10 @@ def _procesar_inventario(contents_list, fecha=None):
 
 
 def _procesar_cartera(contents_list, fecha=None):
-    # Un solo archivo + la FECHA de referencia (columna N) que el
-    # admin captura al cargar. Base de todo el aging de cartera.
+    # Un solo archivo (BD Cartera ya formulada). Ya NO se pide
+    # fecha de corte: la BD trae su columna Fecha y su aging.
     (bd,) = contents_list
-    return leer_cartera(bd, fecha_referencia=fecha)
+    return leer_cartera(bd)
 
 
 # --- CATÁLOGO DE MÓDULOS ---
@@ -102,7 +102,6 @@ MODULOS_CARGA = {
             {"id": "bd", "label": "BD Cartera"},
         ],
         "procesar": _procesar_cartera,
-        "pide_fecha": True,
     },
 }
 

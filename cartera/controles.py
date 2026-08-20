@@ -2,16 +2,11 @@
 =========================================================
 CONTROLES DEL MÓDULO CARTERA
 =========================================================
-Calendario Mes/Semana propio de Cartera. Mismos estilos que
-Ventas/Ingresos, con IDs con sufijo "-cartera" para no chocar
-con los callbacks de los otros módulos.
-
-Nota: en Cartera, Mes y Semana provienen de la FECHA de
-referencia (la que se captura al cargar), igual para todas las
-filas; por eso normalmente habrá un solo mes/semana activo.
+Segmentador de AÑO (filtro maestro, como Ventas/Ingresos) +
+calendario Mes/Semana. IDs con sufijo "-cartera".
 """
 
-from dash import html
+from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 
@@ -20,6 +15,26 @@ def crear_controles_cartera():
     return dbc.Card(
         dbc.CardBody(
             [
+                # ===== AÑO (filtro maestro) =====
+                dbc.Row(
+                    dbc.Col(
+                        [
+                            html.Div(
+                                [html.H4("Año", className="titulo-filtro")],
+                                className="encabezado-filtro",
+                            ),
+                            dcc.Dropdown(
+                                id="dropdown-anio-cartera",
+                                options=[], value=None, clearable=False,
+                                placeholder="Selecciona un año",
+                                style={"maxWidth": "220px"},
+                            ),
+                        ],
+                        md=12,
+                    ),
+                    className="mb-3",
+                ),
+
                 dbc.Row(
                     [
                         # ===== MESES =====
@@ -93,8 +108,6 @@ def crear_controles_cartera():
                                             id={"type": "btn-semana-cartera", "index": i},
                                             n_clicks=0, color="light", outline=True,
                                             className="cuadro-semana",
-                                            style={"gridRow": (i - 1) // 13 + 1,
-                                                   "gridColumn": (i - 1) % 13 + 1},
                                         )
                                         for i in range(1, 54)
                                     ],
@@ -106,7 +119,7 @@ def crear_controles_cartera():
                         ),
                     ],
                     className="g-4",
-                )
+                ),
             ]
         ),
         className="card-premium",

@@ -2,24 +2,20 @@
 =========================================================
 cartera/arbol_cartera.py
 =========================================================
-Árbol jerárquico de Cartera: Vendedor -> Cliente (contacto),
-expandible, con los 7 rangos de aging como columnas:
+Árbol jerárquico de Cartera: Vendedor -> Cliente, expandible,
+con los 7 rangos de aging como columnas:
   Vencido >90, Vencido 61-90, Vencido 31-60, Vencido 0-30,
   Por vencer, Vigente, Total Cartera.
 
-Produce filas planas con el mismo esquema base que Ingresos
-(id, parentId, nivel, concepto, tieneHijos, expandido) para
-reutilizar diseño premium y expansión por clic.
-
-El estatus/aging YA viene calculado por el procesamiento
-(columnas de aging por fila). Aquí solo se SUMAN por vendedor
-y por cliente.
+El aging YA viene calculado por el procesamiento (columnas de
+aging por fila). Aquí solo se SUMAN por vendedor y por cliente.
+El cliente viene en la columna "Clientes" (BD Cartera).
 """
 
 import pandas as pd
 
 COL_VENDEDOR = "Vendedor"
-COL_CONTACTO = "Contacto"
+COL_CLIENTE = "Clientes"
 
 # columnas de aging (campo interno -> etiqueta visible)
 RANGOS = [
@@ -77,15 +73,15 @@ def construir_arbol_cartera(df):
         fila_v.update(s_v)
         filas.append(fila_v)
 
-        contactos = sub_v[COL_CONTACTO].dropna().unique().tolist()
-        tot_cont = []
-        for c in contactos:
-            sub_c = sub_v[sub_v[COL_CONTACTO] == c]
+        clientes = sub_v[COL_CLIENTE].dropna().unique().tolist()
+        tot_cli = []
+        for c in clientes:
+            sub_c = sub_v[sub_v[COL_CLIENTE] == c]
             s_c = _sumas(sub_c)
-            tot_cont.append((c, s_c.get("total") or 0, s_c))
-        tot_cont.sort(key=lambda x: x[1], reverse=True)
+            tot_cli.append((c, s_c.get("total") or 0, s_c))
+        tot_cli.sort(key=lambda x: x[1], reverse=True)
 
-        for c, _tc, s_c in tot_cont:
+        for c, _tc, s_c in tot_cli:
             id_c = f"{id_v}||n1::{c}"
             fila_c = {"id": id_c, "parentId": id_v, "nivel": 2,
                       "concepto": str(c), "tieneHijos": False, "expandido": False}
