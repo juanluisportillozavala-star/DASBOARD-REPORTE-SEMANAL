@@ -2,74 +2,104 @@
 // Componentes JS personalizados para Dash AG Grid
 // =========================================================
 // Dash carga automáticamente cualquier .js dentro de /assets.
-// Aquí registramos un EDITOR de celda propio para los comentarios
-// de proyección: un <textarea> real donde:
-//   • Alt+Enter  -> inserta salto de línea (como Excel)
-//   • Enter      -> confirma y cierra la celda (como Excel)
-//   • Esc        -> cancela
-// Así el usuario puede dejar renglones separados en el comentario.
+// Editor propio para los comentarios de proyección: un <textarea>
+// real dentro de un recuadro, con un botón "Guardar y cerrar".
+//   • Enter        -> salto de línea NORMAL (como escribir en Word)
+//   • Botón "Guardar y cerrar" o clic afuera -> confirma y cierra
+//   • Esc          -> cancela
+// El botón evita depender de combinaciones de teclas.
 
 var dagcomponentfuncs = (window.dashAgGridComponentFunctions =
     window.dashAgGridComponentFunctions || {});
 
 dagcomponentfuncs.ComentarioEditor = class {
-    // se llama al iniciar la edición
     init(params) {
-        this.value = params.value == null ? "" : String(params.value);
+        this.params = params;
+        var valor = params.value == null ? "" : String(params.value);
 
+        // ---- contenedor (recuadro) ----
+        this.eGui = document.createElement("div");
+        this.eGui.style.display = "flex";
+        this.eGui.style.flexDirection = "column";
+        this.eGui.style.width = (params.width || 480) + "px";
+        this.eGui.style.background = "#FFFFFF";
+        this.eGui.style.border = "1px solid #173C73";
+        this.eGui.style.borderRadius = "8px";
+        this.eGui.style.boxShadow = "0 8px 24px rgba(0,0,0,0.20)";
+        this.eGui.style.padding = "10px";
+
+        // ---- textarea ----
         this.eInput = document.createElement("textarea");
-        this.eInput.value = this.value;
-        this.eInput.rows = params.rows || 8;
-        this.eInput.style.width = (params.width || 420) + "px";
-        this.eInput.style.height = (params.height || 180) + "px";
+        this.eInput.value = valor;
+        this.eInput.style.width = "100%";
+        this.eInput.style.height = (params.height || 200) + "px";
         this.eInput.style.resize = "both";
         this.eInput.style.padding = "8px 10px";
         this.eInput.style.fontFamily = "inherit";
         this.eInput.style.fontSize = "14px";
-        this.eInput.style.lineHeight = "1.4";
-        this.eInput.style.border = "1px solid #173C73";
-        this.eInput.style.borderRadius = "8px";
-        this.eInput.style.boxShadow = "0 6px 20px rgba(0,0,0,0.18)";
+        this.eInput.style.lineHeight = "1.5";
+        this.eInput.style.border = "1px solid #CBD5E1";
+        this.eInput.style.borderRadius = "6px";
         this.eInput.style.outline = "none";
+        this.eInput.style.boxSizing = "border-box";
 
-        // Manejo de teclas estilo Excel
-        this.eInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && e.altKey) {
-                // Alt+Enter -> salto de línea manual
-                e.preventDefault();
+        // Enter = salto de línea normal: impedir que AG Grid capture
+        // la tecla (si no, cerraría la celda). NO hacemos preventDefault,
+        // así el textarea inserta el salto por sí solo.
+        this.eInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
                 e.stopPropagation();
-                const ta = this.eInput;
-                const ini = ta.selectionStart;
-                const fin = ta.selectionEnd;
-                ta.value = ta.value.substring(0, ini) + "\n" + ta.value.substring(fin);
-                ta.selectionStart = ta.selectionEnd = ini + 1;
-            } else if (e.key === "Enter" && !e.shiftKey) {
-                // Enter solo -> confirmar y cerrar la celda
-                e.preventDefault();
-                params.stopEditing();
             }
-            // Esc lo maneja AG Grid (cancela)
         });
+
+        // ---- barra inferior con botón ----
+        var barra = document.createElement("div");
+        barra.style.display = "flex";
+        barra.style.justifyContent = "space-between";
+        barra.style.alignItems = "center";
+        barra.style.marginTop = "8px";
+
+        var ayuda = document.createElement("span");
+        ayuda.textContent = "Enter = nuevo renglón";
+        ayuda.style.fontSize = "12px";
+        ayuda.style.color = "#6C757D";
+
+        var self = this;
+        this.eBtn = document.createElement("button");
+        this.eBtn.type = "button";
+        this.eBtn.textContent = "Guardar y cerrar";
+        this.eBtn.style.backgroundColor = "#173C73";
+        this.eBtn.style.color = "#FFFFFF";
+        this.eBtn.style.border = "none";
+        this.eBtn.style.padding = "8px 18px";
+        this.eBtn.style.borderRadius = "6px";
+        this.eBtn.style.fontWeight = "600";
+        this.eBtn.style.cursor = "pointer";
+        this.eBtn.addEventListener("click", function () {
+            self.params.stopEditing();
+        });
+
+        barra.appendChild(ayuda);
+        barra.appendChild(this.eBtn);
+
+        this.eGui.appendChild(this.eInput);
+        this.eGui.appendChild(barra);
     }
 
-    // elemento que se muestra
     getGui() {
-        return this.eInput;
+        return this.eGui;
     }
 
-    // enfoca y coloca el cursor al final al abrir
     afterGuiAttached() {
         this.eInput.focus();
-        const n = this.eInput.value.length;
+        var n = this.eInput.value.length;
         this.eInput.setSelectionRange(n, n);
     }
 
-    // valor final que guarda la celda
     getValue() {
         return this.eInput.value;
     }
 
-    // usar como popup (recuadro flotante)
     isPopup() {
         return true;
     }
