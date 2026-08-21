@@ -283,7 +283,7 @@ def _grid_comentarios(filas_coment, fila_total, editable):
              "flex": 2, "editable": editable, "sortable": False, "filter": False,
              "headerClass": "hdr-proy hdr-proy-izq",
              "wrapText": True, "autoHeight": True,
-             "cellEditor": {"function": "ComentarioEditor"},
+             "cellEditor": "ComentarioEditor",
              "cellEditorPopup": True,
              "cellEditorParams": {"rows": 8, "width": 460, "height": 200},
              "cellStyle": {"whiteSpace": "pre-wrap", "lineHeight": "1.4",
