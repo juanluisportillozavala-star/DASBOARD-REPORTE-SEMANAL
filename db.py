@@ -53,6 +53,8 @@ def inicializar_esquema():
         cur.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS vendedor TEXT;")
     # tablas del módulo Proyección
     inicializar_esquema_proyeccion()
+    # comentarios de proyección (por vendedor/mes/producto)
+    inicializar_esquema_comentarios_proyeccion()
     # tabla del histórico mensual de inventario
     inicializar_esquema_inventario_historico()
 
@@ -516,3 +518,62 @@ def meses_con_historico_inv(anio):
                     "WHERE anio=%s ORDER BY mes;", (int(anio),))
         filas = cur.fetchall()
     return [int(f[0]) for f in filas]
+
+
+# =========================================================
+# ==========  COMENTARIOS DE PROYECCIÓN  ==================
+# =========================================================
+# Comentarios de texto libre por (año, mes, vendedor, producto),
+# editables SOLO por el propio vendedor desde la vista de
+# Proyección. Independientes de la cantidad proyectada; se
+# guardan aparte para no tocar la tabla 'proyecciones'.
+#
+#   comentarios_proyeccion : (anio INT, mes INT, vendedor TEXT,
+#       producto TEXT, comentario TEXT)  PK (anio,mes,vendedor,producto)
+
+
+def inicializar_esquema_comentarios_proyeccion():
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS comentarios_proyeccion (
+                anio       INTEGER NOT NULL,
+                mes        INTEGER NOT NULL,
+                vendedor   TEXT NOT NULL,
+                producto   TEXT NOT NULL,
+                comentario TEXT DEFAULT '',
+                PRIMARY KEY (anio, mes, vendedor, producto)
+            );
+        """)
+
+
+def leer_comentarios(anio, mes, vendedor):
+    """Dict {producto: comentario} de un (año, mes, vendedor)."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT producto, comentario FROM comentarios_proyeccion "
+                    "WHERE anio=%s AND mes=%s AND vendedor=%s;",
+                    (int(anio), int(mes), vendedor))
+        filas = cur.fetchall()
+    return {f[0]: (f[1] or "") for f in filas}
+
+
+def guardar_comentarios(anio, mes, vendedor, comentarios_por_producto):
+    """Guarda (upsert) los comentarios de un (año, mes, vendedor).
+    comentarios_por_producto: dict {producto: texto}. Los textos
+    vacíos también se guardan (permite borrar un comentario)."""
+    anio = int(anio); mes = int(mes)
+    vendedor = (vendedor or "").strip()
+    if not vendedor:
+        raise ValueError("Falta el vendedor.")
+    with _conn() as c, c.cursor() as cur:
+        for producto, texto in comentarios_por_producto.items():
+            producto = (producto or "").strip()
+            if not producto:
+                continue
+            texto = "" if texto is None else str(texto)
+            cur.execute("""
+                INSERT INTO comentarios_proyeccion
+                    (anio, mes, vendedor, producto, comentario)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (anio, mes, vendedor, producto)
+                DO UPDATE SET comentario = EXCLUDED.comentario;
+            """, (anio, mes, vendedor, producto, texto))

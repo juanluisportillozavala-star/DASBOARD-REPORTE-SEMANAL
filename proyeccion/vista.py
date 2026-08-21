@@ -100,6 +100,10 @@ def crear_layout_proyeccion():
             html.P("Productos vendidos que no están en la lista de proyección.",
                    style={"color": "#6C757D", "fontSize": "13px"}),
             html.Div(id="proy-ver-varios"),
+
+            # ===== SECCIÓN DE COMENTARIOS (solo pestañas de vendedor) =====
+            html.Div(id="proy-coment-seccion"),
+
             html.Br(),
         ]
     )
@@ -216,6 +220,133 @@ def _grid_varios(detalle):
     )
 
 
+# =========================================================
+# TABLA DE COMENTARIOS (solo pestañas de vendedor)
+# =========================================================
+
+def _puede_editar_coment(sesion, vendedor):
+    """Solo el propio vendedor edita sus comentarios (ni admin ni
+    otros). Coincide con lo pedido: 'la única persona que podrá
+    editar es el propio vendedor'."""
+    if not sesion:
+        return False
+    return (sesion.get("vendedor") or "") == vendedor
+
+
+def _filas_comentarios(filas, guardados):
+    """Arma las filas de la tabla de comentarios a partir de las
+    filas de cumplimiento (producto/proyección/facturado) + los
+    comentarios guardados. Incluye VARIOS. Excluye la fila TOTAL
+    (se pone como fila fijada abajo)."""
+    out = []
+    tot_proy = tot_fact = 0.0
+    for f in filas:
+        prod = f.get("producto")
+        if prod in (None, "TOTAL"):
+            continue
+        proy = f.get("proyeccion") or 0
+        fact = f.get("facturado") or 0
+        tot_proy += float(proy)
+        tot_fact += float(fact)
+        out.append({
+            "producto": prod,
+            "proyeccion": proy,
+            "facturado": fact,
+            "comentario": guardados.get(prod, ""),
+        })
+    total = {"producto": "TOTAL",
+             "proyeccion": round(tot_proy, 2),
+             "facturado": round(tot_fact, 2),
+             "comentario": ""}
+    return out, total
+
+
+def _grid_comentarios(filas_coment, fila_total, editable):
+    return dag.AgGrid(
+        id="proy-coment-grid",
+        rowData=filas_coment,
+        columnDefs=[
+            {"field": "producto", "headerName": "Producto", "minWidth": 240,
+             "pinned": "left", "sortable": False, "filter": False, "editable": False,
+             "headerClass": "hdr-proy hdr-proy-izq",
+             "cellStyle": {"function":
+                 "params.data.producto === 'VARIOS' ? {fontStyle:'italic', color:'#6C757D'} : {}"}},
+            {"field": "proyeccion", "headerName": "Proyectado", "type": "numericColumn",
+             "valueFormatter": FMT_NUM, "minWidth": 120, "editable": False,
+             "sortable": False, "filter": False, "headerClass": "hdr-proy",
+             "cellStyle": {"textAlign": "center"}},
+            {"field": "facturado", "headerName": "Facturado", "type": "numericColumn",
+             "valueFormatter": FMT_NUM, "minWidth": 120, "editable": False,
+             "sortable": False, "filter": False, "headerClass": "hdr-proy",
+             "cellStyle": {"textAlign": "center"}},
+            {"field": "comentario", "headerName": "Comentarios", "minWidth": 380,
+             "flex": 2, "editable": editable, "sortable": False, "filter": False,
+             "headerClass": "hdr-proy hdr-proy-izq",
+             "wrapText": True, "autoHeight": True,
+             "cellEditor": "agLargeTextCellEditor",
+             "cellEditorPopup": True,
+             "cellEditorParams": {"maxLength": 4000, "rows": 8, "cols": 60},
+             "cellStyle": {"whiteSpace": "normal", "lineHeight": "1.4",
+                           "backgroundColor": "#FFFDF5" if editable else "#FFFFFF"}},
+        ],
+        dashGridOptions={"animateRows": False, "headerHeight": 40,
+                         "domLayout": "autoHeight",
+                         "pinnedBottomRowData": [fila_total],
+                         "singleClickEdit": True,
+                         "stopEditingWhenCellsLoseFocus": True,
+                         "suppressCellFocus": False},
+        getRowStyle={"function":
+            "params.node.rowPinned ? "
+            "{fontWeight:'700', color:'#173C73', backgroundColor:'#F4F1E4'} : {}"},
+        defaultColDef={"resizable": True, "sortable": False, "filter": False},
+        className="ag-theme-alpine",
+        style={"width": "100%", "--ag-header-background-color": AZUL,
+               "--ag-header-foreground-color": "#FFFFFF"},
+    )
+
+
+def _seccion_comentarios(filas, guardados, editable, vendedor):
+    filas_coment, total = _filas_comentarios(filas, guardados)
+    encabezado = [
+        html.Br(),
+        html.H4("Comentarios por producto",
+                style={"color": AZUL, "fontWeight": "700", "marginBottom": "6px"}),
+    ]
+    if editable:
+        encabezado.append(
+            html.P("Escribe en la columna Comentarios (doble clic para abrir el "
+                   "editor) y pulsa «Guardar comentarios».",
+                   style={"color": "#6C757D", "fontSize": "13px"}))
+    else:
+        encabezado.append(
+            html.P(f"Comentarios de {vendedor} (solo lectura).",
+                   style={"color": "#6C757D", "fontSize": "13px"}))
+
+    hijos = encabezado + [
+        _grid_comentarios(filas_coment, total, editable),
+    ]
+    if editable:
+        hijos += [
+            html.Button(
+                [html.I(className="fas fa-floppy-disk me-2"), "Guardar comentarios"],
+                id="proy-coment-guardar", n_clicks=0,
+                style={"backgroundColor": AZUL, "color": "white", "border": "none",
+                       "padding": "12px 22px", "borderRadius": "8px",
+                       "fontWeight": "600", "cursor": "pointer", "marginTop": "12px"}),
+            html.Div(id="proy-coment-msg",
+                     style={"marginTop": "10px", "minHeight": "22px"}),
+        ]
+    else:
+        # el botón/mensaje deben existir siempre (para el callback), aunque ocultos
+        hijos += [
+            html.Div(
+                [html.Button("", id="proy-coment-guardar", n_clicks=0),
+                 html.Div(id="proy-coment-msg")],
+                style={"display": "none"}),
+        ]
+    return html.Div(hijos)
+
+
 def registrar_callbacks_proyeccion(app):
 
     from proyeccion.logica import construir_tabla_proyeccion
@@ -253,19 +384,21 @@ def registrar_callbacks_proyeccion(app):
         val = actual if actual in meses else meses[0]
         return ops, val
 
-    # construir la tabla de cumplimiento + detalle de varios,
-    # según la pestaña activa (Acumulado o un vendedor)
+    # construir la tabla de cumplimiento + detalle de varios +
+    # sección de comentarios, según la pestaña activa.
     @app.callback(
         Output("proy-ver-tabla", "children"),
         Output("proy-ver-varios", "children"),
+        Output("proy-coment-seccion", "children"),
         Input("proy-ver-anio", "value"),
         Input("proy-ver-mes", "value"),
         Input("proy-ver-tab", "value"),
+        State("store-sesion", "data"),
     )
-    def construir(anio, mes, tab):
+    def construir(anio, mes, tab, sesion):
         if not anio or not mes:
             return (html.Div("Selecciona año y mes.", style={"color": "#6C757D"}),
-                    "")
+                    "", "")
 
         if tab == ACUMULADO:
             proyeccion = db.leer_proyeccion_acumulada(anio, mes)
@@ -277,9 +410,50 @@ def registrar_callbacks_proyeccion(app):
         if not proyeccion:
             quien = "este periodo" if tab == ACUMULADO else f"{tab} en este periodo"
             return (html.Div(f"No hay proyección guardada para {quien}.",
-                             style={"color": "#6C757D"}), "")
+                             style={"color": "#6C757D"}), "", "")
 
         df_ventas = db.obtener_df("ventas")
         filas, total, varios = construir_tabla_proyeccion(
             proyeccion, df_ventas, anio, mes, vendedor)
-        return _grid(filas, total), _grid_varios(varios)
+
+        # sección de comentarios: SOLO en pestañas de vendedor
+        if vendedor is None:
+            seccion = ""
+        else:
+            guardados = db.leer_comentarios(anio, mes, vendedor)
+            editable = _puede_editar_coment(sesion, vendedor)
+            seccion = _seccion_comentarios(filas, guardados, editable, vendedor)
+
+        return _grid(filas, total), _grid_varios(varios), seccion
+
+    # guardar comentarios (solo el propio vendedor; validado aquí)
+    @app.callback(
+        Output("proy-coment-msg", "children"),
+        Input("proy-coment-guardar", "n_clicks"),
+        State("proy-ver-anio", "value"),
+        State("proy-ver-mes", "value"),
+        State("proy-ver-tab", "value"),
+        State("proy-coment-grid", "rowData"),
+        State("store-sesion", "data"),
+        prevent_initial_call=True,
+    )
+    def guardar_comentarios(n, anio, mes, tab, rows, sesion):
+        if not n:
+            return no_update
+        if tab == ACUMULADO or not anio or not mes:
+            return no_update
+        if not _puede_editar_coment(sesion, tab):
+            return html.Span("Solo el propio vendedor puede guardar sus comentarios.",
+                             style={"color": "#C0392B"})
+        comentarios = {}
+        for r in (rows or []):
+            prod = r.get("producto")
+            if prod in (None, "TOTAL"):
+                continue
+            comentarios[prod] = r.get("comentario") or ""
+        try:
+            db.guardar_comentarios(anio, mes, tab, comentarios)
+            return html.Span("Comentarios guardados.",
+                             style={"color": "#198754", "fontWeight": "600"})
+        except Exception as e:
+            return html.Span(f"Error: {e}", style={"color": "#C0392B"})
