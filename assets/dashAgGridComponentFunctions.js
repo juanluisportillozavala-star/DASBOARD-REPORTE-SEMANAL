@@ -1,18 +1,23 @@
 // =========================================================
-// Componentes JS personalizados para Dash AG Grid
+// Componentes / funciones JS para Dash AG Grid
 // =========================================================
 // Dash carga automáticamente cualquier .js dentro de /assets.
-// Editor propio para los comentarios de proyección: un <textarea>
-// real dentro de un recuadro, con un botón "Guardar y cerrar".
-//   • Enter        -> salto de línea NORMAL (como escribir en Word)
+//
+// IMPORTANTE: los EDITORES de celda personalizados van en
+// window.dashAgGridFunctions (NO en dashAgGridComponentFunctions,
+// que es para renderers). Se referencian desde Python como
+//   "cellEditor": {"function": "ComentarioEditor"}
+//
+// Editor de comentarios de proyección: un <textarea> real dentro
+// de un recuadro, con botón "Guardar y cerrar".
+//   • Enter  -> salto de línea NORMAL
 //   • Botón "Guardar y cerrar" o clic afuera -> confirma y cierra
-//   • Esc          -> cancela
-// El botón evita depender de combinaciones de teclas.
+//   • Esc    -> cancela
 
-var dagcomponentfuncs = (window.dashAgGridComponentFunctions =
-    window.dashAgGridComponentFunctions || {});
+var dagfuncs = (window.dashAgGridFunctions =
+    window.dashAgGridFunctions || {});
 
-dagcomponentfuncs.ComentarioEditor = class {
+dagfuncs.ComentarioEditor = class {
     init(params) {
         this.params = params;
         var valor = params.value == null ? "" : String(params.value);
@@ -43,9 +48,8 @@ dagcomponentfuncs.ComentarioEditor = class {
         this.eInput.style.outline = "none";
         this.eInput.style.boxSizing = "border-box";
 
-        // Enter = salto de línea normal: impedir que AG Grid capture
-        // la tecla (si no, cerraría la celda). NO hacemos preventDefault,
-        // así el textarea inserta el salto por sí solo.
+        // Enter = salto de línea normal: evitar que AG Grid capture
+        // la tecla y cierre la edición.
         this.eInput.addEventListener("keydown", function (e) {
             if (e.key === "Enter") {
                 e.stopPropagation();
