@@ -25,6 +25,11 @@ DORADO = "#D4AF37"
 
 ACUMULADO = "ACUMULADO"
 
+# "vendedor" reservado para guardar los comentarios propios del
+# Acumulado en la misma tabla comentarios_proyeccion sin chocar
+# con ningún vendedor real.
+CLAVE_ACUMULADO = "__ACUMULADO__"
+
 MESES = [
     (1, "Enero"), (2, "Febrero"), (3, "Marzo"), (4, "Abril"),
     (5, "Mayo"), (6, "Junio"), (7, "Julio"), (8, "Agosto"),
@@ -224,13 +229,16 @@ def _grid_varios(detalle):
 # TABLA DE COMENTARIOS (solo pestañas de vendedor)
 # =========================================================
 
-def _puede_editar_coment(sesion, vendedor):
-    """Solo el propio vendedor edita sus comentarios (ni admin ni
-    otros). Coincide con lo pedido: 'la única persona que podrá
-    editar es el propio vendedor'."""
+def _puede_editar_coment(sesion, clave):
+    """Reglas de edición de comentarios:
+      • Acumulado (clave == CLAVE_ACUMULADO): SOLO admin.
+      • Pestaña de vendedor (clave == nombre del vendedor): SOLO
+        ese vendedor (ni admin ni otros)."""
     if not sesion:
         return False
-    return (sesion.get("vendedor") or "") == vendedor
+    if clave == CLAVE_ACUMULADO:
+        return sesion.get("rol") == "admin"
+    return (sesion.get("vendedor") or "") == clave
 
 
 def _filas_comentarios(filas, guardados):
@@ -305,7 +313,7 @@ def _grid_comentarios(filas_coment, fila_total, editable):
     )
 
 
-def _seccion_comentarios(filas, guardados, editable, vendedor):
+def _seccion_comentarios(filas, guardados, editable, etiqueta):
     filas_coment, total = _filas_comentarios(filas, guardados)
     encabezado = [
         html.Br(),
@@ -319,7 +327,7 @@ def _seccion_comentarios(filas, guardados, editable, vendedor):
                    style={"color": "#6C757D", "fontSize": "13px"}))
     else:
         encabezado.append(
-            html.P(f"Comentarios de {vendedor} (solo lectura).",
+            html.P(f"{etiqueta} (solo lectura).",
                    style={"color": "#6C757D", "fontSize": "13px"}))
 
     hijos = encabezado + [
@@ -416,17 +424,22 @@ def registrar_callbacks_proyeccion(app):
         filas, total, varios = construir_tabla_proyeccion(
             proyeccion, df_ventas, anio, mes, vendedor)
 
-        # sección de comentarios: SOLO en pestañas de vendedor
-        if vendedor is None:
-            seccion = ""
+        # sección de comentarios:
+        #   • Acumulado -> comentarios propios (clave __ACUMULADO__), edita admin
+        #   • Vendedor  -> sus comentarios, edita solo ese vendedor
+        if tab == ACUMULADO:
+            clave = CLAVE_ACUMULADO
+            etiqueta = "Comentarios del acumulado"
         else:
-            guardados = db.leer_comentarios(anio, mes, vendedor)
-            editable = _puede_editar_coment(sesion, vendedor)
-            seccion = _seccion_comentarios(filas, guardados, editable, vendedor)
+            clave = tab
+            etiqueta = f"Comentarios de {tab}"
+        guardados = db.leer_comentarios(anio, mes, clave)
+        editable = _puede_editar_coment(sesion, clave)
+        seccion = _seccion_comentarios(filas, guardados, editable, etiqueta)
 
         return _grid(filas, total), _grid_varios(varios), seccion
 
-    # guardar comentarios (solo el propio vendedor; validado aquí)
+    # guardar comentarios (permiso validado en servidor según pestaña)
     @app.callback(
         Output("proy-coment-msg", "children"),
         Input("proy-coment-guardar", "n_clicks"),
@@ -440,11 +453,16 @@ def registrar_callbacks_proyeccion(app):
     def guardar_comentarios(n, anio, mes, tab, rows, sesion):
         if not n:
             return no_update
-        if tab == ACUMULADO or not anio or not mes:
+        if not anio or not mes:
             return no_update
-        if not _puede_editar_coment(sesion, tab):
-            return html.Span("Solo el propio vendedor puede guardar sus comentarios.",
-                             style={"color": "#C0392B"})
+        # clave de guardado según la pestaña
+        clave = CLAVE_ACUMULADO if tab == ACUMULADO else tab
+        if not _puede_editar_coment(sesion, clave):
+            if tab == ACUMULADO:
+                msg = "Solo un administrador puede guardar los comentarios del acumulado."
+            else:
+                msg = "Solo el propio vendedor puede guardar sus comentarios."
+            return html.Span(msg, style={"color": "#C0392B"})
         comentarios = {}
         for r in (rows or []):
             prod = r.get("producto")
@@ -452,7 +470,7 @@ def registrar_callbacks_proyeccion(app):
                 continue
             comentarios[prod] = r.get("comentario") or ""
         try:
-            db.guardar_comentarios(anio, mes, tab, comentarios)
+            db.guardar_comentarios(anio, mes, clave, comentarios)
             return html.Span("Comentarios guardados.",
                              style={"color": "#198754", "fontWeight": "600"})
         except Exception as e:
