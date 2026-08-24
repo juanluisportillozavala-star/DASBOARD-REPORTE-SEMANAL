@@ -2,8 +2,10 @@
 =========================================================
 CONTROLES DEL MÓDULO CARTERA
 =========================================================
-Segmentador de AÑO (filtro maestro, como Ventas/Ingresos) +
-calendario Mes/Semana. IDs con sufijo "-cartera".
+Segmentador de AÑO + calendario. Aquí la SEMANA es de
+selección ÚNICA (una a la vez): cada semana es un corte de
+aging distinto. El MES solo se resalta (no filtra), por eso su
+fila no tiene iconos de acción. IDs con sufijo "-cartera".
 """
 
 from dash import html, dcc
@@ -37,28 +39,11 @@ def crear_controles_cartera():
 
                 dbc.Row(
                     [
-                        # ===== MESES =====
+                        # ===== MES (solo informativo: resalta) =====
                         dbc.Col(
                             [
                                 html.Div(
-                                    [
-                                        html.H4("Mes", className="titulo-filtro"),
-                                        html.Div(
-                                            [
-                                                html.I(
-                                                    className="fas fa-check-double filtro-icono",
-                                                    id="seleccionar-todos-meses-cartera",
-                                                    title="Seleccionar todos",
-                                                ),
-                                                html.I(
-                                                    className="fas fa-filter-circle-xmark filtro-icono",
-                                                    id="limpiar-meses-cartera",
-                                                    title="Limpiar selección",
-                                                ),
-                                            ],
-                                            className="acciones-filtro",
-                                        ),
-                                    ],
+                                    [html.H4("Mes", className="titulo-filtro")],
                                     className="encabezado-filtro",
                                 ),
                                 html.Div(
@@ -74,31 +59,18 @@ def crear_controles_cartera():
                                     id="selector-meses-cartera",
                                     className="grid-meses",
                                 ),
+                                html.Small(
+                                    "El mes se resalta según la semana elegida.",
+                                    style={"color": "#98A6B8"},
+                                ),
                             ],
                             md=3,
                         ),
-                        # ===== SEMANAS =====
+                        # ===== SEMANA (selección ÚNICA) =====
                         dbc.Col(
                             [
                                 html.Div(
-                                    [
-                                        html.H4("Semana", className="titulo-filtro"),
-                                        html.Div(
-                                            [
-                                                html.I(
-                                                    className="fas fa-check-double filtro-icono",
-                                                    id="seleccionar-todas-semanas-cartera",
-                                                    title="Seleccionar todas",
-                                                ),
-                                                html.I(
-                                                    className="fas fa-filter-circle-xmark filtro-icono",
-                                                    id="limpiar-semanas-cartera",
-                                                    title="Limpiar selección",
-                                                ),
-                                            ],
-                                            className="acciones-filtro",
-                                        ),
-                                    ],
+                                    [html.H4("Semana", className="titulo-filtro")],
                                     className="encabezado-filtro",
                                 ),
                                 html.Div(
@@ -113,6 +85,10 @@ def crear_controles_cartera():
                                     ],
                                     id="selector-semanas-cartera",
                                     className="grid-semanas",
+                                ),
+                                html.Small(
+                                    "Selecciona una semana (una a la vez).",
+                                    style={"color": "#98A6B8"},
                                 ),
                             ],
                             md=9,

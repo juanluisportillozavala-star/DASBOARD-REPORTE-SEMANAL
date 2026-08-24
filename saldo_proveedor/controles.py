@@ -2,8 +2,9 @@
 =========================================================
 CONTROLES DEL MÓDULO SALDO PROVEEDOR
 =========================================================
-Segmentador de AÑO (filtro maestro) + calendario Mes/Semana.
-IDs con sufijo "-sp".
+Segmentador de AÑO + calendario. La SEMANA es de selección
+ÚNICA (una a la vez): cada semana es un corte de aging. El MES
+solo se resalta (no filtra). IDs con sufijo "-sp".
 """
 
 from dash import html, dcc
@@ -37,28 +38,11 @@ def crear_controles_sp():
 
                 dbc.Row(
                     [
-                        # ===== MESES =====
+                        # ===== MES (solo informativo: resalta) =====
                         dbc.Col(
                             [
                                 html.Div(
-                                    [
-                                        html.H4("Mes", className="titulo-filtro"),
-                                        html.Div(
-                                            [
-                                                html.I(
-                                                    className="fas fa-check-double filtro-icono",
-                                                    id="seleccionar-todos-meses-sp",
-                                                    title="Seleccionar todos",
-                                                ),
-                                                html.I(
-                                                    className="fas fa-filter-circle-xmark filtro-icono",
-                                                    id="limpiar-meses-sp",
-                                                    title="Limpiar selección",
-                                                ),
-                                            ],
-                                            className="acciones-filtro",
-                                        ),
-                                    ],
+                                    [html.H4("Mes", className="titulo-filtro")],
                                     className="encabezado-filtro",
                                 ),
                                 html.Div(
@@ -74,31 +58,18 @@ def crear_controles_sp():
                                     id="selector-meses-sp",
                                     className="grid-meses",
                                 ),
+                                html.Small(
+                                    "El mes se resalta según la semana elegida.",
+                                    style={"color": "#98A6B8"},
+                                ),
                             ],
                             md=3,
                         ),
-                        # ===== SEMANAS =====
+                        # ===== SEMANA (selección ÚNICA) =====
                         dbc.Col(
                             [
                                 html.Div(
-                                    [
-                                        html.H4("Semana", className="titulo-filtro"),
-                                        html.Div(
-                                            [
-                                                html.I(
-                                                    className="fas fa-check-double filtro-icono",
-                                                    id="seleccionar-todas-semanas-sp",
-                                                    title="Seleccionar todas",
-                                                ),
-                                                html.I(
-                                                    className="fas fa-filter-circle-xmark filtro-icono",
-                                                    id="limpiar-semanas-sp",
-                                                    title="Limpiar selección",
-                                                ),
-                                            ],
-                                            className="acciones-filtro",
-                                        ),
-                                    ],
+                                    [html.H4("Semana", className="titulo-filtro")],
                                     className="encabezado-filtro",
                                 ),
                                 html.Div(
@@ -113,6 +84,10 @@ def crear_controles_sp():
                                     ],
                                     id="selector-semanas-sp",
                                     className="grid-semanas",
+                                ),
+                                html.Small(
+                                    "Selecciona una semana (una a la vez).",
+                                    style={"color": "#98A6B8"},
                                 ),
                             ],
                             md=9,

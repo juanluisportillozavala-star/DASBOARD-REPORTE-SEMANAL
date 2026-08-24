@@ -90,7 +90,7 @@ def crear_encabezado_periodo(anio_txt, semanas_texto):
                       style={"color": DORADO, "fontWeight": "bold", "marginLeft": "24px"}),
             html.Span(anio_txt,
                       style={"color": "#FFFFFF", "fontWeight": "bold", "marginRight": "32px"}),
-            html.Span("Semana(s):  ", style={"color": DORADO, "fontWeight": "bold"}),
+            html.Span("Semana:  ", style={"color": DORADO, "fontWeight": "bold"}),
             html.Span(semanas_texto, style={"color": "#FFFFFF", "fontWeight": "bold"}),
         ],
         style={"backgroundColor": AZUL, "padding": "12px 16px",
@@ -116,13 +116,12 @@ def crear_layout_tabla_sp():
     )
 
 
-def _filtrar(df, anio, meses, semanas):
+def _filtrar(df, anio, semanas):
     if df is None:
         return df
     if anio:
         df = df[df[COL_ANIO] == int(anio)]
-    if meses:
-        df = df[df[COL_MES].isin(meses)]
+    # el MES ya no filtra; solo la SEMANA (única)
     if semanas:
         df = df[df[COL_SEMANA].isin(semanas)]
     return df
@@ -162,22 +161,21 @@ def registrar_callbacks_sp(app):
         Output("tabla-sp-cont", "children"),
         Input("store-bd-sp", "data"),
         Input("dropdown-anio-sp", "value"),
-        Input("store-mes-sp", "data"),
         Input("store-semana-sp", "data"),
     )
-    def construir(marca, anio, meses, semanas):
+    def construir(marca, anio, semanas):
         df = db.obtener_df(MODULO)
         if df is None:
             return html.Div("Aún no hay datos de Saldo Proveedor cargados.",
                             style={"color": "#6C757D"})
         try:
-            df_f = _filtrar(df, anio, meses, semanas)
+            df_f = _filtrar(df, anio, semanas)
             if df_f is None or len(df_f) == 0:
-                return html.Div("No hay datos para el filtro seleccionado.",
+                return html.Div("Selecciona una semana para ver el saldo.",
                                 style={"color": "#6C757D"})
 
             filas, total = _filas(df_f)
-            semanas_txt = ", ".join(str(s) for s in sorted(semanas)) if semanas else "Todas"
+            semana_txt = str(sorted(semanas)[0]) if semanas else "—"
             anio_txt = str(anio) if anio else "—"
 
             grid = dag.AgGrid(
@@ -197,7 +195,7 @@ def registrar_callbacks_sp(app):
                 style=_estilo_grid(_altura_dinamica(len(filas))),
             )
             return html.Div([
-                crear_encabezado_periodo(anio_txt, semanas_txt),
+                crear_encabezado_periodo(anio_txt, semana_txt),
                 grid,
             ])
         except Exception as e:

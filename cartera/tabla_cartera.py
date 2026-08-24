@@ -106,7 +106,7 @@ def crear_encabezado_periodo(anio_txt, semanas_texto):
                       style={"color": DORADO, "fontWeight": "bold", "marginLeft": "24px"}),
             html.Span(anio_txt,
                       style={"color": "#FFFFFF", "fontWeight": "bold", "marginRight": "32px"}),
-            html.Span("Semana(s):  ", style={"color": DORADO, "fontWeight": "bold"}),
+            html.Span("Semana:  ", style={"color": DORADO, "fontWeight": "bold"}),
             html.Span(semanas_texto, style={"color": "#FFFFFF", "fontWeight": "bold"}),
         ],
         style={"backgroundColor": AZUL, "padding": "12px 16px",
@@ -134,7 +134,7 @@ def crear_layout_tabla_cartera():
     )
 
 
-def _filtrar(df, anio, meses, semanas):
+def _filtrar(df, anio, semanas):
     if df is None:
         return df
     # SOLO Crédito (como la tabla dinámica)
@@ -142,8 +142,7 @@ def _filtrar(df, anio, meses, semanas):
         df = df[df[COL_TERMINOS] == "Crédito"]
     if anio:
         df = df[df[COL_ANIO] == int(anio)]
-    if meses:
-        df = df[df[COL_MES].isin(meses)]
+    # el MES ya no filtra; solo la SEMANA (única)
     if semanas:
         df = df[df[COL_SEMANA].isin(semanas)]
     return df
@@ -156,26 +155,25 @@ def registrar_callbacks_tabla_cartera(app):
         Output("store-cart-arbol", "data"),
         Input("store-bd-cartera", "data"),
         Input("dropdown-anio-cartera", "value"),
-        Input("store-mes-cartera", "data"),
         Input("store-semana-cartera", "data"),
         State("store-cart-exp", "data"),
     )
-    def construir(marca, anio, meses, semanas, ids_exp):
+    def construir(marca, anio, semanas, ids_exp):
         df = db.obtener_df(MODULO)
         if df is None:
             return html.Div("Aún no hay datos de Cartera cargados.",
                             style={"color": "#6C757D"}), None
         try:
-            df_f = _filtrar(df, anio, meses, semanas)
+            df_f = _filtrar(df, anio, semanas)
             if df_f is None or len(df_f) == 0:
-                return html.Div("No hay datos para el filtro seleccionado.",
+                return html.Div("Selecciona una semana para ver la cartera.",
                                 style={"color": "#6C757D"}), None
 
             arbol = construir_arbol_cartera(df_f)
             total = total_general_cartera(df_f)
             visibles = filas_visibles_cartera(arbol, ids_exp or [])
 
-            semanas_txt = ", ".join(str(s) for s in sorted(semanas)) if semanas else "Todas"
+            semana_txt = str(sorted(semanas)[0]) if semanas else "—"
             anio_txt = str(anio) if anio else "—"
 
             grid = dag.AgGrid(
@@ -194,7 +192,7 @@ def registrar_callbacks_tabla_cartera(app):
                 style=_estilo_grid(_altura_dinamica(len(visibles))),
             )
             contenido = html.Div([
-                crear_encabezado_periodo(anio_txt, semanas_txt),
+                crear_encabezado_periodo(anio_txt, semana_txt),
                 grid,
             ])
             return contenido, arbol.to_dict("records")

@@ -2,10 +2,9 @@
 =========================================================
 CALLBACKS DEL MÓDULO SALDO PROVEEDOR
 =========================================================
-Calendario Mes/Semana propio (IDs con sufijo -sp) + AÑO como
-filtro maestro. Mes/semana operan dentro del año elegido.
-Columnas AÑO / MES / SEMANA las genera el procesamiento desde
-la columna Fecha de la BD CxP.
+Selección de SEMANA ÚNICA (una a la vez). Al entrar o cambiar
+de año, arranca en la semana MÁS RECIENTE. El MES solo se
+resalta; no filtra. El filtrado real es Año + Semana.
 """
 
 from dash import Input, Output, State, ALL, ctx, no_update
@@ -31,11 +30,18 @@ def _df_anio(anio):
     return df
 
 
-def _semanas_de_meses(df, meses):
-    if df is None or not meses:
+def _semana_reciente(df):
+    if df is None or len(df) == 0:
+        return None
+    ss = df[COL_SEMANA].dropna()
+    return int(ss.max()) if len(ss) else None
+
+
+def _meses_de_semana(df, semana):
+    if df is None or semana is None:
         return []
-    sub = df[df[COL_MES].isin(meses)]
-    return sub[COL_SEMANA].dropna().astype(int).unique().tolist()
+    sub = df[df[COL_SEMANA] == semana]
+    return sorted(sub[COL_MES].dropna().astype(int).unique().tolist())
 
 
 def registrar_callbacks_sp_calendario(app):
@@ -66,139 +72,45 @@ def registrar_callbacks_sp_calendario(app):
             return no_update, opciones, anio_sel
         return {"cargado": True, "version": version}, opciones, anio_sel
 
+    # al cambiar de año (o al cargar) -> semana MÁS RECIENTE
     @app.callback(
-        Output("store-mes-sp", "data", allow_duplicate=True),
         Output("store-semana-sp", "data", allow_duplicate=True),
+        Output("store-mes-sp", "data", allow_duplicate=True),
         Input("dropdown-anio-sp", "value"),
         prevent_initial_call=True,
     )
-    def reiniciar_al_cambiar_anio(anio):
-        return [], []
+    def al_cambiar_anio(anio):
+        df = _df_anio(anio)
+        sem = _semana_reciente(df)
+        if sem is None:
+            return [], []
+        return [sem], _meses_de_semana(df, sem)
 
+    # clic en una semana -> selección ÚNICA (reemplaza)
     @app.callback(
-        Output("store-mes-sp", "data"),
         Output("store-semana-sp", "data"),
-        Input({"type": "btn-mes-sp", "index": ALL}, "n_clicks"),
-        Input("seleccionar-todos-meses-sp", "n_clicks"),
-        Input("limpiar-meses-sp", "n_clicks"),
-        State("store-mes-sp", "data"),
-        State("store-semana-sp", "data"),
-        State("dropdown-anio-sp", "value"),
-        prevent_initial_call=True,
-    )
-    def seleccionar_meses(_, todo, limpiar, meses_activos, semanas_activas, anio):
-        if ctx.triggered_id is None:
-            return no_update, no_update
-        if meses_activos is None:
-            meses_activos = []
-        if semanas_activas is None:
-            semanas_activas = []
-
-        trigger = ctx.triggered_id
-        df = _df_anio(anio)
-
-        if trigger == "seleccionar-todos-meses-sp":
-            if df is None:
-                return no_update, no_update
-            meses = sorted(df[COL_MES].dropna().astype(int).unique().tolist())
-            semanas = sorted(_semanas_de_meses(df, meses))
-            return meses, semanas
-
-        if trigger == "limpiar-meses-sp":
-            return [], []
-
-        mes = int(trigger["index"])
-        if df is None:
-            if mes in meses_activos:
-                meses_activos.remove(mes)
-            else:
-                meses_activos.append(mes)
-            return sorted(meses_activos), no_update
-
-        semanas_del_mes = set(_semanas_de_meses(df, [mes]))
-        if mes in meses_activos:
-            meses_activos.remove(mes)
-            semanas_activas = [s for s in semanas_activas if s not in semanas_del_mes]
-        else:
-            meses_activos.append(mes)
-            semanas_activas = sorted(set(semanas_activas) | semanas_del_mes)
-
-        return sorted(meses_activos), semanas_activas
-
-    @app.callback(
-        Output({"type": "btn-mes-sp", "index": ALL}, "className"),
-        Output({"type": "btn-mes-sp", "index": ALL}, "disabled"),
-        Input("store-mes-sp", "data"),
-        Input("dropdown-anio-sp", "value"),
-        Input("store-bd-sp", "data"),
-    )
-    def pintar_meses(meses_activos, anio, marca):
-        if meses_activos is None:
-            meses_activos = []
-        df = _df_anio(anio)
-        con_datos = set() if df is None else set(df[COL_MES].dropna().astype(int).unique().tolist())
-        clases, deshab = [], []
-        for i in range(1, 13):
-            clases.append("cuadro-mes activo" if i in meses_activos else "cuadro-mes")
-            deshab.append(i not in con_datos)
-        return clases, deshab
-
-    @app.callback(
-        Output("store-semana-sp", "data", allow_duplicate=True),
-        Output("store-mes-sp", "data", allow_duplicate=True),
+        Output("store-mes-sp", "data"),
         Input({"type": "btn-semana-sp", "index": ALL}, "n_clicks"),
-        Input("seleccionar-todas-semanas-sp", "n_clicks"),
-        Input("limpiar-semanas-sp", "n_clicks"),
-        State("store-semana-sp", "data"),
-        State("store-mes-sp", "data"),
         State("dropdown-anio-sp", "value"),
         prevent_initial_call=True,
     )
-    def seleccionar_semanas(_, todo, limpiar, semanas_activas, meses_activos, anio):
-        if ctx.triggered_id is None:
+    def seleccionar_semana(_, anio):
+        trig = ctx.triggered_id
+        if not isinstance(trig, dict):
             return no_update, no_update
-        if semanas_activas is None:
-            semanas_activas = []
-        if meses_activos is None:
-            meses_activos = []
+        disparo = ctx.triggered[0].get("value") if ctx.triggered else None
+        if not disparo:
+            return no_update, no_update
 
-        trigger = ctx.triggered_id
+        semana = int(trig["index"])
         df = _df_anio(anio)
-
-        if trigger == "seleccionar-todas-semanas-sp":
-            if df is None:
+        if df is not None:
+            con_datos = set(df[COL_SEMANA].dropna().astype(int).unique().tolist())
+            if semana not in con_datos:
                 return no_update, no_update
-            semanas = sorted(df[COL_SEMANA].dropna().astype(int).unique().tolist())
-            meses = sorted(df[COL_MES].dropna().astype(int).unique().tolist())
-            return semanas, meses
+        return [semana], _meses_de_semana(df, semana)
 
-        if trigger == "limpiar-semanas-sp":
-            return [], []
-
-        semana = int(trigger["index"])
-        mes_result = no_update
-
-        if semana in semanas_activas:
-            semanas_activas.remove(semana)
-            if df is not None:
-                fila = df[df[COL_SEMANA] == semana]
-                if not fila.empty:
-                    mes_de = int(fila[COL_MES].dropna().astype(int).iloc[0])
-                    semanas_de_ese_mes = set(_semanas_de_meses(df, [mes_de]))
-                    quedan = [s for s in semanas_activas if s in semanas_de_ese_mes]
-                    if not quedan and mes_de in meses_activos:
-                        mes_result = sorted([m for m in meses_activos if m != mes_de])
-        else:
-            semanas_activas.append(semana)
-            if df is not None:
-                fila = df[df[COL_SEMANA] == semana]
-                if not fila.empty:
-                    mes_de = int(fila[COL_MES].dropna().astype(int).iloc[0])
-                    if mes_de not in meses_activos:
-                        mes_result = sorted(meses_activos + [mes_de])
-
-        return sorted(semanas_activas), mes_result
-
+    # pintar SEMANAS (única activa; deshabilita las sin datos)
     @app.callback(
         Output({"type": "btn-semana-sp", "index": ALL}, "className"),
         Output({"type": "btn-semana-sp", "index": ALL}, "disabled"),
@@ -206,13 +118,30 @@ def registrar_callbacks_sp_calendario(app):
         Input("dropdown-anio-sp", "value"),
         Input("store-bd-sp", "data"),
     )
-    def pintar_semanas(semanas_activas, anio, marca):
-        if semanas_activas is None:
-            semanas_activas = []
+    def pintar_semanas(sel, anio, marca):
+        sel = set(sel or [])
         df = _df_anio(anio)
-        con_datos = set() if df is None else set(df[COL_SEMANA].dropna().astype(int).unique().tolist())
+        con = set() if df is None else set(df[COL_SEMANA].dropna().astype(int).unique().tolist())
         clases, deshab = [], []
         for s in range(1, 54):
-            clases.append("cuadro-semana activo" if s in semanas_activas else "cuadro-semana")
-            deshab.append(s not in con_datos)
+            clases.append("cuadro-semana activo" if s in sel else "cuadro-semana")
+            deshab.append(s not in con)
+        return clases, deshab
+
+    # pintar MESES (solo resalta el mes de la semana; no filtra)
+    @app.callback(
+        Output({"type": "btn-mes-sp", "index": ALL}, "className"),
+        Output({"type": "btn-mes-sp", "index": ALL}, "disabled"),
+        Input("store-mes-sp", "data"),
+        Input("dropdown-anio-sp", "value"),
+        Input("store-bd-sp", "data"),
+    )
+    def pintar_meses(mes_sel, anio, marca):
+        mes_sel = set(mes_sel or [])
+        df = _df_anio(anio)
+        con = set() if df is None else set(df[COL_MES].dropna().astype(int).unique().tolist())
+        clases, deshab = [], []
+        for i in range(1, 13):
+            clases.append("cuadro-mes activo" if i in mes_sel else "cuadro-mes")
+            deshab.append(i not in con)
         return clases, deshab
