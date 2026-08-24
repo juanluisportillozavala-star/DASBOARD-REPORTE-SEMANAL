@@ -57,6 +57,21 @@ def _crudo_ventas(contents):
     return _pd.read_excel(xls, sheet_name=hoja)
 
 
+def crudo_ventas(contents):
+    """BD Ventas cruda (para procesar y para el reporte)."""
+    return _crudo_ventas(contents)
+
+
+def crudo_ventas_catalogo(contents):
+    """Catálogo crudo (primera hoja del archivo de catálogo)."""
+    if contents is None:
+        return None
+    data = _b64.b64decode(contents.split(",")[1])
+    xls = _pd.ExcelFile(_io.BytesIO(data))
+    hoja = "Catalogo" if "Catalogo" in xls.sheet_names else xls.sheet_names[0]
+    return _pd.read_excel(xls, sheet_name=hoja)
+
+
 # módulo -> (id del archivo que trae la BD, función lectora del crudo)
 _CRUDO_LECTORES = {
     "ventas": ("bd", _crudo_ventas),
@@ -74,9 +89,32 @@ DORADO = "#D4AF37"
 # Los módulos con pide_fecha reciben además 'fecha' (str ISO).
 
 def _procesar_ventas(contents_list, fecha=None):
-    catalogo, ventas = contents_list  # orden segun 'archivos' abajo
-    _, df_ventas = leer_archivos(catalogo, ventas)
-    return df_ventas
+    # Orden de 'archivos': [catalogo (opcional), bd]
+    catalogo, ventas = contents_list
+
+    if catalogo is not None:
+        # Se subió catálogo: se usa y se GUARDA para la próxima vez.
+        df_cat = crudo_ventas_catalogo(catalogo)
+        if df_cat is not None and len(df_cat):
+            try:
+                db.guardar_crudo("catalogo_ventas", df_cat)
+            except Exception as ec:
+                print(f">>> [CAT] No se pudo guardar el catálogo: {ec}", flush=True)
+    else:
+        # No se subió: usar el ÚLTIMO catálogo guardado en Supabase.
+        try:
+            df_cat = db.leer_crudo("catalogo_ventas")
+        except Exception:
+            df_cat = None
+        if df_cat is None or len(df_cat) == 0:
+            raise Exception(
+                "No subiste el Catálogo y no hay uno guardado. "
+                "Sube el Catálogo al menos la primera vez.")
+
+    # procesar la BD de ventas con el catálogo (subido o recuperado)
+    df_ventas_cruda = crudo_ventas(ventas)
+    from ventas.procesamiento import procesar_bd_ventas
+    return procesar_bd_ventas(df_cat, df_ventas_cruda)
 
 
 def _procesar_ingresos(contents_list, fecha=None):
@@ -111,7 +149,7 @@ MODULOS_CARGA = {
     "ventas": {
         "titulo": "Ventas",
         "archivos": [
-            {"id": "catalogo", "label": "Catálogo"},
+            {"id": "catalogo", "label": "Catálogo (opcional)", "opcional": True},
             {"id": "bd", "label": "BD Ventas"},
         ],
         "procesar": _procesar_ventas,
@@ -315,15 +353,19 @@ def registrar_callbacks_carga(app):
             if cid["modulo"] == modulo:
                 por_archivo[cid["archivo"]] = cont
 
-        # Validar que estén todos
-        faltan = [a for a in orden if not por_archivo.get(a)]
+        # Validar que estén todos los OBLIGATORIOS (los marcados
+        # como "opcional" pueden faltar; ej. el Catálogo de Ventas).
+        obligatorios = [a["id"] for a in cfg["archivos"] if not a.get("opcional")]
+        faltan = [a for a in obligatorios if not por_archivo.get(a)]
         if faltan:
             salida[idx] = html.Div(
                 "Falta seleccionar: " + ", ".join(faltan),
                 style={"color": "#DC3545"})
             return salida
 
-        contents_ordenados = [por_archivo[a] for a in orden]
+        # contents en el orden de 'archivos' (los opcionales que no
+        # se subieron van como None)
+        contents_ordenados = [por_archivo.get(a) for a in orden]
 
         # Si el módulo pide fecha, recuperarla y validarla
         fecha = None
