@@ -244,7 +244,26 @@ def _solo_visible(workbook_xml, hoja_visible):
         return wv[:-1] + f' activeTab="{idx_visible}">'
     workbook_xml = re.sub(r'<workbookView\b[^>]*/?>', _fix,
                           workbook_xml, count=1)
-    return workbook_xml
+    return workbook_xml, hoja_visible
+
+
+def _ajustar_tabselected(sheet_xml, seleccionar):
+    """Deja tabSelected="1" solo en la hoja visible y lo quita del
+    resto. Si Excel ve una hoja OCULTA aún 'seleccionada' junto con
+    la visible, las trata como GRUPO y bloquea las dinámicas."""
+    m = re.search(r'<sheetView\b[^>]*?>', sheet_xml)
+    if not m:
+        return sheet_xml
+    tag = m.group(0)
+    tag_limpio = re.sub(r'\s+tabSelected="[^"]*"', "", tag)
+    if seleccionar:
+        if tag_limpio.endswith("/>"):
+            nuevo = tag_limpio[:-2] + ' tabSelected="1"/>'
+        else:
+            nuevo = tag_limpio[:-1] + ' tabSelected="1">'
+    else:
+        nuevo = tag_limpio
+    return sheet_xml.replace(tag, nuevo, 1)
 
 
 def _actualizar_pivotcache(cache_xml, hoja, n_filas):
@@ -326,8 +345,19 @@ def generar_reporte(plantilla_path, solo_modulo=None):
     if solo_modulo and solo_modulo in MODULO_PIVOTE:
         hoja_vis = MODULO_PIVOTE[solo_modulo]
         wbxml = contenido["xl/workbook.xml"].decode("utf-8")
-        wbxml = _solo_visible(wbxml, hoja_vis)
+        wbxml, _ = _solo_visible(wbxml, hoja_vis)
         contenido["xl/workbook.xml"] = wbxml.encode("utf-8")
+
+        # dejar tabSelected="1" SOLO en la hoja visible; quitarlo del
+        # resto (si no, Excel las trata como grupo y bloquea las
+        # dinámicas: "modo de edición de grupo").
+        parte_visible = mapa.get(hoja_vis)
+        for nombre_hoja, parte in mapa.items():
+            if parte not in contenido:
+                continue
+            xml = contenido[parte].decode("utf-8")
+            xml = _ajustar_tabselected(xml, seleccionar=(parte == parte_visible))
+            contenido[parte] = xml.encode("utf-8")
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:
