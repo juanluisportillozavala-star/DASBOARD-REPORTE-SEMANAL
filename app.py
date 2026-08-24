@@ -216,3 +216,4 @@ registrar_callbacks_sp(app)
 if __name__ == "__main__":
 
     app.run(debug=True)
+    
