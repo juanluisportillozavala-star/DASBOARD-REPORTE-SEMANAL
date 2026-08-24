@@ -36,7 +36,7 @@ def crear_layout_saldo_proveedor():
                                    className="subtitulo"),
                         ]
                     ),
-                    boton_descargar_reporte(),
+                    boton_descargar_reporte("saldo_proveedor"),
                 ],
                 style={"display": "flex", "justifyContent": "space-between",
                        "alignItems": "flex-start", "flexWrap": "wrap", "gap": "12px"},

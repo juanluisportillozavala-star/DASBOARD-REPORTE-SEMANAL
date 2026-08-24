@@ -37,7 +37,7 @@ def crear_layout_cartera():
                                    className="subtitulo"),
                         ]
                     ),
-                    boton_descargar_reporte(),
+                    boton_descargar_reporte("cartera"),
                 ],
                 style={"display": "flex", "justifyContent": "space-between",
                        "alignItems": "flex-start", "flexWrap": "wrap", "gap": "12px"},

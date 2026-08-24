@@ -76,7 +76,7 @@ def crear_layout_ventas():
 
                     ),
 
-                    boton_descargar_reporte(),
+                    boton_descargar_reporte("ventas"),
 
                 ],
 

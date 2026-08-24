@@ -43,6 +43,15 @@ MODULO_HOJA = {
     "saldo_proveedor": "BD CxP",
 }
 
+# módulo interno -> nombre de la hoja de la TABLA DINÁMICA (la que
+# se deja visible cuando se descarga "solo ese módulo").
+MODULO_PIVOTE = {
+    "ventas": "Ventas",
+    "ingresos": "Ingreso",
+    "cartera": "Cartera",
+    "saldo_proveedor": "Saldo Prov",
+}
+
 _NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 _NS_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
@@ -207,6 +216,37 @@ def _actualizar_sheet(sheet_xml, headers, df, estilos):
     return sheet_xml, n_filas
 
 
+def _solo_visible(workbook_xml, hoja_visible):
+    """Deja visible SOLO la hoja indicada; oculta todas las demás.
+    Ajusta activeTab a la hoja visible. No borra nada (seguro)."""
+    sheets = list(re.finditer(r'<sheet\b[^>]*/>', workbook_xml))
+    viejos = [m.group(0) for m in sheets]
+    nuevas = []
+    idx_visible = 0
+    for i, tag in enumerate(viejos):
+        nm = re.search(r'name="([^"]+)"', tag)
+        nombre = nm.group(1) if nm else ""
+        tag_sin = re.sub(r'\s+state="[^"]*"', "", tag)
+        if nombre == hoja_visible:
+            idx_visible = i
+            nuevas.append(tag_sin)  # visible
+        else:
+            nuevas.append(tag_sin[:-2] + ' state="hidden"/>')
+    for viejo, nuevo in zip(viejos, nuevas):
+        workbook_xml = workbook_xml.replace(viejo, nuevo, 1)
+
+    # activeTab -> índice de la hoja visible
+    def _fix(m):
+        wv = m.group(0)
+        wv = re.sub(r'\s+activeTab="[^"]*"', "", wv)
+        if wv.endswith("/>"):
+            return wv[:-2] + f' activeTab="{idx_visible}"/>'
+        return wv[:-1] + f' activeTab="{idx_visible}">'
+    workbook_xml = re.sub(r'<workbookView\b[^>]*/?>', _fix,
+                          workbook_xml, count=1)
+    return workbook_xml
+
+
 def _actualizar_pivotcache(cache_xml, hoja, n_filas):
     """Ajusta el ref del worksheetSource de esa hoja al nuevo número
     de filas y activa refreshOnLoad."""
@@ -230,9 +270,13 @@ def _actualizar_pivotcache(cache_xml, hoja, n_filas):
 # función principal
 # ---------------------------------------------------------
 
-def generar_reporte(plantilla_path):
+def generar_reporte(plantilla_path, solo_modulo=None):
     """Devuelve los BYTES del xlsx con las BD reemplazadas por lo
-    guardado en Supabase (BD cruda). Las dinámicas quedan vivas."""
+    guardado en Supabase (BD cruda). Las dinámicas quedan vivas.
+
+    Si solo_modulo se indica (ventas/ingresos/cartera/saldo_proveedor),
+    el archivo se descarga con SOLO la pestaña de ese módulo visible
+    (las demás hojas se ocultan, no se borran, para no romper nada)."""
     with zipfile.ZipFile(plantilla_path) as z:
         nombres = z.namelist()
         contenido = {n: z.read(n) for n in nombres}
@@ -277,6 +321,13 @@ def generar_reporte(plantilla_path):
                 x = x.replace("<pivotCacheDefinition ",
                               '<pivotCacheDefinition refreshOnLoad="1" ', 1)
             contenido[n] = x.encode("utf-8")
+
+    # si se pidió solo un módulo, ocultar las demás hojas
+    if solo_modulo and solo_modulo in MODULO_PIVOTE:
+        hoja_vis = MODULO_PIVOTE[solo_modulo]
+        wbxml = contenido["xl/workbook.xml"].decode("utf-8")
+        wbxml = _solo_visible(wbxml, hoja_vis)
+        contenido["xl/workbook.xml"] = wbxml.encode("utf-8")
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as z:

@@ -130,12 +130,20 @@ def descargar_reporte():
             "No se encontró la plantilla. Sube el archivo a "
             "plantillas/REPORTE_SEMANAL_FINAL.xlsx en el repositorio.",
             status=404, mimetype="text/plain")
+    # ?modulo=ventas|ingresos|cartera|saldo_proveedor  -> solo esa pestaña
+    from flask import request as _request
+    modulo = _request.args.get("modulo") or None
+    validos = {"ventas", "ingresos", "cartera", "saldo_proveedor"}
+    if modulo not in validos:
+        modulo = None
     try:
-        data = _export.generar_reporte(_PLANTILLA)
+        data = _export.generar_reporte(_PLANTILLA, solo_modulo=modulo)
     except Exception as e:
         return Response(f"Error al generar el reporte: {e}",
                         status=500, mimetype="text/plain")
-    nombre = f"Reporte_Liderza_{_dt.now():%Y-%m-%d}.xlsx"
+    etiqueta = {"ventas": "Ventas", "ingresos": "Ingresos",
+                "cartera": "Cartera", "saldo_proveedor": "SaldoProveedor"}.get(modulo, "Completo")
+    nombre = f"Reporte_Liderza_{etiqueta}_{_dt.now():%Y-%m-%d}.xlsx"
     return _send_file(
         _io_bytes(data),
         as_attachment=True,
@@ -216,4 +224,3 @@ registrar_callbacks_sp(app)
 if __name__ == "__main__":
 
     app.run(debug=True)
-    

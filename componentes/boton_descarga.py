@@ -15,11 +15,16 @@ AZUL = "#173C73"
 DORADO = "#D4AF37"
 
 
-def boton_descargar_reporte(texto="Descargar Excel"):
+def boton_descargar_reporte(modulo=None, texto="Descargar Excel"):
+    """Enlace-botón a /descargar-reporte. Si se pasa 'modulo'
+    (ventas/ingresos/cartera/saldo_proveedor), el Excel se descarga
+    con solo la pestaña de ese módulo visible."""
+    href = "/descargar-reporte"
+    if modulo:
+        href += f"?modulo={modulo}"
     return html.A(
         [html.I(className="fas fa-file-excel me-2"), texto],
-        href="/descargar-reporte",
-        # download deja que el navegador lo baje como archivo
+        href=href,
         download="Reporte_Liderza.xlsx",
         target="_blank",
         style={
