@@ -17,6 +17,7 @@ from dash import html, dcc
 
 from saldo_proveedor.controles import crear_controles_sp
 from saldo_proveedor.tabla_sp import crear_layout_tabla_sp
+from componentes.boton_descarga import boton_descargar_reporte
 
 
 def crear_layout_saldo_proveedor():
@@ -26,9 +27,20 @@ def crear_layout_saldo_proveedor():
             dcc.Store(id="store-mes-sp", data=[]),
             dcc.Store(id="store-semana-sp", data=[]),
 
-            html.H1("Saldo Proveedor", className="titulo"),
-            html.P("Cuentas por pagar por proveedor.",
-                   className="subtitulo"),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H1("Saldo Proveedor", className="titulo"),
+                            html.P("Cuentas por pagar por proveedor (aging).",
+                                   className="subtitulo"),
+                        ]
+                    ),
+                    boton_descargar_reporte(),
+                ],
+                style={"display": "flex", "justifyContent": "space-between",
+                       "alignItems": "flex-start", "flexWrap": "wrap", "gap": "12px"},
+            ),
             html.Br(),
 
             crear_controles_sp(),

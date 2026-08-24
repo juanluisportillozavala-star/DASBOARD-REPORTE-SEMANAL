@@ -55,6 +55,8 @@ def inicializar_esquema():
     inicializar_esquema_proyeccion()
     # comentarios de proyección (por vendedor/mes/producto)
     inicializar_esquema_comentarios_proyeccion()
+    # BD crudas (para descargar el reporte con dinámicas vivas)
+    inicializar_esquema_crudos()
     # tabla del histórico mensual de inventario
     inicializar_esquema_inventario_historico()
 
@@ -577,3 +579,59 @@ def guardar_comentarios(anio, mes, vendedor, comentarios_por_producto):
                 ON CONFLICT (anio, mes, vendedor, producto)
                 DO UPDATE SET comentario = EXCLUDED.comentario;
             """, (anio, mes, vendedor, producto, texto))
+
+
+# =========================================================
+# ==========  BD CRUDAS (para descargar el reporte)  ======
+# =========================================================
+# Guarda la BD tal como se subió (TODAS las columnas originales),
+# aparte de los datos procesados. Se usa solo para regenerar el
+# Excel-reporte con las tablas dinámicas vivas.
+#
+#   datasets_crudos : (modulo TEXT PK, datos JSONB, actualizado)
+
+
+def inicializar_esquema_crudos():
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS datasets_crudos (
+                modulo      TEXT PRIMARY KEY,
+                datos       JSONB NOT NULL,
+                actualizado TIMESTAMP DEFAULT now()
+            );
+        """)
+
+
+def guardar_crudo(modulo, df):
+    """Guarda (reemplaza) la BD cruda de un módulo, con TODAS sus
+    columnas tal como venían. Conserva fechas como texto ISO."""
+    registros = _normalizar_para_json(df).to_dict("records")
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("""
+            INSERT INTO datasets_crudos (modulo, datos, actualizado)
+            VALUES (%s, %s, now())
+            ON CONFLICT (modulo)
+            DO UPDATE SET datos=EXCLUDED.datos, actualizado=now();
+        """, (modulo, Json(registros)))
+
+
+def leer_crudo(modulo):
+    """DataFrame de la BD cruda de un módulo, o None si no existe.
+    Reconstruye fechas desde el texto ISO para las columnas que
+    parezcan de fecha."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT datos FROM datasets_crudos WHERE modulo=%s;", (modulo,))
+        fila = cur.fetchone()
+    if not fila:
+        return None
+    df = pd.DataFrame(fila[0])
+    # intentar reconvertir columnas de fecha (texto ISO -> datetime)
+    for col in df.columns:
+        if df[col].dtype == object:
+            muestra = df[col].dropna().astype(str).head(20)
+            if len(muestra) and muestra.str.match(r"^\d{4}-\d{2}-\d{2}").mean() > 0.7:
+                try:
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+                except Exception:
+                    pass
+    return df

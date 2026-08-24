@@ -107,6 +107,49 @@ def ping():
     resp.headers.pop("Set-Cookie", None)
     return resp
 
+
+# ==========================================================
+# ENDPOINT /descargar-reporte  —  Excel con dinámicas VIVAS
+# ==========================================================
+# Genera el REPORTE tomando la plantilla del repo y reemplazando
+# las 4 BD (Ventas/Cobranza/Cartera/CxP) con lo guardado en
+# Supabase. Devuelve el archivo como descarga. Las dinámicas se
+# refrescan solas al abrir el archivo en Excel.
+import os as _os
+from datetime import datetime as _dt
+from flask import send_file as _send_file
+import exportar_reporte as _export
+
+_PLANTILLA = _os.path.join(_os.path.dirname(__file__),
+                           "plantillas", "REPORTE_SEMANAL_FINAL.xlsx")
+
+@server.route("/descargar-reporte")
+def descargar_reporte():
+    if not _os.path.exists(_PLANTILLA):
+        return Response(
+            "No se encontró la plantilla. Sube el archivo a "
+            "plantillas/REPORTE_SEMANAL_FINAL.xlsx en el repositorio.",
+            status=404, mimetype="text/plain")
+    try:
+        data = _export.generar_reporte(_PLANTILLA)
+    except Exception as e:
+        return Response(f"Error al generar el reporte: {e}",
+                        status=500, mimetype="text/plain")
+    nombre = f"Reporte_Liderza_{_dt.now():%Y-%m-%d}.xlsx"
+    return _send_file(
+        _io_bytes(data),
+        as_attachment=True,
+        download_name=nombre,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+def _io_bytes(data):
+    import io
+    b = io.BytesIO(data)
+    b.seek(0)
+    return b
+
 # =========================
 # Layout principal
 # =========================

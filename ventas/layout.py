@@ -14,6 +14,7 @@ from ventas.controles import crear_controles
 from ventas.tablas_ventas import crear_layout_tablas_ventas
 from ventas.graficos import crear_layout_graficos
 from ventas.comparativo import crear_layout_comparativo
+from componentes.boton_descarga import boton_descargar_reporte
 
 
 def crear_layout_ventas():
@@ -44,22 +45,46 @@ def crear_layout_ventas():
             dcc.Store(id="store-arbol-total", data=None),
 
             # ==========================================
-            # TITULO
+            # TITULO  + botón de descarga
             # ==========================================
 
-            html.H1(
+            html.Div(
 
-                "Ventas",
+                [
 
-                className="titulo"
+                    html.Div(
 
-            ),
+                        [
 
-            html.P(
+                            html.H1(
 
-                "Reporte semanal de ventas.",
+                                "Ventas",
 
-                className="subtitulo"
+                                className="titulo"
+
+                            ),
+
+                            html.P(
+
+                                "Reporte semanal de ventas.",
+
+                                className="subtitulo"
+
+                            ),
+
+                        ]
+
+                    ),
+
+                    boton_descargar_reporte(),
+
+                ],
+
+                style={"display": "flex", "justifyContent": "space-between",
+
+                       "alignItems": "flex-start", "flexWrap": "wrap",
+
+                       "gap": "12px"},
 
             ),
 

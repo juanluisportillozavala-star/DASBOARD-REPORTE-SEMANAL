@@ -475,3 +475,4 @@ def registrar_callbacks_proyeccion(app):
                              style={"color": "#198754", "fontWeight": "600"})
         except Exception as e:
             return html.Span(f"Error: {e}", style={"color": "#C0392B"})
+        

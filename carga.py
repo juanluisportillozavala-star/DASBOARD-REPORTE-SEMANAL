@@ -36,6 +36,35 @@ from inventario.procesamiento import leer_archivo as leer_inventario
 from cartera.procesamiento import leer_archivo as leer_cartera
 from saldo_proveedor.procesamiento import leer_archivo as leer_saldo_prov
 
+# Lectores de la BD CRUDA (hoja tal cual) para el reporte descargable.
+# Cada uno devuelve el DataFrame con TODAS las columnas originales.
+from ingresos.procesamiento import leer_excel as crudo_ingresos
+from cartera.procesamiento import leer_excel as crudo_cartera
+from saldo_proveedor.procesamiento import leer_excel as crudo_saldo_prov
+
+# Para ventas leemos la hoja "BD Ventas" del archivo bd directamente.
+import base64 as _b64
+import io as _io
+import pandas as _pd
+
+
+def _crudo_ventas(contents):
+    if contents is None:
+        return None
+    data = _b64.b64decode(contents.split(",")[1])
+    xls = _pd.ExcelFile(_io.BytesIO(data))
+    hoja = "BD Ventas" if "BD Ventas" in xls.sheet_names else xls.sheet_names[0]
+    return _pd.read_excel(xls, sheet_name=hoja)
+
+
+# módulo -> (id del archivo que trae la BD, función lectora del crudo)
+_CRUDO_LECTORES = {
+    "ventas": ("bd", _crudo_ventas),
+    "ingresos": ("bd", crudo_ingresos),
+    "cartera": ("bd", crudo_cartera),
+    "saldo_proveedor": ("bd", crudo_saldo_prov),
+}
+
 AZUL = "#173C73"
 DORADO = "#D4AF37"
 
@@ -313,6 +342,21 @@ def registrar_callbacks_carga(app):
             df = cfg["procesar"](contents_ordenados, fecha)
             admin = sesion.get("usuario", "admin")
             db.guardar_dataset(modulo, df, admin)
+
+            # Guardar además la BD CRUDA (todas las columnas) para
+            # poder regenerar el reporte Excel con dinámicas vivas.
+            if modulo in _CRUDO_LECTORES:
+                try:
+                    file_id, lector = _CRUDO_LECTORES[modulo]
+                    contents_bd = por_archivo.get(file_id)
+                    if contents_bd is not None:
+                        df_crudo = lector(contents_bd)
+                        if df_crudo is not None and len(df_crudo):
+                            db.guardar_crudo(modulo, df_crudo)
+                except Exception as ec:
+                    print(f">>> [CRUDO] No se pudo guardar crudo de {modulo}: {ec}",
+                          flush=True)
+
             extra = f" (fecha de corte: {fecha})" if fecha else ""
             salida[idx] = html.Div(
                 [html.I(className="fas fa-circle-check me-2"),
