@@ -604,28 +604,52 @@ def inicializar_esquema_crudos():
 
 def guardar_crudo(modulo, df):
     """Guarda (reemplaza) la BD cruda de un módulo, con TODAS sus
-    columnas tal como venían. Conserva fechas como texto ISO."""
-    registros = _normalizar_para_json(df).to_dict("records")
+    columnas tal como venían. Conserva fechas como texto ISO.
+
+    IMPORTANTE: se guarda también el ORDEN de las columnas
+    (__cols__), porque JSONB de PostgreSQL NO conserva el orden de
+    las llaves. Sin esto, al releer el catálogo las columnas se
+    revuelven y el cruce por posición de Ventas falla."""
+    dfn = _normalizar_para_json(df)
+    payload = {
+        "__cols__": [str(c) for c in dfn.columns],
+        "__data__": dfn.to_dict("records"),
+    }
     with _conn() as c, c.cursor() as cur:
         cur.execute("""
             INSERT INTO datasets_crudos (modulo, datos, actualizado)
             VALUES (%s, %s, now())
             ON CONFLICT (modulo)
             DO UPDATE SET datos=EXCLUDED.datos, actualizado=now();
-        """, (modulo, Json(registros)))
+        """, (modulo, Json(payload)))
 
 
 def leer_crudo(modulo):
     """DataFrame de la BD cruda de un módulo, o None si no existe.
-    Reconstruye fechas desde el texto ISO para las columnas que
-    parezcan de fecha."""
+    Restaura el ORDEN de columnas guardado y reconstruye fechas
+    desde el texto ISO para las columnas que parezcan de fecha."""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT datos FROM datasets_crudos WHERE modulo=%s;", (modulo,))
         fila = cur.fetchone()
     if not fila:
         return None
-    df = pd.DataFrame(fila[0])
-    # intentar reconvertir columnas de fecha (texto ISO -> datetime)
+
+    payload = fila[0]
+    # formato nuevo: {"__cols__": [...], "__data__": [...]}
+    if isinstance(payload, dict) and "__data__" in payload:
+        df = pd.DataFrame(payload["__data__"])
+        cols = payload.get("__cols__")
+        if cols:
+            # reordenar a como estaban originalmente (solo las que existan)
+            cols_validas = [c for c in cols if c in df.columns]
+            # añadir al final cualquier columna extra no listada
+            extra = [c for c in df.columns if c not in cols_validas]
+            df = df[cols_validas + extra]
+    else:
+        # formato viejo (lista de registros, sin orden garantizado)
+        df = pd.DataFrame(payload)
+
+    # reconvertir columnas de fecha (texto ISO -> datetime)
     for col in df.columns:
         if df[col].dtype == object:
             muestra = df[col].dropna().astype(str).head(20)
