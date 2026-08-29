@@ -1,0 +1,1282 @@
+/*
+=========================================================
+SISTEMA GERENCIAL LIDERZA
+=========================================================
+ESTILOS GENERALES
+*/
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html,
+body{
+
+    height:100%;
+
+    font-family:
+        "Segoe UI",
+        Arial,
+        sans-serif;
+
+    background:#EEF2F7;
+
+}
+
+body{
+
+    overflow:hidden;
+
+}
+
+#react-entry-point{
+
+    height:100%;
+
+}
+
+._dash-undo-redo{
+
+    display:none;
+
+}
+
+/*======================================================
+HEADER
+======================================================*/
+
+.header{
+
+    position:fixed;
+
+    top:0;
+
+    left:0;
+
+    right:0;
+
+    height:90px;
+
+    background:#173C73;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:0 28px;
+
+    z-index:9999;
+
+    box-shadow:0 3px 10px rgba(0,0,0,.18);
+
+}
+
+/*======================================================
+LINEA DORADA
+======================================================*/
+
+.linea-dorada{
+
+    position:fixed;
+
+    top:90px;
+
+    left:0;
+
+    right:0;
+
+    height:4px;
+
+    background:#C9A227;
+
+    z-index:9998;
+
+}
+
+/*======================================================
+LOGO
+======================================================*/
+
+.header-logo{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:18px;
+
+}
+
+.logo-box{
+
+    background:white;
+
+    padding:12px;
+
+    border-radius:14px;
+
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    margin-right:18px;
+
+}
+
+.logo-img{
+
+    width:170px;
+
+    height:auto;
+
+}
+
+.logo-titulo{
+
+    color:white;
+
+    font-size:31px;
+
+    font-weight:700;
+
+}
+
+.logo-subtitulo{
+
+    color:#DADADA;
+
+    font-size:15px;
+
+}
+
+/*======================================================
+USUARIO
+======================================================*/
+
+.header-user{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+}
+
+.usuario{
+
+    color:white;
+
+    font-size:16px;
+
+    font-weight:600;
+
+}
+
+.puesto{
+
+    color:#D5D5D5;
+
+}
+
+.avatar{
+
+    width:46px;
+
+    height:46px;
+
+    border-radius:50%;
+
+    background:#C9A227;
+
+    color:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-weight:bold;
+
+    font-size:18px;
+
+}
+
+/*======================================================
+SIDEBAR
+======================================================*/
+
+.sidebar{
+
+    position:fixed;
+
+    top:94px;
+
+    left:0;
+
+    width:260px;
+
+    bottom:0;
+
+    background:#173C73;
+
+    overflow-y:auto;
+
+    box-shadow:2px 0 8px rgba(0,0,0,.12);
+
+}
+
+.sidebar::-webkit-scrollbar{
+
+    width:7px;
+
+}
+
+.sidebar::-webkit-scrollbar-thumb{
+
+    background:#315791;
+
+    border-radius:25px;
+
+}
+
+/*======================================================
+MENU
+======================================================*/
+
+.menu-titulo{
+
+    color:#C9D4E8;
+
+    font-size:13px;
+
+    letter-spacing:2px;
+
+    font-weight:600;
+
+    padding:28px 22px 15px;
+
+}
+
+.menu-link{
+
+    text-decoration:none;
+
+}
+
+.menu-item{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+    height:58px;
+
+    margin:6px 12px;
+
+    padding-left:20px;
+
+    color:white;
+
+    font-size:18px;
+
+    border-radius:12px;
+
+    transition:.25s;
+
+    cursor:pointer;
+
+}
+
+.menu-item:hover{
+
+    background:#224D88;
+
+}
+
+.menu-item i{
+
+    width:28px;
+
+    text-align:center;
+
+    font-size:22px;
+
+}
+
+.menu-item-activo{
+
+    background:#204A86;
+
+    border-left:4px solid #D4AF37;
+
+}
+
+.menu-item-activo i{
+
+    color:#D4AF37;
+
+}
+
+/*======================================================
+BODY
+======================================================*/
+
+.body{
+
+    margin-top:94px;
+
+    margin-left:260px;
+
+    height:calc(100vh - 94px);
+
+    background:#EEF2F7;
+
+    overflow:hidden;
+
+}
+
+/*======================================================
+CONTENIDO
+======================================================*/
+
+.contenido{
+
+    padding:40px;
+
+    height:100%;
+
+    overflow-y:auto;
+
+    animation:fadeIn .35s ease;
+
+}
+
+.contenido::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+.contenido::-webkit-scrollbar-thumb{
+
+    background:#B8C2CC;
+
+    border-radius:30px;
+
+}
+
+/*======================================================
+TITULOS
+======================================================*/
+
+.titulo{
+
+    color:#173C73;
+
+    font-size:54px;
+
+    font-weight:700;
+
+    margin-bottom:15px;
+
+}
+
+.subtitulo{
+
+    color:#5E6878;
+
+    font-size:24px;
+
+    margin-bottom:35px;
+
+}
+/*======================================================
+BOTONES
+======================================================*/
+
+.btn{
+
+    border-radius:10px !important;
+
+    font-weight:600;
+
+    transition:.20s;
+
+}
+
+.btn-primary{
+
+    background:#173C73 !important;
+
+    border:none !important;
+
+}
+
+.btn-primary:hover{
+
+    background:#204A86 !important;
+
+}
+
+.btn-success{
+
+    border:none !important;
+
+}
+
+/*======================================================
+CARDS
+======================================================*/
+
+.card{
+
+    border:none !important;
+
+    border-radius:18px !important;
+
+    box-shadow:0 5px 18px rgba(0,0,0,.08);
+
+}
+
+.card-premium{
+
+    background:white;
+
+    border-radius:18px;
+
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
+
+    padding:25px;
+
+    margin-bottom:25px;
+
+    transition:.25s;
+
+}
+
+.card-premium:hover{
+
+    transform:translateY(-3px);
+
+    box-shadow:0 12px 28px rgba(0,0,0,.12);
+
+}
+
+/*======================================================
+KPIs
+======================================================*/
+
+.kpi{
+
+    min-height:160px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    text-align:center;
+
+    background:white;
+
+    border-radius:18px;
+
+    box-shadow:0 4px 18px rgba(0,0,0,.08);
+
+    transition:.25s;
+
+}
+
+.kpi:hover{
+
+    transform:translateY(-5px);
+
+    border-top:5px solid #D4AF37;
+
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+
+}
+
+.kpi h6{
+
+    color:#6E7B91;
+
+    font-size:18px;
+
+    margin-bottom:15px;
+
+}
+
+.kpi h2{
+
+    color:#173C73;
+
+    font-size:34px;
+
+    font-weight:700;
+
+    margin-top:12px;
+
+}
+
+/*======================================================
+INPUTS
+======================================================*/
+
+input,
+select{
+
+    border-radius:10px !important;
+
+}
+
+/*======================================================
+TABLAS
+======================================================*/
+
+table{
+
+    width:100%;
+
+    background:white;
+
+    border-collapse:collapse;
+
+    border-radius:15px;
+
+    overflow:hidden;
+
+}
+
+thead{
+
+    background:#173C73;
+
+    color:white;
+
+}
+
+table th{
+
+    padding:14px;
+
+}
+
+table td{
+
+    padding:12px;
+
+}
+
+/*======================================================
+PLOTLY
+======================================================*/
+
+.js-plotly-plot{
+
+    margin-top:10px;
+
+    border-radius:18px;
+
+    background:white;
+
+    padding:10px;
+
+    box-shadow:0 4px 18px rgba(0,0,0,.08);
+
+}
+
+/*======================================================
+SEPARADORES
+======================================================*/
+
+hr{
+
+    border:none;
+
+    border-top:1px solid #E6E8EC;
+
+    margin:18px 0;
+
+}
+
+/*======================================================
+FOOTER
+======================================================*/
+
+.footer{
+
+    text-align:center;
+
+    color:#7C8897;
+
+    margin-top:40px;
+
+    padding:25px;
+
+}
+
+/*======================================================
+SCROLL GENERAL
+======================================================*/
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+    height:10px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#EEF2F7;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#B6C2D0;
+
+    border-radius:30px;
+
+}
+
+::-webkit-scrollbar-thumb:hover{
+
+    background:#8EA4BD;
+
+}
+
+/*======================================================
+ANIMACIONES
+======================================================*/
+
+*{
+
+    transition:
+        background .25s,
+        color .25s,
+        box-shadow .25s,
+        transform .25s;
+
+}
+
+@keyframes fadeIn{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(10px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
+
+}
+
+/*======================================================
+RESPONSIVE
+======================================================*/
+
+@media(max-width:1200px){
+
+    .sidebar{
+
+        width:210px;
+
+    }
+
+    .body{
+
+        margin-left:210px;
+
+    }
+
+}
+
+@media(max-width:900px){
+
+    .sidebar{
+
+        width:75px;
+
+    }
+
+    .body{
+
+        margin-left:75px;
+
+    }
+
+    .menu-item span{
+
+        display:none;
+
+    }
+
+    .menu-titulo{
+
+        display:none;
+
+    }
+
+    .logo-titulo{
+
+        font-size:22px;
+
+    }
+
+    .logo-subtitulo{
+
+        display:none;
+
+    }
+
+}
+
+@media(max-width:650px){
+
+    .header{
+
+        padding:0 15px;
+
+    }
+
+    .logo-img{
+
+        width:120px;
+
+    }
+
+    .usuario,
+
+    .puesto{
+
+        display:none;
+
+    }
+
+}
+/*==========================================================
+CONTROLES DEL DASHBOARD
+==========================================================*/
+
+.encabezado-filtro{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:18px;
+
+}
+
+.titulo-filtro{
+
+    margin:0;
+
+    font-size:18px;
+
+    font-weight:700;
+
+    color:#173C73;
+
+}
+
+.acciones-filtro{
+
+    display:flex;
+
+    gap:12px;
+
+}
+
+.filtro-icono{
+
+    font-size:18px;
+
+    color:#6C757D;
+
+    cursor:pointer;
+
+    transition:.20s;
+
+}
+
+.filtro-icono:hover{
+
+    color:#173C73;
+
+    transform:scale(1.15);
+
+}
+
+/*==========================================================
+MESES
+==========================================================*/
+
+.grid-meses{
+
+    display:grid;
+
+    /* RESPONSIVO: mismos criterios que las semanas. Antes era
+       repeat(3,70px) fijo (210px) y cuando la columna se angostaba
+       la 3a columna de meses se desbordaba y se encimaba sobre las
+       semanas. Ahora acomoda tantos meses de 70px como quepan y los
+       demás bajan de renglón; nunca se desborda. */
+    grid-template-columns:repeat(auto-fill,70px);
+
+    gap:12px;
+
+    justify-content:flex-start;
+
+    overflow-x:hidden;
+
+}
+
+.cuadro-mes{
+
+    width:70px;
+
+    height:44px;
+
+    border-radius:10px !important;
+
+    font-weight:700;
+
+    color:#5a6472 !important;
+    border-color:#c7ccd4 !important;
+    background-color:#f4f5f7 !important;
+
+}
+
+.cuadro-mes:hover{
+    background-color:#e9ebef !important;
+    color:#2b3542 !important;
+}
+
+.cuadro-mes.activo{
+
+    background:#173C73 !important;
+
+    color:white !important;
+
+    border-color:#173C73 !important;
+
+}
+
+/*==========================================================
+SEMANAS
+==========================================================*/
+
+.grid-semanas{
+
+    display:grid;
+
+    /* RESPONSIVO: en vez de 13 columnas fijas (que se desbordaban y
+       generaban scroll horizontal), acomoda tantas semanas de 44px
+       como quepan; las demás bajan de renglón solas. */
+    grid-template-columns:repeat(auto-fill,44px);
+
+    justify-content:flex-start;
+
+    gap:12px;
+
+    max-height:220px;
+
+    overflow-y:auto;
+
+    overflow-x:hidden;   /* mata el scroll horizontal que tapaba números */
+
+    padding-right:6px;
+
+}
+
+.grid-semanas::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+.grid-semanas::-webkit-scrollbar-thumb{
+
+    background:#C4CEDB;
+
+    border-radius:20px;
+
+}
+
+.cuadro-semana{
+
+    height:44px;
+    width:44px;
+
+    border-radius:10px !important;
+
+    font-weight:700;
+
+    padding:0 !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+
+    color:#5a6472 !important;
+    border-color:#c7ccd4 !important;
+    background-color:#f4f5f7 !important;
+
+}
+
+/* Anula el gridRow/gridColumn que algunos controles.py fijan inline
+   (forzaban 13 columnas). Con !important gana sobre el estilo inline
+   y deja que auto-fill de .grid-semanas coloque cada semana sola. */
+.cuadro-semana{
+    grid-row:auto !important;
+    grid-column:auto !important;
+}
+
+.cuadro-semana:hover{
+    background-color:#e9ebef !important;
+    color:#2b3542 !important;
+}
+.cuadro-semana.activo{
+
+    background:#173C73 !important;
+
+    color:white !important;
+
+    border-color:#173C73 !important;
+
+}
+/*==========================================================
+ARCHIVOS CARGADOS
+==========================================================*/
+
+.archivo-seleccionado{
+
+    margin-top:12px;
+
+    padding:10px 14px;
+
+    background:#F8FAFD;
+
+    border:1px solid #D9E2EC;
+
+    border-radius:10px;
+
+    color:#173C73;
+
+    font-size:14px;
+
+    font-weight:500;
+
+}
+
+/*==========================================================
+TARJETAS KPI PERSONALIZADAS
+==========================================================*/
+
+.titulo-kpi{
+
+    font-size:14px;
+
+    color:#7A869A;
+
+    font-weight:600;
+
+    margin-bottom:6px;
+
+}
+
+.valor-kpi{
+
+    font-size:32px;
+
+    font-weight:700;
+
+    color:#173C73;
+
+    line-height:1.1;
+
+}
+
+.subtitulo-kpi{
+
+    font-size:13px;
+
+    color:#98A6B8;
+
+    margin-top:6px;
+
+}
+.cuadro-semana.acumulado{
+
+    background:#8DB8FF;
+
+    color:white;
+
+    border-color:#8DB8FF;
+
+}
+.filtro-icono{
+
+    font-size:18px;
+
+    color:#6c757d;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+}
+
+.filtro-icono:hover{
+
+    color:#173C73;
+
+    transform:scale(1.15);
+
+}
+/* Solo encabezado de Ingresos */
+.hdr-ingresos .ag-header-cell-text,
+.hdr-ingresos-grupo .ag-header-group-text {
+    color: #FFFFFF !important;
+}
+.hdr-inv .ag-header-cell-text { color:#FFFFFF !important; }
+/* Encabezados de grupo con color en tabla de inventario -> texto blanco */
+.hdr-inv-verde .ag-header-group-text,
+.hdr-inv-verde .ag-header-cell-text,
+.hdr-inv-amarillo .ag-header-group-text,
+.hdr-inv-amarillo .ag-header-cell-text,
+.hdr-inv-rojo .ag-header-group-text,
+.hdr-inv-rojo .ag-header-cell-text {
+    color: #FFFFFF !important;
+}
+.hdr-cartera .ag-header-cell-text { color:#FFFFFF !important; }
+/* =========================================================
+   USUARIO + CERRAR SESIÓN (encabezado)
+   Pegar al final de assets/estilos.css
+   ========================================================= */
+
+/* contenedor derecho del header */
+.header-usuario {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-right: 24px;
+}
+
+/* --- chip del usuario: avatar dorado + nombre --- */
+.usuario-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.usuario-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4AF37 0%, #E9C767 100%);
+    color: #173C73;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+    flex-shrink: 0;
+}
+
+.usuario-nombre {
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.2px;
+}
+
+/* --- botón cerrar sesión: borde dorado, se rellena en hover --- */
+.btn-cerrar-sesion {
+    display: inline-flex;
+    align-items: center;
+    background-color: transparent;
+    color: #FFFFFF;
+    border: 1.5px solid #D4AF37;
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cerrar-sesion:hover {
+    background-color: #D4AF37;
+    color: #173C73;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.4);
+    transform: translateY(-1px);
+}
+
+.btn-cerrar-sesion:active {
+    transform: translateY(0);
+}
+/* =========================================================
+   FILA DE TOTAL (pie) en las tablas resumen de INVENTARIO
+   Pegar al final de assets/estilos.css
+   La fila fijada al pie (pinned) sale en azul de marca,
+   negrita y fondo crema, para que no se vea la letra negra.
+   ========================================================= */
+
+.ag-theme-alpine .ag-row-pinned,
+.ag-theme-alpine .ag-floating-bottom .ag-row {
+    background-color: #F4F1E4 !important;
+}
+
+.ag-theme-alpine .ag-row-pinned .ag-cell,
+.ag-theme-alpine .ag-floating-bottom .ag-cell {
+    color: #173C73 !important;
+    font-weight: 700 !important;
+}
+/* =========================================================
+   ENCABEZADOS DE GRUPO en tablas de INVENTARIO -> texto blanco
+   Pegar al final de assets/estilos.css
+   Cubre los títulos de grupo ("1-30 días", "31-60 días",
+   "61+ días") que salían en letra oscura sobre el azul.
+   ========================================================= */
+ 
+.hdr-inv .ag-header-cell-text,
+.hdr-inv .ag-header-group-text,
+.ag-theme-alpine .ag-header-group-cell-label .ag-header-group-text {
+    color: #FFFFFF !important;
+}
+/* =========================================================
+   ENCABEZADOS de las tablas de PROYECCIÓN -> texto blanco
+   Pegar al final de assets/estilos.css
+   Cubre los títulos (Producto, Proyección, Facturado, etc.)
+   que salían en letra oscura sobre el fondo azul.
+   ========================================================= */
+
+.hdr-proy,
+.hdr-proy .ag-header-cell-text,
+.hdr-proy .ag-header-group-text {
+    color: #FFFFFF !important;
+}
+/* =========================================================
+   ENCABEZADOS CENTRADOS en las tablas de PROYECCIÓN
+   Pegar al final de assets/estilos.css (REEMPLAZA la versión
+   anterior de este bloque si ya la habías pegado).
+   Centra el texto de los encabezados numéricos. La columna
+   Producto (clase hdr-proy-izq) queda a la IZQUIERDA en ambas
+   tablas, esté o no fijada.
+   ========================================================= */
+
+.hdr-proy .ag-header-cell-label {
+    justify-content: center;
+}
+
+/* la columna Producto siempre a la izquierda (ambas tablas) */
+.hdr-proy-izq .ag-header-cell-label {
+    justify-content: flex-start !important;
+}
+
+/* =========================================================
+   ROBUSTEZ RESPONSIVA DEL CALENDARIO (Mes / Semana)
+   Aplica a Ventas, Ingresos, Cartera y Saldo Proveedor
+   (todos comparten estas clases).
+   - Las rejillas NUNCA se desbordan (auto-fill + overflow-x oculto).
+   - En tablet/celular los cuadros se achican para que quepan más.
+   ========================================================= */
+
+/* seguridad: que ninguna rejilla del calendario empuje hacia los lados */
+.grid-meses,
+.grid-semanas{
+    max-width:100%;
+    overflow-x:hidden;
+}
+
+/* TABLET (hasta 992px): cuadros un poco más chicos */
+@media (max-width:992px){
+
+    .grid-meses{
+        grid-template-columns:repeat(auto-fill,64px);
+        gap:10px;
+    }
+    .cuadro-mes{
+        width:64px;
+        height:40px;
+    }
+
+    .grid-semanas{
+        grid-template-columns:repeat(auto-fill,40px);
+        gap:10px;
+        max-height:240px;
+    }
+    .cuadro-semana{
+        width:40px;
+        height:40px;
+    }
+}
+
+/* CELULAR (hasta 576px): cuadros compactos, más por fila */
+@media (max-width:576px){
+
+    .grid-meses{
+        grid-template-columns:repeat(auto-fill,minmax(52px,1fr));
+        gap:8px;
+    }
+    .cuadro-mes{
+        width:100%;
+        min-width:52px;
+        height:38px;
+    }
+
+    .grid-semanas{
+        grid-template-columns:repeat(auto-fill,minmax(38px,1fr));
+        gap:8px;
+        max-height:260px;
+    }
+    .cuadro-semana{
+        width:100%;
+        min-width:38px;
+        height:38px;
+    }
+
+    .titulo-filtro{
+        font-size:16px;
+    }
+}
+/* =========================================================
+   ENCABEZADOS de la tabla de SALDO PROVEEDOR -> texto blanco
+   Pegar al final de assets/estilos.css
+   Cubre los títulos de aging (Vencido >60, 31-60, 0-30, Vigente)
+   que salían en letra oscura sobre el fondo azul.
+   ========================================================= */
+
+.hdr-sp,
+.hdr-sp .ag-header-cell-text,
+.ag-theme-alpine .hdr-sp .ag-header-cell-text {
+    color: #FFFFFF !important;
+}

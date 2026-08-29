@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# Entornos virtuales
+.venv/
+venv/
+
+# VS Code
+.vscode/
+
+# Windows
+desktop.ini
+Thumbs.db
+
+# Archivos temporales
+temp/
+
+# Archivos de datos
+data/*.xlsx
+data/*.xls
+exports/*
