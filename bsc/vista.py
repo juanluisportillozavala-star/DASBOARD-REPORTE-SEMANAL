@@ -82,6 +82,9 @@ def crear_layout_bsc():
         [
             html.H1("BSC — Tablero de control", className="titulo"),
 
+            # pestaña activa (fuente de verdad del cambio de panel)
+            dcc.Store(id="bsc-tab-activa", data="mensual"),
+
             # barra de pestañas (se rellena por callback según el rol)
             html.Div(id="bsc-tabs-cont", style={"marginBottom": "18px"}),
 
@@ -194,35 +197,43 @@ def registrar_callbacks_bsc(app):
     except Exception as e:
         print("[BSC] No se pudo inicializar esquema:", e)
 
-    # barra de pestañas según el rol (y resalta la activa)
+    # 1) al picar un botón de pestaña -> actualizar la pestaña activa
+    @app.callback(
+        Output("bsc-tab-activa", "data"),
+        Input({"type": "bsc-tab", "tab": ALL}, "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def _cambiar_tab(_clicks):
+        tid = ctx.triggered_id
+        if isinstance(tid, dict) and tid.get("tab"):
+            return tid["tab"]
+        return no_update
+
+    # 2) pintar la barra de pestañas según rol y pestaña activa
     @app.callback(
         Output("bsc-tabs-cont", "children"),
+        Input("bsc-tab-activa", "data"),
         Input("store-sesion", "data"),
-        Input({"type": "bsc-tab", "tab": ALL}, "n_clicks"),
     )
-    def _barra(sesion, _clicks):
+    def _barra(activa, sesion):
         es_admin = bool(sesion and sesion.get("rol") == "admin")
-        activa = "mensual"
-        if ctx.triggered_id and isinstance(ctx.triggered_id, dict):
-            activa = ctx.triggered_id.get("tab", "mensual")
+        activa = activa or "mensual"
         tabs = [("Mensual", "mensual"), ("Anual", "anual"),
                 ("Objetivos", "objetivos")]
         if es_admin:
             tabs.append(("Captura", "captura"))
         return html.Div([_tab_btn(t, v, v == activa) for t, v in tabs])
 
-    # mostrar/ocultar paneles según pestaña activa
+    # 3) mostrar/ocultar paneles según la pestaña activa
     @app.callback(
         Output("bsc-panel-mensual", "style"),
         Output("bsc-panel-anual", "style"),
         Output("bsc-panel-objetivos", "style"),
         Output("bsc-panel-captura", "style"),
-        Input({"type": "bsc-tab", "tab": ALL}, "n_clicks"),
+        Input("bsc-tab-activa", "data"),
     )
-    def _mostrar(_clicks):
-        activa = "mensual"
-        if ctx.triggered_id and isinstance(ctx.triggered_id, dict):
-            activa = ctx.triggered_id.get("tab", "mensual")
+    def _mostrar(activa):
+        activa = activa or "mensual"
         ocul = {"display": "none"}
         vis = {"display": "block"}
         return (vis if activa == "mensual" else ocul,
