@@ -50,6 +50,9 @@ from captura_proyeccion import registrar_callbacks_captura_proyeccion
 from saldo_proveedor.callbacks import registrar_callbacks_sp_calendario
 from saldo_proveedor.tabla_sp import registrar_callbacks_sp
 
+# BSC (tablero de control)
+from bsc.vista import registrar_callbacks_bsc
+
 # =========================
 # Crear aplicación
 # =========================
@@ -216,6 +219,9 @@ registrar_callbacks_captura_proyeccion(app)
 # Saldo Proveedor
 registrar_callbacks_sp_calendario(app)
 registrar_callbacks_sp(app)
+
+# BSC (tablero de control) — también crea sus tablas y engancha su captura
+registrar_callbacks_bsc(app)
 
 # =========================
 # Ejecutar
