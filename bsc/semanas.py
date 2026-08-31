@@ -85,3 +85,34 @@ def deber_ser(anio, mes, hasta=None):
     if tot == 0:
         return 0.0
     return dias_habiles_transcurridos(anio, mes, hasta) / tot
+
+
+# =========================================================
+# NIVEL ANUAL (para la vista Acumulado)
+# =========================================================
+
+def dias_habiles_anio(anio):
+    """Total de días hábiles del año (suma de los 12 meses)."""
+    return sum(dias_habiles_mes(anio, m) for m in range(1, 13))
+
+
+def dias_habiles_transcurridos_anio(anio, hasta=None):
+    """Días hábiles del año transcurridos hasta 'hasta' (hoy si None)."""
+    if hasta is None:
+        hasta = date.today()
+    if anio > hasta.year:
+        return 0
+    if anio < hasta.year:
+        return dias_habiles_anio(anio)
+    # año en curso: meses completos anteriores + lo que va del mes actual
+    tot = sum(dias_habiles_mes(anio, m) for m in range(1, hasta.month))
+    tot += dias_habiles_transcurridos(anio, hasta.month, hasta)
+    return tot
+
+
+def deber_ser_anio(anio, hasta=None):
+    """% esperado de avance del AÑO (0..1)."""
+    tot = dias_habiles_anio(anio)
+    if tot == 0:
+        return 0.0
+    return dias_habiles_transcurridos_anio(anio, hasta) / tot

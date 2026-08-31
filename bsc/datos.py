@@ -157,3 +157,65 @@ def meses_con_bsc(anio):
         """, (int(anio), int(anio)))
         filas = cur.fetchall()
     return [int(f[0]) for f in filas]
+
+
+# =========================================================
+# NIVEL ANUAL  (objetivos de los 12 meses + captura del año)
+# =========================================================
+# El objetivo ANUAL se guarda en la misma tabla bsc_objetivos
+# usando mes = 0 (los meses reales son 1..12).
+
+def leer_objetivos_anio(anio):
+    """Devuelve {mes: {indicador: objetivo}} para mes 0..12.
+    mes 0 = objetivo anual."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT mes, indicador, objetivo FROM bsc_objetivos "
+                    "WHERE anio=%s;", (int(anio),))
+        filas = cur.fetchall()
+    out = {}
+    for mes, iid, val in filas:
+        if val is None:
+            continue
+        out.setdefault(int(mes), {})[iid] = float(val)
+    return out
+
+
+def guardar_objetivos_anio(anio, valores):
+    """Upsert de objetivos anuales y mensuales de un año.
+    valores: lista de tuplas (mes, indicador, valor). mes 0 = anual.
+    Un valor None o "" BORRA esa celda."""
+    anio = int(anio)
+    with _conn() as c, c.cursor() as cur:
+        for mes, iid, val in valores:
+            iid = (iid or "").strip()
+            if not iid:
+                continue
+            mes = int(mes)
+            try:
+                v = float(val) if val not in (None, "") else None
+            except (ValueError, TypeError):
+                v = None
+            if v is None:
+                cur.execute("DELETE FROM bsc_objetivos WHERE anio=%s AND mes=%s "
+                            "AND indicador=%s;", (anio, mes, iid))
+            else:
+                cur.execute("""
+                    INSERT INTO bsc_objetivos (anio, mes, indicador, objetivo)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (anio, mes, indicador)
+                    DO UPDATE SET objetivo = EXCLUDED.objetivo;
+                """, (anio, mes, iid, v))
+
+
+def leer_captura_anio(anio):
+    """Devuelve {mes: {indicador: {semana: valor}}} de todo el año."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT mes, indicador, semana, valor FROM bsc_captura "
+                    "WHERE anio=%s;", (int(anio),))
+        filas = cur.fetchall()
+    out = {}
+    for mes, iid, sem, val in filas:
+        if val is None:
+            continue
+        out.setdefault(int(mes), {}).setdefault(iid, {})[int(sem)] = float(val)
+    return out

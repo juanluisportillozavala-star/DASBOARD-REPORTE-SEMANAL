@@ -18,6 +18,8 @@ from captura_proyeccion import crear_layout_captura_proyeccion
 from saldo_proveedor.layout import crear_layout_saldo_proveedor
 from bsc.vista import crear_layout_bsc
 from bsc.captura import crear_layout_captura_bsc
+from bsc.objetivos import crear_layout_objetivos_bsc
+from bsc.acumulado import crear_layout_acumulado_bsc
 
 
 def pagina_temporal(nombre):
@@ -85,9 +87,17 @@ def crear_router(pathname):
 
         return crear_layout_bsc()
 
+    elif pathname == "/bsc-acumulado":
+
+        return crear_layout_acumulado_bsc()
+
     elif pathname == "/bsc-captura":
 
         return crear_layout_captura_bsc()
+
+    elif pathname == "/bsc-objetivos":
+
+        return crear_layout_objetivos_bsc()
 
     elif pathname == "/reportes":
 

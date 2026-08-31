@@ -215,6 +215,11 @@ def registrar_callbacks_bsc(app):
                 f"deber ser a hoy: {ds*100:.0f}%")
         return grid, info
 
-    # enganchar los callbacks de captura
+    # enganchar los callbacks de captura mensual, captura de
+    # objetivos anuales y la vista acumulada
     from bsc.captura import registrar_callbacks_bsc_captura
     registrar_callbacks_bsc_captura(app)
+    from bsc.objetivos import registrar_callbacks_bsc_objetivos
+    registrar_callbacks_bsc_objetivos(app)
+    from bsc.acumulado import registrar_callbacks_bsc_acumulado
+    registrar_callbacks_bsc_acumulado(app)

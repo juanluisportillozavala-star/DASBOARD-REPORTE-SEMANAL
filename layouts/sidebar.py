@@ -60,6 +60,8 @@ def crear_sidebar(rol=None, vendedor=None):
 
         item("BSC", "fas fa-table-columns", "/bsc"),
 
+        item("BSC Anual", "fas fa-calendar-check", "/bsc-acumulado"),
+
         item("Reportes", "fas fa-file-lines", "/reportes"),
 
     ]
@@ -76,12 +78,18 @@ def crear_sidebar(rol=None, vendedor=None):
                  "/captura-proyeccion"),
         )
 
-    # Ítems SOLO para admin: captura BSC, carga de datos y configuración
+    # Ítems SOLO para admin: captura BSC, objetivos BSC, carga y config
     if rol == "admin":
 
         items.append(
 
             item("Captura BSC", "fas fa-pen-ruler", "/bsc-captura")
+
+        )
+
+        items.append(
+
+            item("Objetivos BSC", "fas fa-bullseye", "/bsc-objetivos")
 
         )
 

@@ -116,3 +116,72 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
         filas.append(fila)
 
     return filas, sems, ds
+
+
+# =========================================================
+# CONSOLIDADO ANUAL  (vista "Acumulado")
+# =========================================================
+
+def construir_acumulado(anio, obj_anual, cap_por_mes, hasta=None):
+    """Arma las filas del acumulado anual.
+      obj_anual:   {indicador: objetivo_anual}
+      cap_por_mes: {mes: {indicador: {semana: valor}}}
+    Reglas:
+      - acumulado mensual de cada indicador = mismo criterio del mes
+        (flujo=suma de semanas, saldo=última semana).
+      - total del año: flujo = suma de los 12 meses;
+                       saldo = último mes con dato.
+    Devuelve (filas, deber_ser_anual). Cada fila trae mes_1..mes_12,
+    objetivo, acumulado (total del año), pct, color."""
+    inds = catalogo.indicadores()
+    ds = S.deber_ser_anio(anio, hasta)
+
+    # 1) acumulado mensual de cada indicador (reusa construir_bsc)
+    mensual = {}   # {id: {mes: acum}}
+    for mes in range(1, 13):
+        cap = cap_por_mes.get(mes, {})
+        filas_mes, _, _ = construir_bsc(anio, mes, {}, cap)
+        for f in filas_mes:
+            mensual.setdefault(f["id"], {})[mes] = f["acumulado"]
+
+    # 2) objetivo anual de los padres = suma de objetivos de sus hijos
+    obj = dict(obj_anual)
+    for ind in inds:
+        if ind["suma_hijos"]:
+            hijos = catalogo.hijos_de(ind["id"])
+            vals = [obj_anual.get(h["id"]) for h in hijos]
+            vals = [v for v in vals if v is not None]
+            if vals:
+                obj[ind["id"]] = float(sum(vals))
+
+    # 3) armar filas
+    filas = []
+    for ind in inds:
+        iid = ind["id"]
+        meses = mensual.get(iid, {})
+        if ind["tipo"] == "flujo":
+            vals = [v for v in meses.values() if v is not None]
+            total = float(sum(vals)) if vals else None
+        else:  # saldo: último mes con dato
+            total = None
+            for m in range(1, 13):
+                if meses.get(m) is not None:
+                    total = meses[m]
+        o = obj.get(iid)
+        pct = (total / o) if (o not in (None, 0) and total is not None) else None
+        fila = {
+            "id": iid,
+            "indicador": ind["nombre"],
+            "nivel": ind["nivel"],
+            "unidad": ind["unidad"],
+            "objetivo": o,
+            "acumulado": total,
+            "pct": pct,
+            "deber_ser": ds,
+            "color": _color(ind["sentido"], total, o, ds),
+        }
+        for m in range(1, 13):
+            fila[f"mes_{m}"] = meses.get(m)
+        filas.append(fila)
+
+    return filas, ds
