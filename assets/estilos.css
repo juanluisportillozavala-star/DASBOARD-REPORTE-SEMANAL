@@ -1280,3 +1280,13 @@ TARJETAS KPI PERSONALIZADAS
 .ag-theme-alpine .hdr-sp .ag-header-cell-text {
     color: #FFFFFF !important;
 }
+/* =========================================================
+   ENCABEZADOS de las tablas del BSC -> texto blanco
+   Pegar al final de assets/estilos.css
+   Cubre BSC (vista) y Captura BSC, que usan la clase hdr-bsc.
+   ========================================================= */
+
+.hdr-bsc,
+.hdr-bsc .ag-header-cell-text {
+    color: #FFFFFF !important;
+}
