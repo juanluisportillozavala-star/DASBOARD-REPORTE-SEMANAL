@@ -56,12 +56,11 @@ def _estilo_grid(alto):
     }
 
 
-def crear_layout_acumulado_bsc():
+def crear_panel_acumulado_bsc():
     anios = datos.anios_con_bsc()
     anio_val = anios[0] if anios else None
     return html.Div(
         [
-            html.H1("BSC Anual — Acumulado", className="titulo"),
             html.P("Consolidado del año: objetivo, acumulado, % y avance "
                    "mes a mes.", className="subtitulo"),
             html.Div(

@@ -51,15 +51,14 @@ def _estilo_grid(alto):
     }
 
 
-def crear_layout_objetivos_bsc():
+def crear_panel_objetivos_bsc():
     anios_g = datos.anios_con_bsc()
     anios = sorted(set(list(range(2025, 2036)) + anios_g), reverse=True)
     anio_val = anios_g[0] if anios_g else 2026
     return html.Div(
         [
-            html.H1("Objetivos BSC", className="titulo"),
-            html.P("Planea el año: teclea el objetivo anual y su "
-                   "desglose por mes. Escribe en las celdas y pica «Guardar».",
+            html.P("Planea el año: objetivo anual y su desglose por mes. "
+                   "(Solo el administrador puede editar y guardar.)",
                    className="subtitulo"),
             html.Div(
                 [
@@ -77,9 +76,8 @@ def crear_layout_objetivos_bsc():
                                 style={"width": "140px"}),
                         ],
                     ),
-                    html.Button("Guardar", id="bsc-obj-guardar", n_clicks=0,
-                                className="btn btn-primary",
-                                style={"height": "40px", "padding": "0 26px"}),
+                    # el botón Guardar se muestra/oculta por rol (callback)
+                    html.Div(id="bsc-obj-guardar-cont"),
                 ],
                 style={"display": "flex", "gap": "20px", "marginBottom": "18px",
                        "alignItems": "flex-end", "flexWrap": "wrap"},
@@ -91,18 +89,19 @@ def crear_layout_objetivos_bsc():
     )
 
 
-def _column_defs():
+def _column_defs(editable):
+    edit = _EDITABLE if editable else False
     cols = [
         {"field": "indicador", "headerName": "Indicador", "minWidth": 240,
          "pinned": "left", "editable": False, "headerClass": "hdr-bsc",
          "cellStyle": _CELL_INDICADOR},
-        {"field": "anual", "headerName": "Objetivo anual", "editable": _EDITABLE,
+        {"field": "anual", "headerName": "Objetivo anual", "editable": edit,
          "type": "numericColumn", "minWidth": 140, "pinned": "left",
          "headerClass": "hdr-bsc", "cellStyle": _CELL_ANUAL},
     ]
     for m, nombre in MESES_COL:
         cols.append({
-            "field": f"m_{m}", "headerName": nombre, "editable": _EDITABLE,
+            "field": f"m_{m}", "headerName": nombre, "editable": edit,
             "type": "numericColumn", "minWidth": 90, "headerClass": "hdr-bsc",
             "cellStyle": _CELL_EDIT})
     return cols
@@ -125,17 +124,35 @@ def _filas(anio):
 
 def registrar_callbacks_bsc_objetivos(app):
 
+    # botón Guardar: solo para admin
+    @app.callback(
+        Output("bsc-obj-guardar-cont", "children"),
+        Input("store-sesion", "data"),
+    )
+    def _boton(sesion):
+        if sesion and sesion.get("rol") == "admin":
+            return html.Button("Guardar", id="bsc-obj-guardar", n_clicks=0,
+                               className="btn btn-primary",
+                               style={"height": "40px", "padding": "0 26px"})
+        # placeholder oculto: el botón debe EXISTIR para que su callback
+        # quede conectado, aunque no se vea para consulta.
+        return html.Button("Guardar", id="bsc-obj-guardar", n_clicks=0,
+                           style={"display": "none"})
+
+    # construir la tabla (editable solo si admin)
     @app.callback(
         Output("bsc-obj-tabla-cont", "children"),
         Input("bsc-obj-anio", "value"),
+        Input("store-sesion", "data"),
     )
-    def _construir(anio):
+    def _construir(anio, sesion):
         if not anio:
             return html.Div("Selecciona un año.", style={"color": "#6C757D"})
+        editable = bool(sesion and sesion.get("rol") == "admin")
         grid = dag.AgGrid(
             id="bsc-obj-grid",
             rowData=_filas(anio),
-            columnDefs=_column_defs(),
+            columnDefs=_column_defs(editable),
             defaultColDef={"resizable": True, "sortable": False,
                            "filter": False, "flex": 1, "minWidth": 85},
             dashGridOptions={"animateRows": False, "rowHeight": 30,
@@ -151,11 +168,17 @@ def registrar_callbacks_bsc_objetivos(app):
         Input("bsc-obj-guardar", "n_clicks"),
         State("bsc-obj-grid", "rowData"),
         State("bsc-obj-anio", "value"),
+        State("store-sesion", "data"),
         prevent_initial_call=True,
     )
-    def _guardar(n, rowdata, anio):
+    def _guardar(n, rowdata, anio, sesion):
         if not n or not rowdata or not anio:
             return no_update
+        # candado de servidor: aunque alguien fuerce el clic, solo
+        # admin puede escribir.
+        if not (sesion and sesion.get("rol") == "admin"):
+            return html.Span("No tienes permiso para guardar objetivos.",
+                             style={"color": "#C0392B"})
         valores = []   # (mes, indicador, valor)
         for fila in rowdata:
             iid = fila.get("id")

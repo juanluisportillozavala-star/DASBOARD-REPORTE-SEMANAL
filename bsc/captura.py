@@ -43,7 +43,7 @@ def _estilo_grid(alto):
     }
 
 
-def crear_layout_captura_bsc():
+def crear_panel_captura_bsc():
     anios_guardados = datos.anios_con_bsc()
     # ofrecer del 2025 al 2035 (como proyección) + los que ya existan
     anios = sorted(set(list(range(2025, 2036)) + anios_guardados), reverse=True)
@@ -51,7 +51,6 @@ def crear_layout_captura_bsc():
 
     return html.Div(
         [
-            html.H1("Captura BSC", className="titulo"),
             html.P("Teclea los objetivos y los valores reales de cada "
                    "semana. Escribe directo en las celdas y pica «Guardar».",
                    className="subtitulo"),

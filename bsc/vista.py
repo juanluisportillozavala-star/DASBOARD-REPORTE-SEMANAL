@@ -1,19 +1,23 @@
 """
 =========================================================
-bsc/vista.py  —  VISTA del BSC (tabla con semáforo)
+bsc/vista.py  —  MÓDULO BSC con PESTAÑAS
 =========================================================
-Pantalla de solo lectura (/bsc): selector de año/mes y una tabla
-AG Grid agrupada por área (dueño), con columnas dinámicas por
-semana, acumulado, %, deber ser y semáforo de color.
+Un solo módulo (/bsc) con pestañas:
+  - Mensual    (lectura, todos)
+  - Anual      (lectura, todos)
+  - Objetivos  (todos la VEN; solo admin la edita/guarda)
+  - Captura    (solo admin)
 
-Estilo alineado a los demás módulos: encabezado azul, fila total
-crema/azul, clase hdr-bsc para encabezados blancos.
+Patrón igual a Inventario: los paneles están SIEMPRE montados y
+solo se muestran/ocultan; así ningún callback queda huérfano. El
+rol se lee de dcc.Store(id="store-sesion").
 
-registrar_callbacks_bsc(app) engancha ESTA vista y también la
-captura (bsc/captura.py) y crea el esquema si falta.
+registrar_callbacks_bsc(app) engancha este contenedor, crea el
+esquema y registra los callbacks de cada panel (mensual, anual,
+objetivos y captura).
 """
 
-from dash import Input, Output, html, dcc, no_update
+from dash import Input, Output, State, html, dcc, no_update, ALL, ctx
 import dash_ag_grid as dag
 
 from bsc import catalogo, logica, datos
@@ -28,7 +32,6 @@ MESES = [(1, "Enero"), (2, "Febrero"), (3, "Marzo"), (4, "Abril"),
          (12, "Diciembre")]
 _MES_NOMBRE = dict(MESES)
 
-# formateadores JS (según la unidad de cada fila)
 _FMT_VALOR = {"function": (
     "params.value == null ? '' : "
     "(params.data.unidad === '$' ? '$' + d3.format(',.0f')(params.value) : "
@@ -38,7 +41,6 @@ _FMT_VALOR = {"function": (
 _FMT_PCT = {"function":
     "params.value == null ? '' : d3.format(',.1f')(params.value*100) + '%'"}
 
-# color del punto de semáforo según params.data.color
 _CELL_SEMAFORO = {"function": (
     "({'verde':{color:'#2ecc71',fontSize:'18px',textAlign:'center'},"
     "  'amarillo':{color:'#f1c40f',fontSize:'18px',textAlign:'center'},"
@@ -46,8 +48,6 @@ _CELL_SEMAFORO = {"function": (
     "  'gris':{color:'#cfd6df',fontSize:'18px',textAlign:'center'}}"
     ")[params.data.color] || {textAlign:'center'}"
 )}
-
-# indicadores principales en negrita azul; hijos indentados en gris
 _CELL_INDICADOR = {"function":
     "params.data.nivel === 1 ? "
     "{color:'#5A6472', paddingLeft:'26px'} : "
@@ -67,59 +67,92 @@ def _estilo_grid(alto):
     }
 
 
+# =========================================================
+# LAYOUT PRINCIPAL DEL MÓDULO (contenedor de pestañas)
+# =========================================================
+
 def crear_layout_bsc():
-    anios = datos.anios_con_bsc()
-    anio_val = anios[0] if anios else None
+    """Contenedor con pestañas. Importa (perezoso) los paneles de
+    cada pestaña para evitar ciclos de import."""
+    from bsc.captura import crear_panel_captura_bsc
+    from bsc.objetivos import crear_panel_objetivos_bsc
+    from bsc.acumulado import crear_panel_acumulado_bsc
+
     return html.Div(
         [
             html.H1("BSC — Tablero de control", className="titulo"),
-            html.P("Objetivo vs. real por semana, con semáforo de avance.",
-                   className="subtitulo"),
 
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Label("Año", style={"fontWeight": "600",
-                                                     "color": AZUL,
-                                                     "display": "block",
-                                                     "marginBottom": "4px"}),
-                            dcc.Dropdown(
-                                id="bsc-anio",
-                                options=[{"label": str(a), "value": a}
-                                         for a in anios],
-                                value=anio_val, clearable=False,
-                                style={"width": "140px"}),
-                        ],
-                    ),
-                    html.Div(
-                        [
-                            html.Label("Mes", style={"fontWeight": "600",
-                                                     "color": AZUL,
-                                                     "display": "block",
-                                                     "marginBottom": "4px"}),
-                            dcc.Dropdown(id="bsc-mes", options=[], value=None,
-                                         clearable=False,
-                                         style={"width": "180px"}),
-                        ],
-                    ),
-                ],
-                style={"display": "flex", "gap": "20px", "marginBottom": "18px",
-                       "alignItems": "flex-end", "flexWrap": "wrap"},
-            ),
+            # barra de pestañas (se rellena por callback según el rol)
+            html.Div(id="bsc-tabs-cont", style={"marginBottom": "18px"}),
 
-            html.Div(id="bsc-info",
-                     style={"marginBottom": "14px", "fontSize": "13px",
-                            "color": "#6C757D", "fontStyle": "italic"}),
+            html.Div(id="bsc-panel-mensual", children=_panel_mensual()),
 
-            html.Div(id="bsc-tabla-cont"),
+            html.Div(id="bsc-panel-anual",
+                     children=crear_panel_acumulado_bsc(),
+                     style={"display": "none"}),
+
+            html.Div(id="bsc-panel-objetivos",
+                     children=crear_panel_objetivos_bsc(),
+                     style={"display": "none"}),
+
+            html.Div(id="bsc-panel-captura",
+                     children=crear_panel_captura_bsc(),
+                     style={"display": "none"}),
         ]
     )
 
 
+def _tab_btn(texto, valor, activo):
+    base = {
+        "padding": "10px 22px", "border": "none", "cursor": "pointer",
+        "fontWeight": "600", "fontSize": "15px", "borderRadius": "10px",
+        "marginRight": "8px",
+    }
+    if activo:
+        base.update({"background": AZUL, "color": "#FFFFFF"})
+    else:
+        base.update({"background": "#EEF2F7", "color": "#5A6472"})
+    return html.Button(texto, id={"type": "bsc-tab", "tab": valor},
+                       n_clicks=0, style=base)
+
+
+def _panel_mensual():
+    anios = datos.anios_con_bsc()
+    anio_val = anios[0] if anios else None
+    return html.Div([
+        html.P("Objetivo vs. real por semana, con semáforo de avance.",
+               className="subtitulo"),
+        html.Div(
+            [
+                html.Div([
+                    html.Label("Año", style={"fontWeight": "600", "color": AZUL,
+                                             "display": "block",
+                                             "marginBottom": "4px"}),
+                    dcc.Dropdown(id="bsc-anio",
+                                 options=[{"label": str(a), "value": a}
+                                          for a in anios],
+                                 value=anio_val, clearable=False,
+                                 style={"width": "140px"}),
+                ]),
+                html.Div([
+                    html.Label("Mes", style={"fontWeight": "600", "color": AZUL,
+                                             "display": "block",
+                                             "marginBottom": "4px"}),
+                    dcc.Dropdown(id="bsc-mes", options=[], value=None,
+                                 clearable=False, style={"width": "180px"}),
+                ]),
+            ],
+            style={"display": "flex", "gap": "20px", "marginBottom": "18px",
+                   "alignItems": "flex-end", "flexWrap": "wrap"},
+        ),
+        html.Div(id="bsc-info",
+                 style={"marginBottom": "14px", "fontSize": "13px",
+                        "color": "#6C757D", "fontStyle": "italic"}),
+        html.Div(id="bsc-tabla-cont"),
+    ])
+
+
 def _column_defs(sems):
-    """Columnas: Área | Indicador | Objetivo | [semanas…] |
-    Acumulado | % | Deber ser | Semáforo."""
     cols = [
         {"field": "indicador", "headerName": "Indicador", "minWidth": 260,
          "pinned": "left", "sortable": False, "filter": False,
@@ -133,8 +166,7 @@ def _column_defs(sems):
             "field": f"sem_{s['num']}", "headerName": s["label"],
             "type": "numericColumn", "valueFormatter": _FMT_VALOR,
             "minWidth": 95, "sortable": False, "filter": False,
-            "headerClass": "hdr-bsc",
-            "cellStyle": {"color": "#5A6472"}})
+            "headerClass": "hdr-bsc", "cellStyle": {"color": "#5A6472"}})
     cols += [
         {"field": "acumulado", "headerName": "Acumulado",
          "type": "numericColumn", "valueFormatter": _FMT_VALOR,
@@ -157,13 +189,48 @@ def _column_defs(sems):
 
 
 def registrar_callbacks_bsc(app):
-    # crea el esquema una vez al arrancar (idempotente)
     try:
         datos.inicializar_esquema_bsc()
     except Exception as e:
         print("[BSC] No se pudo inicializar esquema:", e)
 
-    # meses disponibles al cambiar el año (o al cargar)
+    # barra de pestañas según el rol (y resalta la activa)
+    @app.callback(
+        Output("bsc-tabs-cont", "children"),
+        Input("store-sesion", "data"),
+        Input({"type": "bsc-tab", "tab": ALL}, "n_clicks"),
+    )
+    def _barra(sesion, _clicks):
+        es_admin = bool(sesion and sesion.get("rol") == "admin")
+        activa = "mensual"
+        if ctx.triggered_id and isinstance(ctx.triggered_id, dict):
+            activa = ctx.triggered_id.get("tab", "mensual")
+        tabs = [("Mensual", "mensual"), ("Anual", "anual"),
+                ("Objetivos", "objetivos")]
+        if es_admin:
+            tabs.append(("Captura", "captura"))
+        return html.Div([_tab_btn(t, v, v == activa) for t, v in tabs])
+
+    # mostrar/ocultar paneles según pestaña activa
+    @app.callback(
+        Output("bsc-panel-mensual", "style"),
+        Output("bsc-panel-anual", "style"),
+        Output("bsc-panel-objetivos", "style"),
+        Output("bsc-panel-captura", "style"),
+        Input({"type": "bsc-tab", "tab": ALL}, "n_clicks"),
+    )
+    def _mostrar(_clicks):
+        activa = "mensual"
+        if ctx.triggered_id and isinstance(ctx.triggered_id, dict):
+            activa = ctx.triggered_id.get("tab", "mensual")
+        ocul = {"display": "none"}
+        vis = {"display": "block"}
+        return (vis if activa == "mensual" else ocul,
+                vis if activa == "anual" else ocul,
+                vis if activa == "objetivos" else ocul,
+                vis if activa == "captura" else ocul)
+
+    # meses disponibles (panel mensual)
     @app.callback(
         Output("bsc-mes", "options"),
         Output("bsc-mes", "value"),
@@ -171,16 +238,14 @@ def registrar_callbacks_bsc(app):
     )
     def _meses(anio):
         if not anio:
-            # sin datos aún: ofrecer los 12 meses para no dejar vacío
             return [{"label": n, "value": m} for m, n in MESES], 1
         meses = datos.meses_con_bsc(anio)
         if not meses:
             return [{"label": n, "value": m} for m, n in MESES], 1
-        opciones = [{"label": _MES_NOMBRE.get(m, str(m)), "value": m}
-                    for m in meses]
-        return opciones, meses[-1]
+        return ([{"label": _MES_NOMBRE.get(m, str(m)), "value": m}
+                 for m in meses], meses[-1])
 
-    # construir tabla al cambiar año/mes
+    # construir tabla mensual
     @app.callback(
         Output("bsc-tabla-cont", "children"),
         Output("bsc-info", "children"),
@@ -191,32 +256,24 @@ def registrar_callbacks_bsc(app):
         if not anio or not mes:
             return html.Div("Selecciona un año y un mes.",
                             style={"color": "#6C757D"}), ""
-
         objetivos = datos.leer_objetivos(anio, mes)
         captura = datos.leer_captura(anio, mes)
         filas, sems, ds = logica.construir_bsc(anio, mes, objetivos, captura)
-
-        # símbolo de semáforo por fila
         for f in filas:
             f["semaforo"] = "●"
-
         grid = dag.AgGrid(
-            id="bsc-grid",
-            rowData=filas,
-            columnDefs=_column_defs(sems),
+            id="bsc-grid", rowData=filas, columnDefs=_column_defs(sems),
             defaultColDef={"resizable": True, "sortable": False,
                            "filter": False, "flex": 1, "minWidth": 90},
             dashGridOptions={"animateRows": False, "rowHeight": 32,
                              "headerHeight": 40, "suppressCellFocus": True},
-            className="ag-theme-alpine",
-            style=_estilo_grid("640px"),
+            className="ag-theme-alpine", style=_estilo_grid("640px"),
         )
         info = (f"{_MES_NOMBRE.get(int(mes), mes)} {anio} · "
                 f"deber ser a hoy: {ds*100:.0f}%")
         return grid, info
 
-    # enganchar los callbacks de captura mensual, captura de
-    # objetivos anuales y la vista acumulada
+    # registrar callbacks de los otros paneles
     from bsc.captura import registrar_callbacks_bsc_captura
     registrar_callbacks_bsc_captura(app)
     from bsc.objetivos import registrar_callbacks_bsc_objetivos
