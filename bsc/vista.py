@@ -47,9 +47,11 @@ _CELL_SEMAFORO = {"function": (
     ")[params.data.color] || {textAlign:'center'}"
 )}
 
-# indicadores principales en negrita
+# indicadores principales en negrita azul; hijos indentados en gris
 _CELL_INDICADOR = {"function":
-    "params.data.nivel === 0 ? {fontWeight:'700', color:'#173C73'} : {color:'#5A6472'}"}
+    "params.data.nivel === 1 ? "
+    "{color:'#5A6472', paddingLeft:'26px'} : "
+    "{fontWeight:'700', color:'#173C73'}"}
 
 
 def _estilo_grid(alto):
@@ -119,12 +121,7 @@ def _column_defs(sems):
     """Columnas: Área | Indicador | Objetivo | [semanas…] |
     Acumulado | % | Deber ser | Semáforo."""
     cols = [
-        {"field": "grupo", "headerName": "Área", "minWidth": 130,
-         "pinned": "left", "rowGroup": False, "sortable": True,
-         "filter": False, "headerClass": "hdr-bsc",
-         "cellStyle": {"fontWeight": "600", "color": "#8A94A6",
-                       "fontSize": "12px"}},
-        {"field": "indicador", "headerName": "Indicador", "minWidth": 230,
+        {"field": "indicador", "headerName": "Indicador", "minWidth": 260,
          "pinned": "left", "sortable": False, "filter": False,
          "headerClass": "hdr-bsc", "cellStyle": _CELL_INDICADOR},
         {"field": "objetivo", "headerName": "Objetivo", "type": "numericColumn",

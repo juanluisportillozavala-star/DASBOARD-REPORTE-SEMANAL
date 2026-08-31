@@ -99,7 +99,7 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
         fila = {
             "id": iid,
             "grupo": ind["grupo"],
-            "indicador": ("    " + ind["nombre"]) if ind["nivel"] else ind["nombre"],
+            "indicador": ind["nombre"],
             "unidad": ind["unidad"],
             "tipo": ind["tipo"],
             "nivel": ind["nivel"],

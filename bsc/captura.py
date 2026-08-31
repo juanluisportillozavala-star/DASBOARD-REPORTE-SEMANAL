@@ -102,44 +102,71 @@ def crear_layout_captura_bsc():
     )
 
 
+# Estilo de la celda Indicador según el tipo de fila:
+#  - título (padre con hijos): azul negrita sobre crema
+#  - principal suelto (nivel 0 capturable): azul negrita, sin sangría
+#  - hijo (nivel 1): gris, indentado
+_CELL_INDICADOR = {"function": (
+    "params.data.es_titulo ? "
+    "{fontWeight:'700', color:'#173C73', backgroundColor:'#F4F1E4'} : "
+    "(params.data.nivel === 1 ? "
+    "  {color:'#5A6472', paddingLeft:'26px'} : "
+    "  {fontWeight:'700', color:'#173C73'})"
+)}
+
+# Las celdas editables (objetivo/semanas) se DESHABILITAN en las
+# filas-título: no tienen dato propio, solo rotulan.
+_EDITABLE = {"function": "!params.data.es_titulo"}
+
+# Fondo tenue de las celdas editables solo en filas capturables.
+_CELL_EDIT = {"function": (
+    "params.data.es_titulo ? "
+    "{backgroundColor:'#F4F1E4'} : {backgroundColor:'#FFFDF5'}"
+)}
+
+
 def _column_defs(sems):
     cols = [
-        {"field": "grupo", "headerName": "Área", "minWidth": 130,
+        {"field": "indicador", "headerName": "Indicador", "minWidth": 260,
          "pinned": "left", "editable": False, "headerClass": "hdr-bsc",
-         "cellStyle": {"color": "#8A94A6", "fontSize": "12px"}},
-        {"field": "indicador", "headerName": "Indicador", "minWidth": 240,
-         "pinned": "left", "editable": False, "headerClass": "hdr-bsc",
-         "cellStyle": {"fontWeight": "600", "color": AZUL}},
-        {"field": "objetivo", "headerName": "Objetivo", "editable": True,
+         "cellStyle": _CELL_INDICADOR},
+        {"field": "objetivo", "headerName": "Objetivo", "editable": _EDITABLE,
          "type": "numericColumn", "minWidth": 130, "headerClass": "hdr-bsc",
-         "cellStyle": {"backgroundColor": "#FFFDF5"}},
+         "cellStyle": _CELL_EDIT},
     ]
     for s in sems:
         cols.append({
             "field": f"sem_{s['num']}", "headerName": s["label"],
-            "editable": True, "type": "numericColumn", "minWidth": 100,
-            "headerClass": "hdr-bsc"})
+            "editable": _EDITABLE, "type": "numericColumn", "minWidth": 100,
+            "headerClass": "hdr-bsc", "cellStyle": _CELL_EDIT})
     return cols
 
 
 def _filas(anio, mes):
-    """Arma el rowData de captura: una fila por indicador
-    CAPTURABLE, con su objetivo y valores por semana ya guardados."""
+    """Arma el rowData de captura recorriendo TODO el catálogo en
+    orden. Los indicadores que se calculan por suma (padres) se
+    incluyen como FILAS-TÍTULO (es_titulo=True, no editables); los
+    capturables van debajo, indentados, con objetivo y semanas."""
     sems = S.semanas_del_mes(anio, mes)
     objetivos = datos.leer_objetivos(anio, mes)
     captura = datos.leer_captura(anio, mes)
+
     filas = []
-    for ind in catalogo.capturables():
+    for ind in catalogo.indicadores():
         iid = ind["id"]
+        # ¿es una fila-título? -> los padres que suman hijos y
+        # cualquier indicador NO capturable de nivel 0.
+        es_titulo = (not ind["capturable"])
         fila = {
             "id": iid,
-            "grupo": ind["grupo"],
-            "indicador": ("    " + ind["nombre"]) if ind["nivel"] else ind["nombre"],
-            "objetivo": objetivos.get(iid),
+            "indicador": ind["nombre"],
+            "es_titulo": es_titulo,
+            "nivel": ind["nivel"],
+            "objetivo": None if es_titulo else objetivos.get(iid),
         }
         semvals = captura.get(iid, {})
         for s in sems:
-            fila[f"sem_{s['num']}"] = semvals.get(s["num"])
+            fila[f"sem_{s['num']}"] = None if es_titulo else semvals.get(s["num"])
         filas.append(fila)
     return filas, sems
 
@@ -185,8 +212,8 @@ def registrar_callbacks_bsc_captura(app):
         valores = []   # (indicador, semana, valor)
         for fila in rowdata:
             iid = fila.get("id")
-            if not iid:
-                continue
+            if not iid or fila.get("es_titulo"):
+                continue   # las filas-título no guardan nada
             objetivos[iid] = fila.get("objetivo")
             for s in sems:
                 valores.append((iid, s["num"], fila.get(f"sem_{s['num']}")))
