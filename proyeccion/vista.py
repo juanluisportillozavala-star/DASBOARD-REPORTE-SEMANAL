@@ -278,6 +278,7 @@ def _filas_comentarios(filas, guardados):
 def _grid_comentarios(filas_coment, fila_total, editable):
     return dag.AgGrid(
         id="proy-coment-grid",
+        dangerously_allow_code=True,
         rowData=filas_coment,
         columnDefs=[
             {"field": "producto", "headerName": "Producto", "minWidth": 240,
@@ -298,7 +299,7 @@ def _grid_comentarios(filas_coment, fila_total, editable):
              "flex": 2, "editable": editable, "sortable": False, "filter": False,
              "headerClass": "hdr-proy hdr-proy-izq",
              "wrapText": True, "autoHeight": True,
-             "cellRenderer": "ComentarioRenderer",
+             "cellRenderer": "markdown",
              "cellEditor": {"function": "ComentarioEditor"},
              "cellEditorPopup": True,
              "cellEditorParams": {"width": 500, "height": 180},
