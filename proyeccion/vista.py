@@ -308,8 +308,8 @@ def _grid_comentarios(filas_coment, fila_total, editable):
         dashGridOptions={"animateRows": False, "headerHeight": 40,
                          "domLayout": "autoHeight",
                          "pinnedBottomRowData": [fila_total],
-                         "singleClickEdit": True,
-                         "stopEditingWhenCellsLoseFocus": True,
+                         "singleClickEdit": False,
+                         "suppressClickEdit": False,
                          "suppressCellFocus": False},
         getRowStyle={"function":
             "params.node.rowPinned ? "
