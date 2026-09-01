@@ -12,6 +12,12 @@ Cada tabla: Producto | Proyección | Facturado | Diferencia |
 vendido fuera de la lista, con su detalle abajo.
 
 Lee la proyección de db y las ventas de la caché del servidor.
+
+NOTA: la columna Comentarios usa un editor de texto ENRIQUECIDO
+(ComentarioEditor) y un renderer (ComentarioRenderer) definidos en
+assets/dashAgGridComponentFunctions.js. El comentario se guarda
+como HTML en la misma columna; los comentarios viejos en texto
+plano se siguen mostrando bien.
 """
 
 from dash import Input, Output, State, html, dcc, no_update
@@ -287,14 +293,16 @@ def _grid_comentarios(filas_coment, fila_total, editable):
              "valueFormatter": FMT_NUM, "minWidth": 120, "editable": False,
              "sortable": False, "filter": False, "headerClass": "hdr-proy",
              "cellStyle": {"textAlign": "center"}},
+            # Comentarios: editor enriquecido + renderer de HTML.
             {"field": "comentario", "headerName": "Comentarios", "minWidth": 380,
              "flex": 2, "editable": editable, "sortable": False, "filter": False,
              "headerClass": "hdr-proy hdr-proy-izq",
              "wrapText": True, "autoHeight": True,
+             "cellRenderer": "ComentarioRenderer",
              "cellEditor": {"function": "ComentarioEditor"},
              "cellEditorPopup": True,
-             "cellEditorParams": {"rows": 8, "width": 460, "height": 200},
-             "cellStyle": {"whiteSpace": "pre-wrap", "lineHeight": "1.4",
+             "cellEditorParams": {"width": 500, "height": 180},
+             "cellStyle": {"lineHeight": "1.4",
                            "backgroundColor": "#FFFDF5" if editable else "#FFFFFF"}},
         ],
         dashGridOptions={"animateRows": False, "headerHeight": 40,
@@ -323,7 +331,8 @@ def _seccion_comentarios(filas, guardados, editable, etiqueta):
     if editable:
         encabezado.append(
             html.P("Escribe en la columna Comentarios (doble clic para abrir el "
-                   "editor) y pulsa «Guardar comentarios».",
+                   "editor con formato: negrita, subrayado, resaltado y tamaño) "
+                   "y pulsa «Guardar comentarios».",
                    style={"color": "#6C757D", "fontSize": "13px"}))
     else:
         encabezado.append(
@@ -475,4 +484,3 @@ def registrar_callbacks_proyeccion(app):
                              style={"color": "#198754", "fontWeight": "600"})
         except Exception as e:
             return html.Span(f"Error: {e}", style={"color": "#C0392B"})
-        
