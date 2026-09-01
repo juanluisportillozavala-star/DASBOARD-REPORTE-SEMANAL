@@ -63,6 +63,17 @@ dagfuncs.ComentarioEditor = class {
         this.eGui.style.boxShadow = "0 8px 24px rgba(0,0,0,0.20)";
         this.eGui.style.padding = "10px";
 
+        // CLAVE: evitar que un clic DENTRO del editor (barra, área,
+        // botón) sea interpretado por AG Grid como "clic afuera" y
+        // cierre la edición al instante. Detenemos la propagación del
+        // mousedown en todo el recuadro.
+        this.eGui.addEventListener("mousedown", function (e) {
+            e.stopPropagation();
+        });
+        this.eGui.addEventListener("click", function (e) {
+            e.stopPropagation();
+        });
+
         // ---- barra de herramientas ----
         var toolbar = document.createElement("div");
         toolbar.style.display = "flex";
@@ -212,14 +223,28 @@ dagfuncs.ComentarioEditor = class {
     }
 
     afterGuiAttached() {
+        var self = this;
+        // enfocar con un pequeño retraso: garantiza que el popup ya
+        // está montado en el DOM antes de pedir el foco y colocar el
+        // cursor. Sin esto, algunos navegadores no dan el foco y AG
+        // Grid cierra el editor de inmediato.
+        setTimeout(function () {
+            self.eInput.focus();
+            try {
+                var rango = document.createRange();
+                rango.selectNodeContents(self.eInput);
+                rango.collapse(false);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(rango);
+            } catch (e) {}
+        }, 30);
+    }
+
+    // AG Grid llama focusIn cuando el editor debe tomar el foco;
+    // ayuda a que no se cierre por "pérdida de foco".
+    focusIn() {
         this.eInput.focus();
-        // colocar el cursor al final del contenido
-        var rango = document.createRange();
-        rango.selectNodeContents(this.eInput);
-        rango.collapse(false);
-        var sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(rango);
     }
 
     getValue() {
