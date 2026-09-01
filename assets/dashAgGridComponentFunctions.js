@@ -5,28 +5,18 @@
 //
 // EDITORES de celda  -> window.dashAgGridFunctions
 //   "cellEditor": {"function": "ComentarioEditor"}
-// RENDERERS de celda -> window.dashAgGridComponentFunctions
-//   "cellRenderer": "ComentarioRenderer"
+// RENDERER "de función" -> window.dashAgGridFunctions también
+//   "cellRenderer": {"function": "ComentarioRenderer(params)"}
 //
 // ComentarioEditor: editor de texto ENRIQUECIDO (negrita, subrayado,
-// resaltado y tamaño de letra) usando un div contenteditable. Guarda
-// el contenido como HTML. Compatible hacia atrás: los comentarios
-// viejos en texto plano se muestran igual.
-//   • Enter  -> salto de línea normal (no cierra la edición)
-//   • Botón "Guardar y cerrar" -> confirma y cierra
-//   • Esc    -> cancela (comportamiento por defecto de AG Grid)
+// resaltado y tamaño de letra) con un div contenteditable. Guarda el
+// contenido como HTML. Compatible hacia atrás: los comentarios viejos
+// en texto plano se muestran igual.
 
 var dagfuncs = (window.dashAgGridFunctions =
     window.dashAgGridFunctions || {});
-var dagcomponentfuncs = (window.dashAgGridComponentFunctions =
-    window.dashAgGridComponentFunctions || {});
 
 
-// ---------------------------------------------------------
-// Utilidad: ¿el valor guardado ya es HTML o es texto plano?
-// (los comentarios viejos son texto plano y hay que respetar
-//  sus saltos de línea al mostrarlos)
-// ---------------------------------------------------------
 function _pareceHTML(txt) {
     return /<[a-z][\s\S]*>/i.test(txt || "");
 }
@@ -37,22 +27,30 @@ function _escaparHTML(txt) {
     return d.innerHTML;
 }
 
-// texto plano -> HTML conservando saltos de línea
 function _textoPlanoAHTML(txt) {
     return _escaparHTML(txt).replace(/\n/g, "<br>");
 }
 
 
-// =========================================================
-// EDITOR ENRIQUECIDO
-// =========================================================
+// RENDERER "de función": devuelve un string HTML (sin React).
+//   "cellRenderer": {"function": "ComentarioRenderer(params)"}
+dagfuncs.ComentarioRenderer = function (params) {
+    var valor = params && params.value != null ? String(params.value) : "";
+    if (!valor) return "";
+    var html = _pareceHTML(valor) ? valor : _textoPlanoAHTML(valor);
+    return (
+        "<div style=\"white-space:normal;line-height:1.4;" +
+        "padding:4px 0;text-align:left;\">" + html + "</div>"
+    );
+};
+
+
 dagfuncs.ComentarioEditor = class {
     init(params) {
         this.params = params;
         var valor = params.value == null ? "" : String(params.value);
         var self = this;
 
-        // ---- contenedor (recuadro) ----
         this.eGui = document.createElement("div");
         this.eGui.style.display = "flex";
         this.eGui.style.flexDirection = "column";
@@ -63,10 +61,7 @@ dagfuncs.ComentarioEditor = class {
         this.eGui.style.boxShadow = "0 8px 24px rgba(0,0,0,0.20)";
         this.eGui.style.padding = "10px";
 
-        // CLAVE: evitar que un clic DENTRO del editor (barra, área,
-        // botón) sea interpretado por AG Grid como "clic afuera" y
-        // cierre la edición al instante. Detenemos la propagación del
-        // mousedown en todo el recuadro.
+        // no dejar que un clic dentro del editor cierre la edición
         this.eGui.addEventListener("mousedown", function (e) {
             e.stopPropagation();
         });
@@ -74,7 +69,6 @@ dagfuncs.ComentarioEditor = class {
             e.stopPropagation();
         });
 
-        // ---- barra de herramientas ----
         var toolbar = document.createElement("div");
         toolbar.style.display = "flex";
         toolbar.style.flexWrap = "wrap";
@@ -83,7 +77,6 @@ dagfuncs.ComentarioEditor = class {
         toolbar.style.borderBottom = "1px solid #EEF2F7";
         toolbar.style.paddingBottom = "8px";
 
-        // helper: crea un botón de formato
         function botonFmt(html, titulo, accion) {
             var b = document.createElement("button");
             b.type = "button";
@@ -98,16 +91,15 @@ dagfuncs.ComentarioEditor = class {
             b.style.cursor = "pointer";
             b.style.fontSize = "14px";
             b.style.fontWeight = "600";
-            // usar mousedown + preventDefault para NO perder la selección
             b.addEventListener("mousedown", function (e) {
                 e.preventDefault();
+                e.stopPropagation();
                 accion();
                 self.eInput.focus();
             });
             return b;
         }
 
-        // Negrita / Subrayado / Cursiva / Tachado
         toolbar.appendChild(botonFmt("<b>N</b>", "Negrita",
             function () { document.execCommand("bold"); }));
         toolbar.appendChild(botonFmt("<u>S</u>", "Subrayado",
@@ -115,7 +107,6 @@ dagfuncs.ComentarioEditor = class {
         toolbar.appendChild(botonFmt("<i>C</i>", "Cursiva",
             function () { document.execCommand("italic"); }));
 
-        // Resaltar (amarillo) y quitar resaltado
         toolbar.appendChild(botonFmt(
             "<span style='background:#FFE066;padding:0 4px;'>R</span>",
             "Resaltar",
@@ -125,18 +116,13 @@ dagfuncs.ComentarioEditor = class {
             "Quitar resaltado",
             function () { document.execCommand("hiliteColor", false, "transparent"); }));
 
-        // Color de letra (azul de marca)
         toolbar.appendChild(botonFmt(
-            "<span style='color:#173C73;'>A</span>",
-            "Color azul",
+            "<span style='color:#173C73;'>A</span>", "Color azul",
             function () { document.execCommand("foreColor", false, "#173C73"); }));
         toolbar.appendChild(botonFmt(
-            "<span style='color:#C0392B;'>A</span>",
-            "Color rojo",
+            "<span style='color:#C0392B;'>A</span>", "Color rojo",
             function () { document.execCommand("foreColor", false, "#C0392B"); }));
 
-        // Tamaño de letra: más chica / normal / más grande
-        // execCommand fontSize usa escala 1..7 (2=chica, 3=normal, 5=grande)
         toolbar.appendChild(botonFmt(
             "<span style='font-size:11px;'>A-</span>", "Letra más chica",
             function () { document.execCommand("fontSize", false, "2"); }));
@@ -147,12 +133,10 @@ dagfuncs.ComentarioEditor = class {
             "<span style='font-size:18px;'>A+</span>", "Letra más grande",
             function () { document.execCommand("fontSize", false, "5"); }));
 
-        // Quitar todo el formato
         toolbar.appendChild(botonFmt(
             "&#10005;", "Quitar formato",
             function () { document.execCommand("removeFormat"); }));
 
-        // ---- área editable (contenteditable) ----
         this.eInput = document.createElement("div");
         this.eInput.contentEditable = "true";
         this.eInput.style.width = "100%";
@@ -169,22 +153,18 @@ dagfuncs.ComentarioEditor = class {
         this.eInput.style.boxSizing = "border-box";
         this.eInput.style.textAlign = "left";
 
-        // cargar el valor: si ya es HTML se pone tal cual; si es texto
-        // plano (comentario viejo) se convierte conservando saltos.
         if (_pareceHTML(valor)) {
             this.eInput.innerHTML = valor;
         } else {
             this.eInput.innerHTML = _textoPlanoAHTML(valor);
         }
 
-        // Enter = salto de línea normal (que AG Grid no cierre la edición)
         this.eInput.addEventListener("keydown", function (e) {
             if (e.key === "Enter") {
                 e.stopPropagation();
             }
         });
 
-        // ---- barra inferior con botón guardar ----
         var barra = document.createElement("div");
         barra.style.display = "flex";
         barra.style.justifyContent = "space-between";
@@ -206,7 +186,12 @@ dagfuncs.ComentarioEditor = class {
         this.eBtn.style.borderRadius = "6px";
         this.eBtn.style.fontWeight = "600";
         this.eBtn.style.cursor = "pointer";
-        this.eBtn.addEventListener("click", function () {
+        this.eBtn.addEventListener("mousedown", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        this.eBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
             self.params.stopEditing();
         });
 
@@ -224,10 +209,6 @@ dagfuncs.ComentarioEditor = class {
 
     afterGuiAttached() {
         var self = this;
-        // enfocar con un pequeño retraso: garantiza que el popup ya
-        // está montado en el DOM antes de pedir el foco y colocar el
-        // cursor. Sin esto, algunos navegadores no dan el foco y AG
-        // Grid cierra el editor de inmediato.
         setTimeout(function () {
             self.eInput.focus();
             try {
@@ -241,14 +222,11 @@ dagfuncs.ComentarioEditor = class {
         }, 30);
     }
 
-    // AG Grid llama focusIn cuando el editor debe tomar el foco;
-    // ayuda a que no se cierre por "pérdida de foco".
     focusIn() {
         this.eInput.focus();
     }
 
     getValue() {
-        // devolver HTML; si quedó vacío, cadena vacía
         var html = this.eInput.innerHTML.trim();
         if (html === "<br>" || html === "<div><br></div>") {
             return "";
@@ -259,26 +237,4 @@ dagfuncs.ComentarioEditor = class {
     isPopup() {
         return true;
     }
-};
-
-
-// =========================================================
-// RENDERER: muestra el comentario con su formato (HTML) dentro
-// de la celda. Para comentarios viejos (texto plano) respeta los
-// saltos de línea.
-// =========================================================
-dagcomponentfuncs.ComentarioRenderer = function (props) {
-    var valor = props.value == null ? "" : String(props.value);
-    var html = _pareceHTML(valor) ? valor : _textoPlanoAHTML(valor);
-    // React.createElement con dangerouslySetInnerHTML (React viene en
-    // el scope global de dash-ag-grid para las funciones de componente)
-    return React.createElement("div", {
-        style: {
-            whiteSpace: "normal",
-            lineHeight: "1.4",
-            padding: "4px 0",
-            textAlign: "left",
-        },
-        dangerouslySetInnerHTML: { __html: html },
-    });
 };
