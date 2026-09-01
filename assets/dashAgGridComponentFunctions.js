@@ -15,6 +15,8 @@
 
 var dagfuncs = (window.dashAgGridFunctions =
     window.dashAgGridFunctions || {});
+var dagcomps = (window.dashAgGridComponentFunctions =
+    window.dashAgGridComponentFunctions || {});
 
 
 function _pareceHTML(txt) {
@@ -32,17 +34,32 @@ function _textoPlanoAHTML(txt) {
 }
 
 
-// RENDERER "de función": devuelve un string HTML (sin React).
-//   "cellRenderer": {"function": "ComentarioRenderer(params)"}
-dagfuncs.ComentarioRenderer = function (params) {
-    var valor = params && params.value != null ? String(params.value) : "";
-    if (!valor) return "";
-    var html = _pareceHTML(valor) ? valor : _textoPlanoAHTML(valor);
-    return (
-        "<div style=\"white-space:normal;line-height:1.4;" +
-        "padding:4px 0;text-align:left;\">" + html + "</div>"
-    );
+// RENDERER de CLASE: inserta el HTML directamente en el DOM con
+// innerHTML (no depende de React ni de que la librería interprete
+// un string). Se referencia desde Python como:
+//   "cellRenderer": "ComentarioRenderer"
+dagfuncs.ComentarioRenderer = class {
+    init(params) {
+        var valor = params && params.value != null ? String(params.value) : "";
+        this.eGui = document.createElement("div");
+        this.eGui.style.whiteSpace = "normal";
+        this.eGui.style.lineHeight = "1.4";
+        this.eGui.style.padding = "4px 0";
+        this.eGui.style.textAlign = "left";
+        if (valor) {
+            this.eGui.innerHTML = _pareceHTML(valor)
+                ? valor
+                : _textoPlanoAHTML(valor);
+        }
+    }
+    getGui() {
+        return this.eGui;
+    }
+    refresh() {
+        return false;
+    }
 };
+dagcomps.ComentarioRenderer = dagfuncs.ComentarioRenderer;
 
 
 dagfuncs.ComentarioEditor = class {
