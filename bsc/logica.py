@@ -93,19 +93,26 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
             acum[iid] = _acumular(ind["tipo"], vals)
 
     # 2) padres = suma del acumulado de sus hijos
+    #    (y también su OBJETIVO = suma de objetivos de los hijos)
+    obj_calc = dict(objetivos)   # copia para agregar los padres
     for ind in inds:
         if ind["suma_hijos"]:
             hijos = catalogo.hijos_de(ind["id"])
             vals = [acum.get(h["id"]) for h in hijos]
             vals = [v for v in vals if v is not None]
             acum[ind["id"]] = float(sum(vals)) if vals else None
+            # objetivo del padre = suma de objetivos de sus hijos
+            ovals = [objetivos.get(h["id"]) for h in hijos]
+            ovals = [v for v in ovals if v is not None]
+            if ovals:
+                obj_calc[ind["id"]] = float(sum(ovals))
 
     # 3) armar filas
     filas = []
     for ind in inds:
         iid = ind["id"]
         a = acum.get(iid)
-        obj = objetivos.get(iid)
+        obj = obj_calc.get(iid)
         semvals = captura.get(iid, {})
         pct = (a / obj) if (obj not in (None, 0) and a is not None) else None
         fila = {
