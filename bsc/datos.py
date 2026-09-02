@@ -180,12 +180,17 @@ def leer_objetivos_anio(anio):
     return out
 
 
-def guardar_objetivos_anio(anio, valores):
+def guardar_objetivos_anio(anio, valores, reemplazar_anio=False):
     """Upsert de objetivos anuales y mensuales de un año.
     valores: lista de tuplas (mes, indicador, valor). mes 0 = anual.
-    Un valor None o "" BORRA esa celda."""
+    Un valor None o "" BORRA esa celda.
+    reemplazar_anio=True: primero BORRA todos los objetivos del año
+    (para dejar exactamente lo recibido; útil cuando se recalcula
+    todo desde la pantalla de captura)."""
     anio = int(anio)
     with _conn() as c, c.cursor() as cur:
+        if reemplazar_anio:
+            cur.execute("DELETE FROM bsc_objetivos WHERE anio=%s;", (anio,))
         for mes, iid, val in valores:
             iid = (iid or "").strip()
             if not iid:

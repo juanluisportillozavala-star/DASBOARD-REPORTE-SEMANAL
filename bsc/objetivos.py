@@ -31,11 +31,14 @@ _CELL_INDICADOR = {"function": (
 )}
 _EDITABLE = {"function": "!params.data.es_titulo"}
 _CELL_EDIT = {"function": (
-    "params.data.es_titulo ? {backgroundColor:'#F4F1E4'} : {}"
+    "params.data.es_titulo ? "
+    "{backgroundColor:'#EFF2F7', fontWeight:'700', color:'#173C73'} : "
+    "{backgroundColor:'#FFFDF5'}"
 )}
-_CELL_ANUAL = {"function": (
-    "params.data.es_titulo ? {backgroundColor:'#F4F1E4'} : "
-    "{backgroundColor:'#FFFDF5', fontWeight:'600'}"
+# Objetivo anual: SIEMPRE calculado -> fondo gris claro, en azul,
+# para que se note que no se teclea.
+_CELL_ANUAL_CALC = {"function": (
+    "{backgroundColor:'#EFF2F7', fontWeight:'700', color:'#173C73'}"
 )}
 
 
@@ -95,9 +98,10 @@ def _column_defs(editable):
         {"field": "indicador", "headerName": "Indicador", "minWidth": 240,
          "pinned": "left", "editable": False, "headerClass": "hdr-bsc",
          "cellStyle": _CELL_INDICADOR},
-        {"field": "anual", "headerName": "Objetivo anual", "editable": edit,
+        # Objetivo anual: SIEMPRE calculado (nunca se teclea)
+        {"field": "anual", "headerName": "Objetivo anual", "editable": False,
          "type": "numericColumn", "minWidth": 140, "pinned": "left",
-         "headerClass": "hdr-bsc", "cellStyle": _CELL_ANUAL},
+         "headerClass": "hdr-bsc", "cellStyle": _CELL_ANUAL_CALC},
     ]
     for m, nombre in MESES_COL:
         cols.append({
@@ -108,16 +112,18 @@ def _column_defs(editable):
 
 
 def _filas(anio):
-    porm = datos.leer_objetivos_anio(anio)   # {mes: {ind: val}}, mes 0 = anual
+    from bsc.logica import formular_objetivos
+    porm = datos.leer_objetivos_anio(anio)      # {mes: {ind: val}}
+    porm = formular_objetivos(porm)             # rellena anual + padres
     filas = []
     for ind in catalogo.indicadores():
         iid = ind["id"]
         es_titulo = not ind["capturable"]
         fila = {"id": iid, "indicador": ind["nombre"],
                 "es_titulo": es_titulo, "nivel": ind["nivel"],
-                "anual": None if es_titulo else porm.get(0, {}).get(iid)}
+                "anual": porm.get(0, {}).get(iid)}
         for m, _ in MESES_COL:
-            fila[f"m_{m}"] = None if es_titulo else porm.get(m, {}).get(iid)
+            fila[f"m_{m}"] = porm.get(m, {}).get(iid)
         filas.append(fila)
     return filas
 
@@ -179,16 +185,28 @@ def registrar_callbacks_bsc_objetivos(app):
         if not (sesion and sesion.get("rol") == "admin"):
             return html.Span("No tienes permiso para guardar objetivos.",
                              style={"color": "#C0392B"})
-        valores = []   # (mes, indicador, valor)
+        # 1) recoger SOLO lo tecleado (meses de hijos y principales)
+        from bsc.logica import formular_objetivos
+        tecleado = {}   # {mes: {id: val}}
         for fila in rowdata:
             iid = fila.get("id")
             if not iid or fila.get("es_titulo"):
                 continue
-            valores.append((0, iid, fila.get("anual")))       # anual
             for m, _ in MESES_COL:
-                valores.append((m, iid, fila.get(f"m_{m}")))   # cada mes
+                v = fila.get(f"m_{m}")
+                if v not in (None, ""):
+                    tecleado.setdefault(m, {})[iid] = v
+
+        # 2) formular: rellena anuales (mes 0) y padres calculados
+        completo = formular_objetivos(tecleado)
+
+        # 3) aplanar a lista (mes, id, valor) para guardar TODO
+        valores = []
+        for m in range(0, 13):
+            for iid, v in completo.get(m, {}).items():
+                valores.append((m, iid, v))
         try:
-            datos.guardar_objetivos_anio(anio, valores)
+            datos.guardar_objetivos_anio(anio, valores, reemplazar_anio=True)
         except Exception as e:
             return html.Span(f"Error al guardar: {e}",
                              style={"color": "#C0392B"})

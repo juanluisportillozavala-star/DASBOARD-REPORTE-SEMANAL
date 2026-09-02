@@ -185,3 +185,49 @@ def construir_acumulado(anio, obj_anual, cap_por_mes, hasta=None):
         filas.append(fila)
 
     return filas, ds
+
+
+# =========================================================
+# OBJETIVOS FORMULADOS (para la pantalla de Objetivos)
+# =========================================================
+
+def formular_objetivos(objetivos_por_mes):
+    """Completa los objetivos con las celdas CALCULADAS (no tecleadas):
+      • Objetivo anual (mes 0):
+          - flujo -> suma de los 12 meses del indicador
+          - saldo -> el último mes con dato (meta fija del año)
+      • Padres (suma_hijos): cada mes y el anual = suma de sus hijos.
+
+    Entrada y salida: dict {mes: {id_indicador: valor}}, mes 0..12.
+    Solo RELLENA lo calculado; respeta lo que ya venga tecleado en
+    los hijos y principales. Devuelve un dict nuevo (no muta)."""
+    inds = catalogo.indicadores()
+
+    # copia editable
+    out = {m: dict(objetivos_por_mes.get(m, {})) for m in range(0, 13)}
+
+    # 1) padres: cada mes (1..12) = suma de hijos capturados ese mes
+    for ind in inds:
+        if not ind["suma_hijos"]:
+            continue
+        hijos = catalogo.hijos_de(ind["id"])
+        for m in range(1, 13):
+            vals = [out.get(m, {}).get(h["id"]) for h in hijos]
+            vals = [v for v in vals if v is not None]
+            if vals:
+                out.setdefault(m, {})[ind["id"]] = float(sum(vals))
+
+    # 2) objetivo anual (mes 0) de CADA indicador según su tipo
+    for ind in inds:
+        iid = ind["id"]
+        meses = {m: out.get(m, {}).get(iid) for m in range(1, 13)}
+        con_dato = [(m, v) for m, v in meses.items() if v is not None]
+        if not con_dato:
+            continue
+        if ind["tipo"] == "flujo":
+            anual = float(sum(v for _, v in con_dato))
+        else:  # saldo: meta fija -> el último mes con dato
+            anual = float(con_dato[-1][1])
+        out.setdefault(0, {})[iid] = anual
+
+    return out
