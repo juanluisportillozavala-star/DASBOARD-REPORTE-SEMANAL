@@ -44,6 +44,10 @@ def inicializar_esquema_bsc():
                 PRIMARY KEY (anio, mes, semana, indicador)
             );
         """)
+        # MIGRACIÓN: columna para el OBJETIVO de cada semana (además
+        # del valor real). Idempotente: si ya existe, no hace nada.
+        cur.execute("ALTER TABLE bsc_captura "
+                    "ADD COLUMN IF NOT EXISTS objetivo_semanal NUMERIC;")
 
 
 # =========================================================
@@ -88,7 +92,9 @@ def guardar_objetivos(anio, mes, objetivos_por_indicador):
 # =========================================================
 
 def leer_captura(anio, mes):
-    """Devuelve {id_indicador: {num_semana: valor(float)}} del mes."""
+    """Devuelve {id_indicador: {num_semana: valor_real}} del mes.
+    (Compatibilidad: solo el real, como antes. Para el objetivo
+    semanal usar leer_captura_completa.)"""
     with _conn() as c, c.cursor() as cur:
         cur.execute("SELECT indicador, semana, valor FROM bsc_captura "
                     "WHERE anio=%s AND mes=%s;", (int(anio), int(mes)))
@@ -101,32 +107,62 @@ def leer_captura(anio, mes):
     return out
 
 
+def leer_captura_completa(anio, mes):
+    """Devuelve {id_indicador: {num_semana: {"real":x, "obj":y}}}
+    con el valor real Y el objetivo semanal de cada semana."""
+    with _conn() as c, c.cursor() as cur:
+        cur.execute("SELECT indicador, semana, valor, objetivo_semanal "
+                    "FROM bsc_captura WHERE anio=%s AND mes=%s;",
+                    (int(anio), int(mes)))
+        filas = cur.fetchall()
+    out = {}
+    for iid, sem, val, obj in filas:
+        d = out.setdefault(iid, {}).setdefault(int(sem), {})
+        d["real"] = float(val) if val is not None else None
+        d["obj"] = float(obj) if obj is not None else None
+    return out
+
+
 def guardar_captura(anio, mes, valores):
     """Upsert de la captura de un mes.
-    valores: lista de tuplas (indicador, semana, valor). Un valor
-    None o "" BORRA esa celda (para poder dejarla en blanco)."""
+    valores: lista de tuplas (indicador, semana, real, obj_semanal).
+    (También acepta la forma vieja (indicador, semana, real) por
+    compatibilidad.) Si real y obj quedan ambos vacíos, BORRA la
+    celda; si al menos uno tiene dato, se guarda."""
     anio = int(anio); mes = int(mes)
+
+    def _num(x):
+        try:
+            return float(x) if x not in (None, "") else None
+        except (ValueError, TypeError):
+            return None
+
     with _conn() as c, c.cursor() as cur:
-        for iid, sem, val in valores:
+        for t in valores:
+            if len(t) == 4:
+                iid, sem, real, obj = t
+            else:  # forma vieja (iid, sem, real)
+                iid, sem, real = t
+                obj = None
             iid = (iid or "").strip()
             if not iid:
                 continue
             sem = int(sem)
-            try:
-                v = float(val) if val not in (None, "") else None
-            except (ValueError, TypeError):
-                v = None
-            if v is None:
+            r = _num(real)
+            o = _num(obj)
+            if r is None and o is None:
                 cur.execute("DELETE FROM bsc_captura WHERE anio=%s AND mes=%s "
                             "AND semana=%s AND indicador=%s;",
                             (anio, mes, sem, iid))
             else:
                 cur.execute("""
-                    INSERT INTO bsc_captura (anio, mes, semana, indicador, valor)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO bsc_captura
+                        (anio, mes, semana, indicador, valor, objetivo_semanal)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (anio, mes, semana, indicador)
-                    DO UPDATE SET valor = EXCLUDED.valor;
-                """, (anio, mes, sem, iid, v))
+                    DO UPDATE SET valor = EXCLUDED.valor,
+                                  objetivo_semanal = EXCLUDED.objetivo_semanal;
+                """, (anio, mes, sem, iid, r, o))
 
 
 # =========================================================

@@ -216,18 +216,29 @@ def _sem_column_defs(sems):
         {"field": "indicador", "headerName": "Indicador", "minWidth": 240,
          "pinned": "left", "editable": False, "headerClass": "hdr-bsc",
          "cellStyle": _CELL_INDICADOR},
-        {"field": "objetivo", "headerName": "Objetivo", "editable": False,
+        {"field": "objetivo", "headerName": "Obj. mensual", "editable": False,
          "type": "numericColumn", "valueFormatter": _FMT_VALOR,
          "minWidth": 120, "pinned": "left", "headerClass": "hdr-bsc",
          "cellStyle": _CELL_CALC},
     ]
+    # por cada semana: un grupo con dos columnas (Obj | Real)
     for s in sems:
         cols.append({
-            "field": f"sem_{s['num']}", "headerName": s["label"],
-            "editable": _EDITABLE, "type": "numericColumn",
-            "minWidth": 95, "headerClass": "hdr-bsc", "cellStyle": _CELL_EDIT})
+            "headerName": s["label"],
+            "headerClass": "hdr-bsc",
+            "children": [
+                {"field": f"obj_{s['num']}", "headerName": "Obj",
+                 "editable": _EDITABLE, "type": "numericColumn",
+                 "minWidth": 80, "headerClass": "hdr-bsc",
+                 "cellStyle": _CELL_EDIT},
+                {"field": f"sem_{s['num']}", "headerName": "Real",
+                 "editable": _EDITABLE, "type": "numericColumn",
+                 "minWidth": 80, "headerClass": "hdr-bsc",
+                 "cellStyle": _CELL_EDIT},
+            ],
+        })
     cols.append(
-        {"field": "acumulado", "headerName": "Acumulado", "editable": False,
+        {"field": "acumulado", "headerName": "Acum. real", "editable": False,
          "type": "numericColumn", "valueFormatter": _FMT_VALOR,
          "minWidth": 120, "pinned": "right", "headerClass": "hdr-bsc",
          "cellStyle": _CELL_CALC})
@@ -237,9 +248,9 @@ def _sem_column_defs(sems):
 def _sem_filas(anio, mes):
     from bsc.logica import construir_bsc
     objetivos = datos.leer_objetivos(anio, mes)
-    captura = datos.leer_captura(anio, mes)
+    captura = datos.leer_captura(anio, mes)            # solo real (para acum)
+    completa = datos.leer_captura_completa(anio, mes)  # real + obj por semana
     sems = S.semanas_del_mes(anio, mes)
-    # construir_bsc nos da el acumulado calculado por indicador
     filas_calc, _, _ = construir_bsc(anio, mes, objetivos, captura)
     calc_por_id = {f["id"]: f for f in filas_calc}
 
@@ -251,9 +262,11 @@ def _sem_filas(anio, mes):
         fila = {"id": iid, "indicador": ind["nombre"], "unidad": ind["unidad"],
                 "es_titulo": es_titulo, "nivel": ind["nivel"],
                 "objetivo": objetivos.get(iid), "acumulado": c.get("acumulado")}
-        semvals = captura.get(iid, {})
+        semvals = completa.get(iid, {})
         for s in sems:
-            fila[f"sem_{s['num']}"] = None if es_titulo else semvals.get(s["num"])
+            celda = semvals.get(s["num"], {})
+            fila[f"sem_{s['num']}"] = None if es_titulo else celda.get("real")
+            fila[f"obj_{s['num']}"] = None if es_titulo else celda.get("obj")
         filas.append(fila)
     return filas, sems
 
@@ -339,7 +352,7 @@ def registrar_callbacks_bsc_captura(app):
             for iid, v in completo.get(m, {}).items():
                 valores_obj.append((m, iid, v))
 
-        # 2) CAPTURA SEMANAL del mes seleccionado
+        # 2) CAPTURA SEMANAL del mes (objetivo semanal + real semanal)
         sems = S.semanas_del_mes(anio, mes)
         valores_cap = []
         for fila in (sem_rows or []):
@@ -347,7 +360,9 @@ def registrar_callbacks_bsc_captura(app):
             if not iid or fila.get("es_titulo"):
                 continue
             for s in sems:
-                valores_cap.append((iid, s["num"], fila.get(f"sem_{s['num']}")))
+                real = fila.get(f"sem_{s['num']}")
+                obj = fila.get(f"obj_{s['num']}")
+                valores_cap.append((iid, s["num"], real, obj))
 
         try:
             datos.guardar_objetivos_anio(anio, valores_obj, reemplazar_anio=True)
