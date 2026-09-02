@@ -37,9 +37,10 @@ MESES_COL = [(1, "Ene"), (2, "Feb"), (3, "Mar"), (4, "Abr"),
              (9, "Sep"), (10, "Oct"), (11, "Nov"), (12, "Dic")]
 
 _FMT_VALOR = {"function": (
-    "params.value == null ? '' : "
-    "(params.data.unidad === 'Días' ? d3.format(',.0f')(params.value) + ' d' : "
-    " d3.format(',.0f')(params.value))"
+    "params.value == null || params.value === '' ? '' : "
+    "(params.data.unidad === 'Días' "
+    "  ? Math.round(params.value).toLocaleString('en-US') + ' d' "
+    "  : Math.round(params.value).toLocaleString('en-US'))"
 )}
 
 # --- estilos de celda ---

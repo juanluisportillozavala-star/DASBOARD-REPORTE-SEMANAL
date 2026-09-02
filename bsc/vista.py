@@ -33,13 +33,16 @@ MESES = [(1, "Enero"), (2, "Febrero"), (3, "Marzo"), (4, "Abril"),
 _MES_NOMBRE = dict(MESES)
 
 _FMT_VALOR = {"function": (
-    "params.value == null ? '' : "
-    "(params.data.unidad === '$' ? '$' + d3.format(',.0f')(params.value) : "
-    " params.data.unidad === 'Días' ? d3.format(',.0f')(params.value) + ' d' : "
-    " d3.format(',.0f')(params.value)))"
+    "params.value == null || params.value === '' ? '' : "
+    "(params.data.unidad === 'Días' "
+    "  ? Math.round(params.value).toLocaleString('en-US') + ' d' "
+    "  : (params.data.unidad === '$' ? '$' : '') + "
+    "    Math.round(params.value).toLocaleString('en-US'))"
 )}
-_FMT_PCT = {"function":
-    "params.value == null ? '' : d3.format(',.1f')(params.value*100) + '%'"}
+_FMT_PCT = {"function": (
+    "params.value == null || params.value === '' ? '' : "
+    "(params.value*100).toFixed(1) + '%'"
+)}
 
 _CELL_SEMAFORO = {"function": (
     "({'verde':{color:'#2ecc71',fontSize:'18px',textAlign:'center'},"
