@@ -25,6 +25,7 @@ _COL_MES = "Mes"
 _COL_VENDEDOR = "Líneas de la orden de venta/Vendedor"
 _COL_VENTA = "Crédito"
 _COL_UTILIDAD = "Ut Bruta MN"
+_COL_FECHA = "Asiento contable/Fecha de factura"
 
 # Mapeo nombre BSC -> nombre EXACTO del vendedor en la BD de ventas.
 # (En el catálogo del BSC son "Ilse García"; en ventas están en
@@ -102,3 +103,57 @@ def _valor_ventas(indicador, anio, mes):
     # (los hijos), o None si fuese un total.
     vendedor = indicador.get("nombre") if indicador.get("nivel") == 1 else None
     return _suma_columna(anio, mes, vendedor, columna)
+
+
+# =========================================================
+# DESGLOSE POR SEMANA (para la vista mensual)
+# =========================================================
+import pandas as pd
+from bsc import semanas as _S
+
+
+def _suma_por_semana(anio, mes, vendedor_bsc, columna):
+    """Devuelve {num_semana: suma} repartiendo 'columna' según la
+    FECHA de factura de cada fila, usando las semanas del BSC
+    (lunes-domingo recortadas al mes). None-safe."""
+    sub = _df_ventas_mes(anio, mes)
+    if sub is None or columna not in sub.columns or _COL_FECHA not in sub.columns:
+        return {}
+    if vendedor_bsc is not None:
+        nombre = _VENDEDOR_BSC_A_VENTAS.get(vendedor_bsc, vendedor_bsc)
+        if _COL_VENDEDOR not in sub.columns:
+            return {}
+        sub = sub[sub[_COL_VENDEDOR].astype(str).str.strip() == nombre]
+        if len(sub) == 0:
+            return {}
+
+    sub = sub.copy()
+    sub["_f"] = pd.to_datetime(sub[_COL_FECHA], errors="coerce")
+    sems = _S.semanas_del_mes(anio, mes)
+
+    out = {}
+    for s in sems:
+        ini = pd.Timestamp(s["ini"])
+        fin = pd.Timestamp(s["fin"]) + pd.Timedelta(days=1)  # exclusivo
+        m = (sub["_f"] >= ini) & (sub["_f"] < fin)
+        val = sub.loc[m, columna].sum()
+        out[s["num"]] = float(val) if val else 0.0
+    return out
+
+
+def semanas_auto(fuente, indicador, anio, mes):
+    """Desglose por semana de un indicador AUTO, o {} si no aplica.
+    Devuelve {num_semana: valor}."""
+    if not fuente or not fuente.startswith("auto:"):
+        return {}
+    if fuente.split(":", 1)[1] != "ventas":
+        return {}
+    iid = indicador["id"]
+    if iid.startswith("venta"):
+        columna = _COL_VENTA
+    elif iid.startswith("utilidad") or iid.startswith("ub"):
+        columna = _COL_UTILIDAD
+    else:
+        return {}
+    vendedor = indicador.get("nombre") if indicador.get("nivel") == 1 else None
+    return _suma_por_semana(anio, mes, vendedor, columna)

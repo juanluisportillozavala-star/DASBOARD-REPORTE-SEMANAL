@@ -53,15 +53,8 @@ _CELL_INDICADOR = {"function":
     "{color:'#5A6472', paddingLeft:'26px'} : "
     "{fontWeight:'700', color:'#173C73'}"}
 
-# Celda de % / $ pintada según el color del semáforo (fondo suave
-# + texto fuerte), replicando el Excel (rojo/amarillo/verde).
-_CELL_PCT_SEMAFORO = {"function": (
-    "({'verde':{backgroundColor:'#D5F5E3', color:'#1E8449', fontWeight:'700'},"
-    "  'amarillo':{backgroundColor:'#FCF3CF', color:'#B7791F', fontWeight:'700'},"
-    "  'rojo':{backgroundColor:'#FADBD8', color:'#C0392B', fontWeight:'700'},"
-    "  'gris':{color:'#8A94A6'}}"
-    ")[params.data.color] || {color:'#8A94A6'}"
-)}
+# % / $ sin color de semáforo (número simple, negrita azul)
+_CELL_PCT_SEMAFORO = {"fontWeight": "700", "color": "#173C73"}
 
 
 def _estilo_grid(alto):

@@ -75,6 +75,7 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
     #    - si es "manual", se acumula la captura por semana
     from bsc import fuentes
     acum = {}
+    sem_auto = {}   # {id: {num_semana: valor}} para indicadores auto
     for ind in inds:
         iid = ind["id"]
         if ind["suma_hijos"]:
@@ -83,6 +84,7 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
         if fuente.startswith("auto:"):
             try:
                 acum[iid] = fuentes.valor_auto(fuente, ind, anio, mes)
+                sem_auto[iid] = fuentes.semanas_auto(fuente, ind, anio, mes)
             except Exception:
                 acum[iid] = None
         else:
@@ -120,9 +122,14 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
             "color": _color(ind["sentido"], a, obj, ds),
             "capturable": ind["capturable"],
         }
-        # valores por semana (para las columnas dinámicas)
+        # valores por semana: si el indicador es auto y tiene
+        # desglose por fecha, usar ese; si no, la captura manual.
+        desg = sem_auto.get(iid)
         for s in sems:
-            fila[f"sem_{s['num']}"] = semvals.get(s["num"])
+            if desg is not None:
+                fila[f"sem_{s['num']}"] = desg.get(s["num"])
+            else:
+                fila[f"sem_{s['num']}"] = semvals.get(s["num"])
         filas.append(fila)
 
     return filas, sems, ds
