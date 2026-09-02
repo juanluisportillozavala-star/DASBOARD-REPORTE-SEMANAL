@@ -75,7 +75,6 @@ def crear_layout_bsc():
     """Contenedor con pestañas. Importa (perezoso) los paneles de
     cada pestaña para evitar ciclos de import."""
     from bsc.captura import crear_panel_captura_bsc
-    from bsc.objetivos import crear_panel_objetivos_bsc
     from bsc.acumulado import crear_panel_acumulado_bsc
 
     return html.Div(
@@ -92,10 +91,6 @@ def crear_layout_bsc():
 
             html.Div(id="bsc-panel-anual",
                      children=crear_panel_acumulado_bsc(),
-                     style={"display": "none"}),
-
-            html.Div(id="bsc-panel-objetivos",
-                     children=crear_panel_objetivos_bsc(),
                      style={"display": "none"}),
 
             html.Div(id="bsc-panel-captura",
@@ -218,8 +213,7 @@ def registrar_callbacks_bsc(app):
     def _barra(activa, sesion):
         es_admin = bool(sesion and sesion.get("rol") == "admin")
         activa = activa or "mensual"
-        tabs = [("Mensual", "mensual"), ("Anual", "anual"),
-                ("Objetivos", "objetivos")]
+        tabs = [("Mensual", "mensual"), ("Anual", "anual")]
         if es_admin:
             tabs.append(("Captura", "captura"))
         return html.Div([_tab_btn(t, v, v == activa) for t, v in tabs])
@@ -228,7 +222,6 @@ def registrar_callbacks_bsc(app):
     @app.callback(
         Output("bsc-panel-mensual", "style"),
         Output("bsc-panel-anual", "style"),
-        Output("bsc-panel-objetivos", "style"),
         Output("bsc-panel-captura", "style"),
         Input("bsc-tab-activa", "data"),
     )
@@ -238,7 +231,6 @@ def registrar_callbacks_bsc(app):
         vis = {"display": "block"}
         return (vis if activa == "mensual" else ocul,
                 vis if activa == "anual" else ocul,
-                vis if activa == "objetivos" else ocul,
                 vis if activa == "captura" else ocul)
 
     # meses disponibles (panel mensual)
@@ -287,7 +279,5 @@ def registrar_callbacks_bsc(app):
     # registrar callbacks de los otros paneles
     from bsc.captura import registrar_callbacks_bsc_captura
     registrar_callbacks_bsc_captura(app)
-    from bsc.objetivos import registrar_callbacks_bsc_objetivos
-    registrar_callbacks_bsc_objetivos(app)
     from bsc.acumulado import registrar_callbacks_bsc_acumulado
     registrar_callbacks_bsc_acumulado(app)
