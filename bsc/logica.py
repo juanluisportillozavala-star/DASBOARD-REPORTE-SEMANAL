@@ -71,14 +71,24 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
     inds = catalogo.indicadores()
 
     # 1) acumulado de cada indicador capturable (y de todos, para hijos)
+    #    - si el indicador es "auto:XXXX", el dato viene del módulo real
+    #    - si es "manual", se acumula la captura por semana
+    from bsc import fuentes
     acum = {}
     for ind in inds:
         iid = ind["id"]
         if ind["suma_hijos"]:
             continue  # los padres se calculan después
-        semvals = captura.get(iid, {})
-        vals = [semvals.get(s["num"]) for s in sems]
-        acum[iid] = _acumular(ind["tipo"], vals)
+        fuente = ind.get("fuente", "manual")
+        if fuente.startswith("auto:"):
+            try:
+                acum[iid] = fuentes.valor_auto(fuente, ind, anio, mes)
+            except Exception:
+                acum[iid] = None
+        else:
+            semvals = captura.get(iid, {})
+            vals = [semvals.get(s["num"]) for s in sems]
+            acum[iid] = _acumular(ind["tipo"], vals)
 
     # 2) padres = suma del acumulado de sus hijos
     for ind in inds:

@@ -67,13 +67,13 @@ def _construir():
               "grupo": "Comercial", "unidad": "$", "tipo": "flujo",
               "sentido": "mayor", "capturable": False, "suma_hijos": True,
               "padre": None, "fuente": "manual"})
-    L += _hijos_vendedor("venta", "Comercial")
+    L += _hijos_vendedor("venta", "Comercial", fuente="auto:ventas")
 
     L.append({"id": "utilidad", "nombre": "Utilidad bruta ($)", "nivel": 0,
               "grupo": "Comercial", "unidad": "$", "tipo": "flujo",
               "sentido": "mayor", "capturable": False, "suma_hijos": True,
               "padre": None, "fuente": "manual"})
-    L += _hijos_vendedor("utilidad", "Comercial")
+    L += _hijos_vendedor("utilidad", "Comercial", fuente="auto:ventas")
 
     # ---------- ADMINISTRACIÓN ----------
     L.append({"id": "cartera", "nombre": "Cartera clientes ($)", "nivel": 0,
