@@ -53,6 +53,16 @@ _CELL_INDICADOR = {"function":
     "{color:'#5A6472', paddingLeft:'26px'} : "
     "{fontWeight:'700', color:'#173C73'}"}
 
+# Celda de % / $ pintada según el color del semáforo (fondo suave
+# + texto fuerte), replicando el Excel (rojo/amarillo/verde).
+_CELL_PCT_SEMAFORO = {"function": (
+    "({'verde':{backgroundColor:'#D5F5E3', color:'#1E8449', fontWeight:'700'},"
+    "  'amarillo':{backgroundColor:'#FCF3CF', color:'#B7791F', fontWeight:'700'},"
+    "  'rojo':{backgroundColor:'#FADBD8', color:'#C0392B', fontWeight:'700'},"
+    "  'gris':{color:'#8A94A6'}}"
+    ")[params.data.color] || {color:'#8A94A6'}"
+)}
+
 
 def _estilo_grid(alto):
     return {
@@ -151,38 +161,38 @@ def _panel_mensual():
 
 
 def _column_defs(sems):
+    # Orden como el Excel: Indicador | Objetivo | Acumulado | %/$ |
+    # Deber ser | [semanas...]
     cols = [
-        {"field": "indicador", "headerName": "Indicador", "minWidth": 260,
+        {"field": "indicador", "headerName": "Indicador", "minWidth": 240,
          "pinned": "left", "sortable": False, "filter": False,
          "headerClass": "hdr-bsc", "cellStyle": _CELL_INDICADOR},
         {"field": "objetivo", "headerName": "Objetivo", "type": "numericColumn",
-         "valueFormatter": _FMT_VALOR, "minWidth": 120, "sortable": False,
-         "filter": False, "headerClass": "hdr-bsc"},
+         "valueFormatter": _FMT_VALOR, "minWidth": 115, "pinned": "left",
+         "sortable": False, "filter": False, "headerClass": "hdr-bsc"},
+        {"field": "acumulado", "headerName": "Acumulado",
+         "type": "numericColumn", "valueFormatter": _FMT_VALOR,
+         "minWidth": 120, "pinned": "left", "sortable": False, "filter": False,
+         "headerClass": "hdr-bsc",
+         "cellStyle": {"fontWeight": "700", "color": AZUL}},
+        # % / $ con la CELDA coloreada según cumplimiento (semáforo)
+        {"field": "pct", "headerName": "% / $", "type": "numericColumn",
+         "valueFormatter": _FMT_PCT, "minWidth": 95, "pinned": "left",
+         "sortable": False, "filter": False, "headerClass": "hdr-bsc",
+         "cellStyle": _CELL_PCT_SEMAFORO},
+        {"field": "deber_ser", "headerName": "Deber ser",
+         "type": "numericColumn", "valueFormatter": _FMT_PCT, "minWidth": 95,
+         "pinned": "left", "sortable": False, "filter": False,
+         "headerClass": "hdr-bsc", "cellStyle": {"color": "#8A94A6"}},
     ]
+    # semanas: el real suelto de cada semana
     for s in sems:
         cols.append({
             "field": f"sem_{s['num']}", "headerName": s["label"],
             "type": "numericColumn", "valueFormatter": _FMT_VALOR,
-            "minWidth": 95, "sortable": False, "filter": False,
-            "headerClass": "hdr-bsc", "cellStyle": {"color": "#5A6472"}})
-    cols += [
-        {"field": "acumulado", "headerName": "Acumulado",
-         "type": "numericColumn", "valueFormatter": _FMT_VALOR,
-         "minWidth": 130, "sortable": False, "filter": False,
-         "headerClass": "hdr-bsc",
-         "cellStyle": {"fontWeight": "700", "color": AZUL}},
-        {"field": "pct", "headerName": "% avance", "type": "numericColumn",
-         "valueFormatter": _FMT_PCT, "minWidth": 100, "sortable": False,
-         "filter": False, "headerClass": "hdr-bsc"},
-        {"field": "deber_ser", "headerName": "Deber ser",
-         "type": "numericColumn", "valueFormatter": _FMT_PCT, "minWidth": 100,
-         "sortable": False, "filter": False, "headerClass": "hdr-bsc",
-         "cellStyle": {"color": "#8A94A6"}},
-        {"field": "semaforo", "headerName": "", "minWidth": 60,
-         "maxWidth": 70, "pinned": "right", "sortable": False,
-         "filter": False, "headerClass": "hdr-bsc",
-         "cellStyle": _CELL_SEMAFORO},
-    ]
+            "minWidth": 100, "sortable": False, "filter": False,
+            "headerClass": "hdr-bsc",
+            "cellStyle": {"color": "#3B4658", "backgroundColor": "#F5F8FC"}})
     return cols
 
 
