@@ -14,6 +14,7 @@ Lee de la caché del servidor (db.obtener_df).
 
 from dash import Input, Output, html, dcc
 import dash_ag_grid as dag
+import pandas as pd
 
 import db
 
@@ -117,20 +118,25 @@ def crear_layout_tabla_sp():
 
 
 def _filtrar(df, anio, semanas):
+    """Devuelve (df_filtrado, mes_usado). Si la semana cruza dos
+    meses, se queda con el MÁS RECIENTE y devuelve ese mes."""
+    mes_usado = None
     if df is None:
-        return df
+        return df, None
     if anio:
         df = df[df[COL_ANIO] == int(anio)]
-    # el MES ya no filtra; solo la SEMANA (única)
     if semanas:
         df = df[df[COL_SEMANA].isin(semanas)]
-        # Si la semana seleccionada CRUZA dos meses (p.ej. agosto y
-        # septiembre), quedarnos SOLO con el mes MÁS RECIENTE.
         if len(df) > 0 and COL_MES in df.columns:
-            meses = df[COL_MES].dropna().astype(int)
-            if len(meses) and meses.nunique() > 1:
-                df = df[df[COL_MES] == int(meses.max())]
-    return df
+            # convertir MES a número de forma robusta (por si viene texto)
+            meses_num = pd.to_numeric(df[COL_MES], errors="coerce")
+            validos = meses_num.dropna()
+            if len(validos):
+                mes_max = int(validos.max())
+                mes_usado = mes_max
+                # quedarse SOLO con el mes más reciente de esa semana
+                df = df[meses_num == mes_max]
+    return df, mes_usado
 
 
 def _filas(df):
@@ -175,13 +181,17 @@ def registrar_callbacks_sp(app):
             return html.Div("Aún no hay datos de Saldo Proveedor cargados.",
                             style={"color": "#6C757D"})
         try:
-            df_f = _filtrar(df, anio, semanas)
+            df_f, mes_usado = _filtrar(df, anio, semanas)
             if df_f is None or len(df_f) == 0:
                 return html.Div("Selecciona una semana para ver el saldo.",
                                 style={"color": "#6C757D"})
 
             filas, total = _filas(df_f)
-            semana_txt = str(sorted(semanas)[0]) if semanas else "—"
+            sem = str(sorted(semanas)[0]) if semanas else "—"
+            _MESES = {1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",
+                      7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic"}
+            mes_nom = _MESES.get(mes_usado, "—")
+            semana_txt = f"{sem}  (mes: {mes_nom})"
             anio_txt = str(anio) if anio else "—"
 
             grid = dag.AgGrid(

@@ -135,23 +135,26 @@ def crear_layout_tabla_cartera():
 
 
 def _filtrar(df, anio, semanas):
+    """Devuelve (df_filtrado, mes_usado). Si la semana cruza dos
+    meses, se queda con el MÁS RECIENTE."""
+    mes_usado = None
     if df is None:
-        return df
+        return df, None
     # SOLO Crédito (como la tabla dinámica)
     if COL_TERMINOS in df.columns:
         df = df[df[COL_TERMINOS] == "Crédito"]
     if anio:
         df = df[df[COL_ANIO] == int(anio)]
-    # el MES ya no filtra; solo la SEMANA (única)
     if semanas:
         df = df[df[COL_SEMANA].isin(semanas)]
-        # Si la semana seleccionada CRUZA dos meses (p.ej. agosto y
-        # septiembre), quedarnos SOLO con el mes MÁS RECIENTE.
         if len(df) > 0 and COL_MES in df.columns:
-            meses = df[COL_MES].dropna().astype(int)
-            if len(meses) and meses.nunique() > 1:
-                df = df[df[COL_MES] == int(meses.max())]
-    return df
+            meses_num = pd.to_numeric(df[COL_MES], errors="coerce")
+            validos = meses_num.dropna()
+            if len(validos):
+                mes_max = int(validos.max())
+                mes_usado = mes_max
+                df = df[meses_num == mes_max]
+    return df, mes_usado
 
 
 def registrar_callbacks_tabla_cartera(app):
@@ -170,7 +173,7 @@ def registrar_callbacks_tabla_cartera(app):
             return html.Div("Aún no hay datos de Cartera cargados.",
                             style={"color": "#6C757D"}), None
         try:
-            df_f = _filtrar(df, anio, semanas)
+            df_f, mes_usado = _filtrar(df, anio, semanas)
             if df_f is None or len(df_f) == 0:
                 return html.Div("Selecciona una semana para ver la cartera.",
                                 style={"color": "#6C757D"}), None
@@ -179,7 +182,10 @@ def registrar_callbacks_tabla_cartera(app):
             total = total_general_cartera(df_f)
             visibles = filas_visibles_cartera(arbol, ids_exp or [])
 
-            semana_txt = str(sorted(semanas)[0]) if semanas else "—"
+            sem = str(sorted(semanas)[0]) if semanas else "—"
+            _MESES = {1:"Ene",2:"Feb",3:"Mar",4:"Abr",5:"May",6:"Jun",
+                      7:"Jul",8:"Ago",9:"Sep",10:"Oct",11:"Nov",12:"Dic"}
+            semana_txt = f"{sem}  (mes: {_MESES.get(mes_usado, '—')})"
             anio_txt = str(anio) if anio else "—"
 
             grid = dag.AgGrid(
