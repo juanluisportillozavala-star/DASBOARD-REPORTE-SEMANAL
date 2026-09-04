@@ -52,9 +52,11 @@ _CELL_SEMAFORO = {"function": (
     ")[params.data.color] || {textAlign:'center'}"
 )}
 _CELL_INDICADOR = {"function":
-    "params.data.nivel === 1 ? "
+    "params.data.nivel === 2 ? "
+    "{color:'#7A8698', paddingLeft:'48px'} : "
+    "(params.data.nivel === 1 ? "
     "{color:'#5A6472', paddingLeft:'26px'} : "
-    "{fontWeight:'700', color:'#173C73'}"}
+    "{fontWeight:'700', color:'#173C73'})"}
 
 # % / $ sin color de semáforo (número simple, negrita azul)
 _CELL_PCT_SEMAFORO = {"fontWeight": "700", "color": "#173C73"}

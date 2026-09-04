@@ -93,19 +93,38 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
             acum[iid] = _acumular(ind["tipo"], vals)
 
     # 2) padres = suma del acumulado de sus hijos
-    #    (y también su OBJETIVO = suma de objetivos de los hijos)
-    obj_calc = dict(objetivos)   # copia para agregar los padres
+    #    Se procesa de nivel MÁS PROFUNDO a más superficial, para que
+    #    los agrupadores anidados (Ingreso -> vendedor -> conceptos)
+    #    sumen bien. También el objetivo del padre = suma de hijos.
+    obj_calc = dict(objetivos)
+    padres_orden = sorted(
+        [i for i in inds if i["suma_hijos"]],
+        key=lambda i: i["nivel"], reverse=True,
+    )
+    for ind in padres_orden:
+        hijos = catalogo.hijos_de(ind["id"])
+        vals = [acum.get(h["id"]) for h in hijos]
+        vals = [v for v in vals if v is not None]
+        acum[ind["id"]] = float(sum(vals)) if vals else None
+        ovals = [obj_calc.get(h["id"]) for h in hijos]
+        ovals = [v for v in ovals if v is not None]
+        if ovals:
+            obj_calc[ind["id"]] = float(sum(ovals))
+
+    # 2b) fórmulas especiales (ciclo efectivo = dias_inv - dias_prov + dias_cartera)
     for ind in inds:
-        if ind["suma_hijos"]:
-            hijos = catalogo.hijos_de(ind["id"])
-            vals = [acum.get(h["id"]) for h in hijos]
-            vals = [v for v in vals if v is not None]
-            acum[ind["id"]] = float(sum(vals)) if vals else None
-            # objetivo del padre = suma de objetivos de sus hijos
-            ovals = [objetivos.get(h["id"]) for h in hijos]
-            ovals = [v for v in ovals if v is not None]
-            if ovals:
-                obj_calc[ind["id"]] = float(sum(ovals))
+        if ind.get("fuente") == "formula:ciclo":
+            di = acum.get("dias_inventario")
+            dp = acum.get("dias_proveedor")
+            dc = acum.get("dias_cartera")
+            if None not in (di, dp, dc):
+                acum[ind["id"]] = float(di) - float(dp) + float(dc)
+            # objetivo del ciclo = misma fórmula con objetivos
+            odi = obj_calc.get("dias_inventario")
+            odp = obj_calc.get("dias_proveedor")
+            odc = obj_calc.get("dias_cartera")
+            if None not in (odi, odp, odc):
+                obj_calc[ind["id"]] = float(odi) - float(odp) + float(odc)
 
     # 3) armar filas
     filas = []
@@ -230,10 +249,13 @@ def formular_objetivos(objetivos_por_mes):
     # copia editable
     out = {m: dict(objetivos_por_mes.get(m, {})) for m in range(0, 13)}
 
-    # 1) padres: cada mes (1..12) = suma de hijos capturados ese mes
-    for ind in inds:
-        if not ind["suma_hijos"]:
-            continue
+    # 1) padres: cada mes (1..12) = suma de hijos.
+    #    De MÁS profundo a más superficial (para agrupadores anidados).
+    padres_orden = sorted(
+        [i for i in inds if i["suma_hijos"]],
+        key=lambda i: i["nivel"], reverse=True,
+    )
+    for ind in padres_orden:
         hijos = catalogo.hijos_de(ind["id"])
         for m in range(1, 13):
             vals = [out.get(m, {}).get(h["id"]) for h in hijos]
@@ -241,9 +263,20 @@ def formular_objetivos(objetivos_por_mes):
             if vals:
                 out.setdefault(m, {})[ind["id"]] = float(sum(vals))
 
+    # 1b) ciclo efectivo por mes = dias_inv - dias_prov + dias_cartera
+    for m in range(1, 13):
+        di = out.get(m, {}).get("dias_inventario")
+        dp = out.get(m, {}).get("dias_proveedor")
+        dc = out.get(m, {}).get("dias_cartera")
+        if None not in (di, dp, dc):
+            out.setdefault(m, {})["ciclo_efectivo"] = float(di) - float(dp) + float(dc)
+
     # 2) objetivo anual (mes 0) de CADA indicador según su tipo
     for ind in inds:
         iid = ind["id"]
+        # Bancos y Capital: el anual se TECLEA -> respetar lo que venga
+        if ind.get("anual_manual"):
+            continue
         meses = {m: out.get(m, {}).get(iid) for m in range(1, 13)}
         con_dato = [(m, v) for m, v in meses.items() if v is not None]
         if not con_dato:

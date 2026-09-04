@@ -93,11 +93,26 @@ def _construir():
               "sentido": "menor", "capturable": True, "suma_hijos": False,
               "padre": None, "fuente": "manual"})
 
+    # INGRESO: estructura de 3 niveles como el Excel
+    #   Ingreso (0) -> Vendedor (1) -> Corriente/Vencida/Contado (2)
     L.append({"id": "ingreso", "nombre": "Ingreso ($)", "nivel": 0,
               "grupo": "Administración", "unidad": "$", "tipo": "flujo",
               "sentido": "mayor", "capturable": False, "suma_hijos": True,
               "padre": None, "fuente": "manual"})
-    L += _hijos_vendedor("ingreso", "Administración")
+    _sub_ing = [("corr", "Cobranza al corriente"),
+                ("venc", "Cobranza vencida"),
+                ("cont", "Contado")]
+    for v in VENDEDORES:
+        vid = f"ingreso_{_VEND_ID[v]}"
+        L.append({"id": vid, "nombre": v, "nivel": 1,
+                  "grupo": "Administración", "unidad": "$", "tipo": "flujo",
+                  "sentido": "mayor", "capturable": False, "suma_hijos": True,
+                  "padre": "ingreso", "fuente": "manual"})
+        for suf, nom in _sub_ing:
+            L.append({"id": f"{vid}_{suf}", "nombre": nom, "nivel": 2,
+                      "grupo": "Administración", "unidad": "$", "tipo": "flujo",
+                      "sentido": "mayor", "capturable": True, "suma_hijos": False,
+                      "padre": vid, "fuente": "manual"})
 
     L.append({"id": "saldo_prov", "nombre": "Saldo proveedores ($)", "nivel": 0,
               "grupo": "Administración", "unidad": "$", "tipo": "saldo",
@@ -115,18 +130,21 @@ def _construir():
               "grupo": "Administración", "unidad": "Días", "tipo": "saldo",
               "sentido": "mayor", "capturable": True, "suma_hijos": False,
               "padre": None, "fuente": "manual"})
+    # Ciclo efectivo: FÓRMULA = días inventario - días proveedor + días cartera
     L.append({"id": "ciclo_efectivo", "nombre": "Ciclo efectivo", "nivel": 0,
               "grupo": "Administración", "unidad": "Días", "tipo": "saldo",
-              "sentido": "menor", "capturable": True, "suma_hijos": False,
-              "padre": None, "fuente": "manual"})
+              "sentido": "menor", "capturable": False, "suma_hijos": False,
+              "padre": None, "fuente": "formula:ciclo"})
+    # Bancos y Capital: su OBJETIVO ANUAL se teclea (no se suma ni último)
     L.append({"id": "bancos", "nombre": "Bancos ($)", "nivel": 0,
               "grupo": "Administración", "unidad": "$", "tipo": "saldo",
               "sentido": "mayor", "capturable": True, "suma_hijos": False,
-              "padre": None, "fuente": "manual"})
+              "padre": None, "fuente": "manual", "anual_manual": True})
     L.append({"id": "capital_trabajo", "nombre": "Capital de trabajo ($)",
               "nivel": 0, "grupo": "Administración", "unidad": "$",
               "tipo": "saldo", "sentido": "mayor", "capturable": True,
-              "suma_hijos": False, "padre": None, "fuente": "manual"})
+              "suma_hijos": False, "padre": None, "fuente": "manual",
+              "anual_manual": True})
 
     # ---------- OPERACIONES ----------
     L.append({"id": "costo_inv", "nombre": "Costo inventario ($)", "nivel": 0,
