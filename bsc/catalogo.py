@@ -91,9 +91,9 @@ def _construir():
     # 11  Gastos de operación
     add("gastos_op", "Gastos de operación ($)", 0, "Administración", "$",
         "flujo", "menor", True, False, None)
-    # 12  Ut. Operativa ($)
+    # 12  Ut. Operativa ($) = Utilidad bruta - Gastos de operación
     add("ut_operativa", "Ut. Operativa ($)", 0, "Comercial", "$", "flujo",
-        "mayor", True, False, None)
+        "mayor", False, False, None, fuente="formula:ut_operativa")
 
     # 13  Cartera clientes ($)
     add("cartera", "Cartera clientes ($)", 0, "Administración", "$",
@@ -147,9 +147,10 @@ def _construir():
     # 39  Bancos (objetivo anual tecleado)
     add("bancos", "Bancos", 0, "Administración", "$", "saldo", "mayor",
         True, False, None, anual_manual=True)
-    # 40  Capital de trabajo ($) (objetivo anual tecleado)
+    # 40  Capital de trabajo ($) = Cartera + Costo Inv + Bancos - Saldo prov
     add("capital_trabajo", "Capital de trabajo  ($)", 0, "Administración",
-        "$", "saldo", "mayor", True, False, None, anual_manual=True)
+        "$", "saldo", "mayor", False, False, None,
+        fuente="formula:capital")
 
     return L
 

@@ -111,20 +111,34 @@ def construir_bsc(anio, mes, objetivos, captura, hasta=None):
         if ovals:
             obj_calc[ind["id"]] = float(sum(ovals))
 
-    # 2b) fórmulas especiales (ciclo efectivo = dias_inv - dias_prov + dias_cartera)
+    # 2b) fórmulas especiales
     for ind in inds:
-        if ind.get("fuente") == "formula:ciclo":
-            di = acum.get("dias_inventario")
-            dp = acum.get("dias_proveedor")
-            dc = acum.get("dias_cartera")
+        f = ind.get("fuente", "")
+        if f == "formula:ciclo":
+            di, dp, dc = acum.get("dias_inventario"), acum.get("dias_proveedor"), acum.get("dias_cartera")
             if None not in (di, dp, dc):
                 acum[ind["id"]] = float(di) - float(dp) + float(dc)
-            # objetivo del ciclo = misma fórmula con objetivos
-            odi = obj_calc.get("dias_inventario")
-            odp = obj_calc.get("dias_proveedor")
-            odc = obj_calc.get("dias_cartera")
+            odi, odp, odc = obj_calc.get("dias_inventario"), obj_calc.get("dias_proveedor"), obj_calc.get("dias_cartera")
             if None not in (odi, odp, odc):
                 obj_calc[ind["id"]] = float(odi) - float(odp) + float(odc)
+        elif f == "formula:ut_operativa":
+            # Utilidad bruta - Gastos de operación
+            ub, ga = acum.get("utilidad"), acum.get("gastos_op")
+            if None not in (ub, ga):
+                acum[ind["id"]] = float(ub) - float(ga)
+            oub, oga = obj_calc.get("utilidad"), obj_calc.get("gastos_op")
+            if None not in (oub, oga):
+                obj_calc[ind["id"]] = float(oub) - float(oga)
+        elif f == "formula:capital":
+            # Cartera + Costo Inventario + Bancos - Saldo proveedores
+            ca, ci, ba, sp = (acum.get("cartera"), acum.get("costo_inv"),
+                              acum.get("bancos"), acum.get("saldo_prov"))
+            if None not in (ca, ci, ba, sp):
+                acum[ind["id"]] = float(ca) + float(ci) + float(ba) - float(sp)
+            oca, oci, oba, osp = (obj_calc.get("cartera"), obj_calc.get("costo_inv"),
+                                  obj_calc.get("bancos"), obj_calc.get("saldo_prov"))
+            if None not in (oca, oci, oba, osp):
+                obj_calc[ind["id"]] = float(oca) + float(oci) + float(oba) - float(osp)
 
     # 3) armar filas
     filas = []
@@ -263,13 +277,21 @@ def formular_objetivos(objetivos_por_mes):
             if vals:
                 out.setdefault(m, {})[ind["id"]] = float(sum(vals))
 
-    # 1b) ciclo efectivo por mes = dias_inv - dias_prov + dias_cartera
+    # 1b) fórmulas por mes
     for m in range(1, 13):
-        di = out.get(m, {}).get("dias_inventario")
-        dp = out.get(m, {}).get("dias_proveedor")
-        dc = out.get(m, {}).get("dias_cartera")
+        mm = out.get(m, {})
+        # ciclo efectivo = dias_inv - dias_prov + dias_cartera
+        di, dp, dc = mm.get("dias_inventario"), mm.get("dias_proveedor"), mm.get("dias_cartera")
         if None not in (di, dp, dc):
             out.setdefault(m, {})["ciclo_efectivo"] = float(di) - float(dp) + float(dc)
+        # ut. operativa = utilidad bruta - gastos de operación
+        ub, ga = mm.get("utilidad"), mm.get("gastos_op")
+        if None not in (ub, ga):
+            out.setdefault(m, {})["ut_operativa"] = float(ub) - float(ga)
+        # capital = cartera + costo_inv + bancos - saldo_prov
+        ca, ci, ba, sp = mm.get("cartera"), mm.get("costo_inv"), mm.get("bancos"), mm.get("saldo_prov")
+        if None not in (ca, ci, ba, sp):
+            out.setdefault(m, {})["capital_trabajo"] = float(ca) + float(ci) + float(ba) - float(sp)
 
     # 2) objetivo anual (mes 0) de CADA indicador según su tipo
     for ind in inds:
