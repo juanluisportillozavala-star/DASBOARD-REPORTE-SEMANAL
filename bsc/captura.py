@@ -43,6 +43,13 @@ _FMT_VALOR = {"function": (
     "  : Math.round(params.value).toLocaleString('en-US'))"
 )}
 
+# Al editar, quitar comas/espacios y convertir a número (para que
+# las celdas con formato de miles se puedan editar sin romperse).
+_PARSER_NUM = {"function": (
+    "params.newValue == null || params.newValue === '' ? null : "
+    "Number(String(params.newValue).replace(/[,\\s]/g,''))"
+)}
+
 # --- estilos de celda ---
 _CELL_INDICADOR = {"function": (
     "params.data.es_titulo ? "
@@ -171,7 +178,9 @@ def _obj_column_defs():
     for m, nombre in MESES_COL:
         cols.append({
             "field": f"m_{m}", "headerName": nombre, "editable": _EDITABLE,
-            "type": "numericColumn", "minWidth": 85, "headerClass": "hdr-bsc",
+            "type": "numericColumn", "valueFormatter": _FMT_VALOR,
+            "valueParser": _PARSER_NUM,
+            "minWidth": 85, "headerClass": "hdr-bsc",
             "cellStyle": _CELL_EDIT})
     return cols
 
@@ -232,10 +241,12 @@ def _sem_column_defs(sems):
             "children": [
                 {"field": f"obj_{s['num']}", "headerName": "Obj",
                  "editable": _EDITABLE, "type": "numericColumn",
+                 "valueFormatter": _FMT_VALOR, "valueParser": _PARSER_NUM,
                  "minWidth": 80, "headerClass": "hdr-bsc",
                  "cellStyle": _CELL_EDIT},
                 {"field": f"sem_{s['num']}", "headerName": "Real",
                  "editable": _EDITABLE, "type": "numericColumn",
+                 "valueFormatter": _FMT_VALOR, "valueParser": _PARSER_NUM,
                  "minWidth": 80, "headerClass": "hdr-bsc",
                  "cellStyle": _CELL_EDIT},
             ],
