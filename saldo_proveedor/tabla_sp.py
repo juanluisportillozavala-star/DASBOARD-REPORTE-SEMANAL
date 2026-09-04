@@ -124,6 +124,12 @@ def _filtrar(df, anio, semanas):
     # el MES ya no filtra; solo la SEMANA (única)
     if semanas:
         df = df[df[COL_SEMANA].isin(semanas)]
+        # Si la semana seleccionada CRUZA dos meses (p.ej. agosto y
+        # septiembre), quedarnos SOLO con el mes MÁS RECIENTE.
+        if len(df) > 0 and COL_MES in df.columns:
+            meses = df[COL_MES].dropna().astype(int)
+            if len(meses) and meses.nunique() > 1:
+                df = df[df[COL_MES] == int(meses.max())]
     return df
 
 
