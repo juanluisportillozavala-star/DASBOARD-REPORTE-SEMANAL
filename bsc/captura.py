@@ -152,9 +152,41 @@ def crear_panel_captura_bsc():
                         options=[{"label": n, "value": m} for m, n in MESES],
                         value=1, clearable=False,
                         style={"width": "180px", "display": "inline-block"}),
+                    html.Button("📋 Pegar desde Excel", id="bsc-cap-pegar-btn",
+                                n_clicks=0, className="btn",
+                                style={"marginLeft": "16px", "height": "38px",
+                                       "border": "1.5px solid #173C73",
+                                       "color": "#173C73", "background": "#FFFFFF",
+                                       "borderRadius": "8px", "fontWeight": "600",
+                                       "cursor": "pointer", "padding": "0 16px"}),
                 ],
                 style={"display": "flex", "alignItems": "center",
-                       "marginBottom": "10px"},
+                       "marginBottom": "10px", "flexWrap": "wrap"},
+            ),
+            # zona de pegado (oculta hasta picar el botón)
+            html.Div(
+                id="bsc-cap-pegar-zona",
+                style={"display": "none", "marginBottom": "12px"},
+                children=[
+                    html.P("Copia el bloque de celdas desde Excel y pégalo aquí "
+                           "(Ctrl+V). Debe tener las mismas columnas que la tabla "
+                           "de abajo (Obj y Real por semana). Luego pica «Aplicar».",
+                           style={"color": "#6C757D", "fontSize": "13px",
+                                  "marginBottom": "6px"}),
+                    dcc.Textarea(
+                        id="bsc-cap-pegar-texto",
+                        placeholder="Pega aquí (Ctrl+V)…",
+                        style={"width": "100%", "height": "120px",
+                               "fontFamily": "monospace", "fontSize": "13px",
+                               "border": "1px solid #CBD5E1",
+                               "borderRadius": "8px", "padding": "8px"}),
+                    html.Button("Aplicar", id="bsc-cap-pegar-aplicar", n_clicks=0,
+                                className="btn btn-primary",
+                                style={"marginTop": "8px", "height": "38px",
+                                       "padding": "0 22px"}),
+                    html.Span(id="bsc-cap-pegar-msg",
+                              style={"marginLeft": "12px", "fontWeight": "600"}),
+                ],
             ),
             html.Div(id="bsc-cap-sem-cont"),
         ]
@@ -210,7 +242,7 @@ def _grid_objetivos(anio):
         defaultColDef={"resizable": True, "sortable": False,
                        "filter": False, "flex": 1, "minWidth": 80},
         dashGridOptions={"animateRows": False, "rowHeight": 30,
-                         "headerHeight": 38, "singleClickEdit": False,
+                         "headerHeight": 38, "singleClickEdit": True,
                          "domLayout": "autoHeight",
                          "suppressCellFocus": False},
         className="ag-theme-alpine",
@@ -294,7 +326,7 @@ def _grid_semanal(anio, mes):
         defaultColDef={"resizable": True, "sortable": False,
                        "filter": False, "flex": 1, "minWidth": 90},
         dashGridOptions={"animateRows": False, "rowHeight": 30,
-                         "headerHeight": 38, "singleClickEdit": False,
+                         "headerHeight": 38, "singleClickEdit": True,
                          "domLayout": "autoHeight",
                          "suppressCellFocus": False},
         className="ag-theme-alpine",
@@ -388,4 +420,76 @@ def registrar_callbacks_bsc_captura(app):
         return html.Span(
             f"✓ Guardado: objetivos {anio} y captura de "
             f"{_MES_NOMBRE.get(int(mes), mes)}.",
+            style={"color": "#1E8449"})
+
+    # ---- mostrar/ocultar la zona de pegado ----
+    @app.callback(
+        Output("bsc-cap-pegar-zona", "style"),
+        Input("bsc-cap-pegar-btn", "n_clicks"),
+        State("bsc-cap-pegar-zona", "style"),
+        prevent_initial_call=True,
+    )
+    def _toggle_pegar(n, style):
+        style = dict(style or {})
+        visible = style.get("display") != "none"
+        style["display"] = "none" if visible else "block"
+        style["marginBottom"] = "12px"
+        return style
+
+    # ---- aplicar el bloque pegado desde Excel al grid semanal ----
+    # El texto de Excel trae TABS entre columnas y saltos de línea
+    # entre filas. Cada fila corresponde, EN ORDEN, a las filas
+    # capturables visibles del grid (mismas que se ven en pantalla).
+    @app.callback(
+        Output("bsc-cap-sem-grid", "rowData"),
+        Output("bsc-cap-pegar-msg", "children"),
+        Input("bsc-cap-pegar-aplicar", "n_clicks"),
+        State("bsc-cap-pegar-texto", "value"),
+        State("bsc-cap-sem-grid", "rowData"),
+        State("bsc-cap-anio", "value"),
+        State("bsc-cap-mes", "value"),
+        prevent_initial_call=True,
+    )
+    def _aplicar_pegado(n, texto, rowdata, anio, mes):
+        if not n or not texto or not rowdata:
+            return no_update, ""
+        sems = S.semanas_del_mes(anio, mes)
+        # columnas editables por fila, EN ORDEN: obj y real por semana
+        campos = []
+        for s in sems:
+            campos.append(f"obj_{s['num']}")
+            campos.append(f"sem_{s['num']}")
+
+        # parsear el texto pegado
+        lineas = [ln for ln in texto.replace("\r", "").split("\n") if ln.strip() != ""]
+        if not lineas:
+            return no_update, html.Span("No se detectó contenido.",
+                                        style={"color": "#C0392B"})
+
+        # filas capturables del grid, en el mismo orden visual
+        idx_capturables = [i for i, f in enumerate(rowdata)
+                           if not f.get("es_titulo")]
+
+        def _num(x):
+            x = (x or "").strip().replace(",", "").replace("$", "")
+            if x == "":
+                return None
+            try:
+                return float(x)
+            except ValueError:
+                return None
+
+        aplicadas = 0
+        for li, linea in enumerate(lineas):
+            if li >= len(idx_capturables):
+                break
+            celdas = linea.split("\t")
+            fila = rowdata[idx_capturables[li]]
+            for ci, campo in enumerate(campos):
+                if ci < len(celdas):
+                    fila[campo] = _num(celdas[ci])
+            aplicadas += 1
+
+        return rowdata, html.Span(
+            f"✓ {aplicadas} fila(s) aplicadas. Revisa y pica «Guardar todo».",
             style={"color": "#1E8449"})
