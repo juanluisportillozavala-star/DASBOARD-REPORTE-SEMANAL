@@ -99,9 +99,9 @@ def _construir():
     add("cartera", "Cartera clientes ($)", 0, "Administración", "$",
         "saldo", "menor", False, True, None)
     add("cartera_corr", "Al corriente ($)", 1, "Administración", "$",
-        "saldo", "mayor", True, False, "cartera")
+        "saldo", "mayor", True, False, "cartera", fuente="auto:cartera")
     add("cartera_venc", "Vencido ($)", 1, "Administración", "$",
-        "saldo", "menor", True, False, "cartera")
+        "saldo", "menor", True, False, "cartera", fuente="auto:cartera")
     # 16  Días cartera
     add("dias_cartera", "Días cartera", 0, "Administración", "Días",
         "saldo", "menor", True, False, None)

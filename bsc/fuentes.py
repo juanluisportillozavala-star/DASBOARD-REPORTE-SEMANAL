@@ -84,7 +84,10 @@ def valor_auto(fuente, indicador, anio, mes):
     if origen == "ventas":
         return _valor_ventas(indicador, anio, mes)
 
-    # otros módulos se irán agregando aquí (cartera, ingresos, …)
+    if origen == "cartera":
+        return _valor_cartera(indicador, anio, mes)
+
+    # otros módulos se irán agregando aquí (ingresos, inventario, …)
     return None
 
 
@@ -157,3 +160,65 @@ def semanas_auto(fuente, indicador, anio, mes):
         return {}
     vendedor = indicador.get("nombre") if indicador.get("nivel") == 1 else None
     return _suma_por_semana(anio, mes, vendedor, columna)
+
+
+# =========================================================
+# MÓDULO CARTERA  (saldo -> última semana con datos del mes)
+# =========================================================
+# Rangos de aging (columnas de la BD de cartera):
+#   Al corriente = "Por vencer" + "Vigente"
+#   Vencido      = >90 + 61-90 + 31-60 + 0-30
+# El dato del MES = la ÚLTIMA SEMANA con datos de ese mes (saldo
+# más reciente), sumando solo Crédito (como la tabla dinámica).
+
+_CART_COL_ANIO = "AÑO"
+_CART_COL_MES = "MES"
+_CART_COL_SEMANA = "SEMANA"
+_CART_COL_TERMINOS = "TERMINOS DE PAGO"
+
+_CART_CORRIENTE = ["Por vencer", "Vigente"]
+_CART_VENCIDO = ["Vencido >90 días", "Vencido 61-90 días",
+                 "Vencido 31-60 días", "Vencido 0-30 días"]
+
+
+def _df_cartera_ultima_semana_mes(anio, mes):
+    """DataFrame de la ÚLTIMA semana con datos del año/mes en
+    cartera (solo Crédito). None si no hay."""
+    df = db.obtener_df("cartera")
+    if df is None or len(df) == 0:
+        return None
+    if _CART_COL_TERMINOS in df.columns:
+        df = df[df[_CART_COL_TERMINOS] == "Crédito"]
+    if _CART_COL_ANIO in df.columns:
+        df = df[df[_CART_COL_ANIO] == int(anio)]
+    if _CART_COL_MES in df.columns:
+        df = df[df[_CART_COL_MES] == int(mes)]
+    if len(df) == 0 or _CART_COL_SEMANA not in df.columns:
+        return None
+    # última semana con datos de ese mes
+    import pandas as pd
+    sem = pd.to_numeric(df[_CART_COL_SEMANA], errors="coerce").dropna()
+    if len(sem) == 0:
+        return None
+    ult = int(sem.max())
+    return df[pd.to_numeric(df[_CART_COL_SEMANA], errors="coerce") == ult]
+
+
+def _valor_cartera(indicador, anio, mes):
+    """Al corriente / Vencido de cartera para el mes (saldo de la
+    última semana). Días cartera NO se calcula aquí (queda manual)."""
+    iid = indicador["id"]
+    if iid == "cartera_corr":
+        cols = _CART_CORRIENTE
+    elif iid == "cartera_venc":
+        cols = _CART_VENCIDO
+    else:
+        return None  # dias_cartera u otro -> manual
+    sub = _df_cartera_ultima_semana_mes(anio, mes)
+    if sub is None or len(sub) == 0:
+        return None
+    total = 0.0
+    for c in cols:
+        if c in sub.columns:
+            total += float(sub[c].sum())
+    return total
