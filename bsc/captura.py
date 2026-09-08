@@ -188,6 +188,41 @@ def crear_panel_captura_bsc():
                               style={"marginLeft": "12px", "fontWeight": "600"}),
                 ],
             ),
+            # ---- barra de RELLENADO rápido (mismo valor en varias celdas) ----
+            html.Div(
+                [
+                    html.Span("Rellenar:", style={"fontWeight": "700",
+                                                  "color": AZUL,
+                                                  "marginRight": "8px"}),
+                    dcc.Dropdown(id="bsc-cap-fill-ind", options=[],
+                                 placeholder="Indicador (o todos)",
+                                 style={"width": "230px"}),
+                    dcc.Dropdown(id="bsc-cap-fill-sem", options=[],
+                                 placeholder="Semana (o todas)",
+                                 style={"width": "150px"}),
+                    dcc.Dropdown(id="bsc-cap-fill-tipo",
+                                 options=[{"label": "Obj", "value": "obj"},
+                                          {"label": "Real", "value": "real"},
+                                          {"label": "Ambos", "value": "ambos"}],
+                                 value="real", clearable=False,
+                                 style={"width": "110px"}),
+                    dcc.Input(id="bsc-cap-fill-valor", type="number",
+                              placeholder="Valor",
+                              style={"width": "130px", "height": "36px",
+                                     "borderRadius": "6px",
+                                     "border": "1px solid #CBD5E1",
+                                     "padding": "0 10px"}),
+                    html.Button("Rellenar", id="bsc-cap-fill-btn", n_clicks=0,
+                                className="btn btn-primary",
+                                style={"height": "38px", "padding": "0 20px"}),
+                    html.Span(id="bsc-cap-fill-msg",
+                              style={"marginLeft": "10px", "fontWeight": "600"}),
+                ],
+                style={"display": "flex", "alignItems": "center", "gap": "8px",
+                       "flexWrap": "wrap", "marginBottom": "10px",
+                       "padding": "10px", "background": "#F8FAFD",
+                       "borderRadius": "8px"},
+            ),
             html.Div(id="bsc-cap-sem-cont"),
         ]
     )
@@ -441,7 +476,7 @@ def registrar_callbacks_bsc_captura(app):
     # entre filas. Cada fila corresponde, EN ORDEN, a las filas
     # capturables visibles del grid (mismas que se ven en pantalla).
     @app.callback(
-        Output("bsc-cap-sem-grid", "rowData"),
+        Output("bsc-cap-sem-grid", "rowData", allow_duplicate=True),
         Output("bsc-cap-pegar-msg", "children"),
         Input("bsc-cap-pegar-aplicar", "n_clicks"),
         State("bsc-cap-pegar-texto", "value"),
@@ -492,4 +527,80 @@ def registrar_callbacks_bsc_captura(app):
 
         return rowdata, html.Span(
             f"✓ {aplicadas} fila(s) aplicadas. Revisa y pica «Guardar todo».",
+            style={"color": "#1E8449"})
+
+    # ---- llenar opciones de indicador y semana para el rellenado ----
+    @app.callback(
+        Output("bsc-cap-fill-ind", "options"),
+        Output("bsc-cap-fill-sem", "options"),
+        Input("bsc-cap-anio", "value"),
+        Input("bsc-cap-mes", "value"),
+    )
+    def _fill_opciones(anio, mes):
+        # indicadores capturables (los que se teclean)
+        inds = [{"label": "— Todos los indicadores —", "value": "__todos__"}]
+        for ind in catalogo.capturables():
+            sangria = "    " if ind["nivel"] >= 1 else ""
+            inds.append({"label": sangria + ind["nombre"], "value": ind["id"]})
+        # semanas del mes
+        sems = [{"label": "— Todas las semanas —", "value": "__todas__"}]
+        if anio and mes:
+            for s in S.semanas_del_mes(anio, mes):
+                sems.append({"label": f"Sem {s['label']}", "value": s["num"]})
+        return inds, sems
+
+    # ---- aplicar el rellenado al grid semanal ----
+    @app.callback(
+        Output("bsc-cap-sem-grid", "rowData", allow_duplicate=True),
+        Output("bsc-cap-fill-msg", "children"),
+        Input("bsc-cap-fill-btn", "n_clicks"),
+        State("bsc-cap-fill-ind", "value"),
+        State("bsc-cap-fill-sem", "value"),
+        State("bsc-cap-fill-tipo", "value"),
+        State("bsc-cap-fill-valor", "value"),
+        State("bsc-cap-sem-grid", "rowData"),
+        State("bsc-cap-anio", "value"),
+        State("bsc-cap-mes", "value"),
+        prevent_initial_call=True,
+    )
+    def _aplicar_relleno(n, ind_sel, sem_sel, tipo, valor, rowdata, anio, mes):
+        if not n or not rowdata:
+            return no_update, ""
+        if valor is None or valor == "":
+            return no_update, html.Span("Escribe un valor.",
+                                        style={"color": "#C0392B"})
+        try:
+            v = float(valor)
+        except (ValueError, TypeError):
+            return no_update, html.Span("Valor inválido.",
+                                        style={"color": "#C0392B"})
+
+        sems = S.semanas_del_mes(anio, mes)
+        # qué semanas: una o todas
+        nums = ([int(sem_sel)] if sem_sel not in (None, "__todas__")
+                else [s["num"] for s in sems])
+        # qué campos según tipo (obj / real / ambos)
+        def _campos(num):
+            if tipo == "obj":
+                return [f"obj_{num}"]
+            if tipo == "real":
+                return [f"sem_{num}"]
+            return [f"obj_{num}", f"sem_{num}"]
+
+        tocadas = 0
+        for fila in rowdata:
+            if fila.get("es_titulo"):
+                continue
+            if ind_sel not in (None, "__todos__") and fila.get("id") != ind_sel:
+                continue
+            for num in nums:
+                for campo in _campos(num):
+                    fila[campo] = v
+                    tocadas += 1
+
+        if tocadas == 0:
+            return no_update, html.Span("Nada que rellenar (revisa la selección).",
+                                        style={"color": "#B7791F"})
+        return rowdata, html.Span(
+            f"✓ {tocadas} celda(s) rellenadas. Revisa y «Guardar todo».",
             style={"color": "#1E8449"})
