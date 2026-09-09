@@ -157,6 +157,39 @@ def crear_panel_captura_bsc():
                        "borderRadius": "8px"},
             ),
 
+            # ---- Pegar desde Excel ----
+            html.Button("📋 Pegar desde Excel", id="bsc-cap-pegar-btn",
+                        n_clicks=0, className="btn",
+                        style={"marginBottom": "8px", "height": "38px",
+                               "border": "1.5px solid #173C73",
+                               "color": "#173C73", "background": "#FFFFFF",
+                               "borderRadius": "8px", "fontWeight": "600",
+                               "cursor": "pointer", "padding": "0 16px"}),
+            html.Div(
+                id="bsc-cap-pegar-zona",
+                style={"display": "none", "marginBottom": "12px"},
+                children=[
+                    html.P("Copia de Excel el bloque de metas mensuales (una fila "
+                           "por indicador, en el MISMO orden de la tabla; columnas "
+                           "= Ene…Dic) y pégalo aquí (Ctrl+V). Luego «Aplicar».",
+                           style={"color": "#6C757D", "fontSize": "13px",
+                                  "marginBottom": "6px"}),
+                    dcc.Textarea(
+                        id="bsc-cap-pegar-texto",
+                        placeholder="Pega aquí (Ctrl+V)…",
+                        style={"width": "100%", "height": "120px",
+                               "fontFamily": "monospace", "fontSize": "13px",
+                               "border": "1px solid #CBD5E1",
+                               "borderRadius": "8px", "padding": "8px"}),
+                    html.Button("Aplicar", id="bsc-cap-pegar-aplicar", n_clicks=0,
+                                className="btn btn-primary",
+                                style={"marginTop": "8px", "height": "38px",
+                                       "padding": "0 22px"}),
+                    html.Span(id="bsc-cap-pegar-msg",
+                              style={"marginLeft": "12px", "fontWeight": "600"}),
+                ],
+            ),
+
             html.Div(id="bsc-cap-obj-cont"),
         ]
     )
@@ -326,4 +359,67 @@ def registrar_callbacks_bsc_captura(app):
                                         style={"color": "#B7791F"})
         return rowdata, html.Span(
             f"✓ {tocadas} celda(s) rellenadas. Revisa y «Guardar».",
+            style={"color": "#1E8449"})
+
+    # mostrar/ocultar zona de pegado
+    @app.callback(
+        Output("bsc-cap-pegar-zona", "style"),
+        Input("bsc-cap-pegar-btn", "n_clicks"),
+        State("bsc-cap-pegar-zona", "style"),
+        prevent_initial_call=True,
+    )
+    def _toggle_pegar(n, style):
+        style = dict(style or {})
+        visible = style.get("display") != "none"
+        style["display"] = "none" if visible else "block"
+        style["marginBottom"] = "12px"
+        return style
+
+    # aplicar el bloque pegado de Excel a la tabla de objetivos.
+    # Cada fila del bloque -> una fila capturable (en orden). Las
+    # columnas del bloque -> Ene..Dic (m_1..m_12).
+    @app.callback(
+        Output("bsc-cap-obj-grid", "rowData", allow_duplicate=True),
+        Output("bsc-cap-pegar-msg", "children"),
+        Input("bsc-cap-pegar-aplicar", "n_clicks"),
+        State("bsc-cap-pegar-texto", "value"),
+        State("bsc-cap-obj-grid", "rowData"),
+        prevent_initial_call=True,
+    )
+    def _aplicar_pegado(n, texto, rowdata):
+        if not n or not texto or not rowdata:
+            return no_update, ""
+        lineas = [ln for ln in texto.replace("\r", "").split("\n")
+                  if ln.strip() != ""]
+        if not lineas:
+            return no_update, html.Span("No se detectó contenido.",
+                                        style={"color": "#C0392B"})
+        # filas capturables (en orden visual, saltando títulos)
+        idx_capturables = [i for i, f in enumerate(rowdata)
+                           if not f.get("es_titulo")]
+
+        def _num(x):
+            x = (x or "").strip().replace(",", "").replace("$", "")
+            if x == "":
+                return None
+            try:
+                return float(x)
+            except ValueError:
+                return None
+
+        aplicadas = 0
+        for li, linea in enumerate(lineas):
+            if li >= len(idx_capturables):
+                break
+            celdas = linea.split("\t")
+            fila = rowdata[idx_capturables[li]]
+            for ci, (m, _) in enumerate(MESES_COL):
+                if ci < len(celdas):
+                    val = _num(celdas[ci])
+                    if val is not None:
+                        fila[f"m_{m}"] = val
+            aplicadas += 1
+
+        return rowdata, html.Span(
+            f"✓ {aplicadas} fila(s) aplicadas. Revisa y «Guardar».",
             style={"color": "#1E8449"})
