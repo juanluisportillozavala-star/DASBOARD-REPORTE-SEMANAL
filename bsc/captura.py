@@ -179,8 +179,6 @@ def _obj_column_defs():
     for m, nombre in MESES_COL:
         cols.append({
             "field": f"m_{m}", "headerName": nombre, "editable": _EDITABLE,
-            "type": "numericColumn", "valueFormatter": _FMT_VALOR,
-            "valueParser": _PARSER_NUM,
             "minWidth": 85, "headerClass": "hdr-bsc",
             "cellStyle": _CELL_EDIT})
     return cols
@@ -212,7 +210,6 @@ def _grid_objetivos(anio):
                        "filter": False, "flex": 1, "minWidth": 80},
         dashGridOptions={"animateRows": False, "rowHeight": 30,
                          "headerHeight": 38, "singleClickEdit": False,
-                         "stopEditingWhenCellsLoseFocus": True,
                          "domLayout": "autoHeight",
                          "suppressCellFocus": False},
         className="ag-theme-alpine",
