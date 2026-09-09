@@ -43,11 +43,16 @@ _FMT_VALOR = {"function": (
     "  : Math.round(params.value).toLocaleString('en-US'))"
 )}
 
-# Al editar, quitar comas/espacios y convertir a número (para que
-# las celdas con formato de miles se puedan editar sin romperse).
+# Al editar, quitar comas/espacios y convertir a número. Si el
+# resultado no es un número válido, se deja en null (celda vacía)
+# en vez de guardar NaN.
 _PARSER_NUM = {"function": (
-    "params.newValue == null || params.newValue === '' ? null : "
-    "Number(String(params.newValue).replace(/[,\\s]/g,''))"
+    "(function(){"
+    " var t = params.newValue;"
+    " if (t == null || String(t).trim() === '') return null;"
+    " var n = Number(String(t).replace(/[,$\\s]/g, ''));"
+    " return isNaN(n) ? null : n;"
+    "})()"
 )}
 
 # --- estilos de celda ---
@@ -135,6 +140,35 @@ def crear_panel_captura_bsc():
             html.P("Teclea la meta de cada mes; el «Obj. anual» se calcula "
                    "solo.", style={"color": "#6C757D", "fontSize": "13px",
                                    "marginBottom": "8px"}),
+            # ---- barra de RELLENADO de objetivos (misma meta en varios meses) ----
+            html.Div(
+                [
+                    html.Span("Rellenar:", style={"fontWeight": "700",
+                                                  "color": AZUL,
+                                                  "marginRight": "8px"}),
+                    dcc.Dropdown(id="bsc-cap-ofill-ind", options=[],
+                                 placeholder="Indicador (o todos)",
+                                 style={"width": "230px"}),
+                    dcc.Dropdown(id="bsc-cap-ofill-mes", options=[],
+                                 placeholder="Mes (o todos)",
+                                 style={"width": "150px"}),
+                    dcc.Input(id="bsc-cap-ofill-valor", type="number",
+                              placeholder="Valor",
+                              style={"width": "130px", "height": "36px",
+                                     "borderRadius": "6px",
+                                     "border": "1px solid #CBD5E1",
+                                     "padding": "0 10px"}),
+                    html.Button("Rellenar", id="bsc-cap-ofill-btn", n_clicks=0,
+                                className="btn btn-primary",
+                                style={"height": "38px", "padding": "0 20px"}),
+                    html.Span(id="bsc-cap-ofill-msg",
+                              style={"marginLeft": "10px", "fontWeight": "600"}),
+                ],
+                style={"display": "flex", "alignItems": "center", "gap": "8px",
+                       "flexWrap": "wrap", "marginBottom": "10px",
+                       "padding": "10px", "background": "#F8FAFD",
+                       "borderRadius": "8px"},
+            ),
             html.Div(id="bsc-cap-obj-cont"),
 
             html.Br(),
@@ -188,40 +222,20 @@ def crear_panel_captura_bsc():
                               style={"marginLeft": "12px", "fontWeight": "600"}),
                 ],
             ),
-            # ---- barra de RELLENADO rápido (mismo valor en varias celdas) ----
+            # Barra de rellenado SEMANAL oculta por ahora (a pedido).
+            # Se dejan los componentes ocultos para no romper sus callbacks.
             html.Div(
                 [
-                    html.Span("Rellenar:", style={"fontWeight": "700",
-                                                  "color": AZUL,
-                                                  "marginRight": "8px"}),
-                    dcc.Dropdown(id="bsc-cap-fill-ind", options=[],
-                                 placeholder="Indicador (o todos)",
-                                 style={"width": "230px"}),
-                    dcc.Dropdown(id="bsc-cap-fill-sem", options=[],
-                                 placeholder="Semana (o todas)",
-                                 style={"width": "150px"}),
+                    dcc.Dropdown(id="bsc-cap-fill-ind", options=[]),
+                    dcc.Dropdown(id="bsc-cap-fill-sem", options=[]),
                     dcc.Dropdown(id="bsc-cap-fill-tipo",
-                                 options=[{"label": "Obj", "value": "obj"},
-                                          {"label": "Real", "value": "real"},
-                                          {"label": "Ambos", "value": "ambos"}],
-                                 value="real", clearable=False,
-                                 style={"width": "110px"}),
-                    dcc.Input(id="bsc-cap-fill-valor", type="number",
-                              placeholder="Valor",
-                              style={"width": "130px", "height": "36px",
-                                     "borderRadius": "6px",
-                                     "border": "1px solid #CBD5E1",
-                                     "padding": "0 10px"}),
-                    html.Button("Rellenar", id="bsc-cap-fill-btn", n_clicks=0,
-                                className="btn btn-primary",
-                                style={"height": "38px", "padding": "0 20px"}),
-                    html.Span(id="bsc-cap-fill-msg",
-                              style={"marginLeft": "10px", "fontWeight": "600"}),
+                                 options=[{"label": "Real", "value": "real"}],
+                                 value="real"),
+                    dcc.Input(id="bsc-cap-fill-valor", type="number"),
+                    html.Button("Rellenar", id="bsc-cap-fill-btn", n_clicks=0),
+                    html.Span(id="bsc-cap-fill-msg"),
                 ],
-                style={"display": "flex", "alignItems": "center", "gap": "8px",
-                       "flexWrap": "wrap", "marginBottom": "10px",
-                       "padding": "10px", "background": "#F8FAFD",
-                       "borderRadius": "8px"},
+                style={"display": "none"},
             ),
             html.Div(id="bsc-cap-sem-cont"),
         ]
@@ -277,7 +291,7 @@ def _grid_objetivos(anio):
         defaultColDef={"resizable": True, "sortable": False,
                        "filter": False, "flex": 1, "minWidth": 80},
         dashGridOptions={"animateRows": False, "rowHeight": 30,
-                         "headerHeight": 38, "singleClickEdit": True,
+                         "headerHeight": 38, "singleClickEdit": False, "stopEditingWhenCellsLoseFocus": True,
                          "domLayout": "autoHeight",
                          "suppressCellFocus": False},
         className="ag-theme-alpine",
@@ -361,7 +375,7 @@ def _grid_semanal(anio, mes):
         defaultColDef={"resizable": True, "sortable": False,
                        "filter": False, "flex": 1, "minWidth": 90},
         dashGridOptions={"animateRows": False, "rowHeight": 30,
-                         "headerHeight": 38, "singleClickEdit": True,
+                         "headerHeight": 38, "singleClickEdit": False, "stopEditingWhenCellsLoseFocus": True,
                          "domLayout": "autoHeight",
                          "suppressCellFocus": False},
         className="ag-theme-alpine",
@@ -597,6 +611,65 @@ def registrar_callbacks_bsc_captura(app):
                 for campo in _campos(num):
                     fila[campo] = v
                     tocadas += 1
+
+        if tocadas == 0:
+            return no_update, html.Span("Nada que rellenar (revisa la selección).",
+                                        style={"color": "#B7791F"})
+        return rowdata, html.Span(
+            f"✓ {tocadas} celda(s) rellenadas. Revisa y «Guardar todo».",
+            style={"color": "#1E8449"})
+
+    # ---- llenar opciones del rellenado de OBJETIVOS ----
+    @app.callback(
+        Output("bsc-cap-ofill-ind", "options"),
+        Output("bsc-cap-ofill-mes", "options"),
+        Input("bsc-cap-anio", "value"),
+    )
+    def _ofill_opciones(anio):
+        inds = [{"label": "— Todos los indicadores —", "value": "__todos__"}]
+        for ind in catalogo.capturables():
+            sangria = "    " if ind["nivel"] >= 1 else ""
+            inds.append({"label": sangria + ind["nombre"], "value": ind["id"]})
+        meses = [{"label": "— Todos los meses —", "value": "__todos__"}]
+        meses += [{"label": n, "value": m} for m, n in MESES_COL]
+        return inds, meses
+
+    # ---- aplicar rellenado a la tabla de OBJETIVOS ----
+    @app.callback(
+        Output("bsc-cap-obj-grid", "rowData", allow_duplicate=True),
+        Output("bsc-cap-ofill-msg", "children"),
+        Input("bsc-cap-ofill-btn", "n_clicks"),
+        State("bsc-cap-ofill-ind", "value"),
+        State("bsc-cap-ofill-mes", "value"),
+        State("bsc-cap-ofill-valor", "value"),
+        State("bsc-cap-obj-grid", "rowData"),
+        prevent_initial_call=True,
+    )
+    def _aplicar_ofill(n, ind_sel, mes_sel, valor, rowdata):
+        if not n or not rowdata:
+            return no_update, ""
+        if valor is None or valor == "":
+            return no_update, html.Span("Escribe un valor.",
+                                        style={"color": "#C0392B"})
+        try:
+            v = float(valor)
+        except (ValueError, TypeError):
+            return no_update, html.Span("Valor inválido.",
+                                        style={"color": "#C0392B"})
+
+        # qué meses: uno o todos (m_1..m_12)
+        nums = ([int(mes_sel)] if mes_sel not in (None, "__todos__")
+                else [m for m, _ in MESES_COL])
+
+        tocadas = 0
+        for fila in rowdata:
+            if fila.get("es_titulo"):
+                continue
+            if ind_sel not in (None, "__todos__") and fila.get("id") != ind_sel:
+                continue
+            for m in nums:
+                fila[f"m_{m}"] = v
+                tocadas += 1
 
         if tocadas == 0:
             return no_update, html.Span("Nada que rellenar (revisa la selección).",
