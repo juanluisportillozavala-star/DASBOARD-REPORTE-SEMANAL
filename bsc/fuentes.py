@@ -87,6 +87,9 @@ def valor_auto(fuente, indicador, anio, mes):
     if origen == "cartera":
         return _valor_cartera(indicador, anio, mes)
 
+    if origen == "saldo_proveedor":
+        return _valor_saldo_prov(indicador, anio, mes)
+
     # otros módulos se irán agregando aquí (ingresos, inventario, …)
     return None
 
@@ -215,6 +218,64 @@ def _valor_cartera(indicador, anio, mes):
     else:
         return None  # dias_cartera u otro -> manual
     sub = _df_cartera_ultima_semana_mes(anio, mes)
+    if sub is None or len(sub) == 0:
+        return None
+    total = 0.0
+    for c in cols:
+        if c in sub.columns:
+            total += float(sub[c].sum())
+    return total
+
+
+# =========================================================
+# MÓDULO SALDO PROVEEDOR  (saldo -> última semana del mes)
+# =========================================================
+# Aging (columnas de la BD de saldo_proveedor):
+#   Al corriente = "Vigente"
+#   Vencido      = ">60 días" + "31-60 días" + "0-30 días"
+# El dato del MES = la ÚLTIMA SEMANA con datos de ese mes.
+# NOTA: "Días proveedor" NO se calcula aquí (necesita compras
+# acumuladas, dato que no está en este módulo) -> queda manual.
+
+_SP_COL_ANIO = "AÑO"
+_SP_COL_MES = "MES"
+_SP_COL_SEMANA = "SEMANA"
+
+_SP_CORRIENTE = ["Vigente"]
+_SP_VENCIDO = ["Vencido >60 días", "Vencido 31-60 días", "Vencido 0-30 días"]
+
+
+def _df_sp_ultima_semana_mes(anio, mes):
+    """DataFrame de la última semana con datos del año/mes en
+    saldo_proveedor. None si no hay."""
+    df = db.obtener_df("saldo_proveedor")
+    if df is None or len(df) == 0:
+        return None
+    import pandas as pd
+    if _SP_COL_ANIO in df.columns:
+        df = df[pd.to_numeric(df[_SP_COL_ANIO], errors="coerce") == int(anio)]
+    if _SP_COL_MES in df.columns:
+        df = df[pd.to_numeric(df[_SP_COL_MES], errors="coerce") == int(mes)]
+    if len(df) == 0 or _SP_COL_SEMANA not in df.columns:
+        return None
+    sem = pd.to_numeric(df[_SP_COL_SEMANA], errors="coerce").dropna()
+    if len(sem) == 0:
+        return None
+    ult = int(sem.max())
+    return df[pd.to_numeric(df[_SP_COL_SEMANA], errors="coerce") == ult]
+
+
+def _valor_saldo_prov(indicador, anio, mes):
+    """Al corriente / Vencido de saldo proveedor (saldo de la última
+    semana del mes). Días proveedor NO se calcula aquí (manual)."""
+    iid = indicador["id"]
+    if iid == "prov_corr":
+        cols = _SP_CORRIENTE
+    elif iid == "prov_venc":
+        cols = _SP_VENCIDO
+    else:
+        return None  # dias_proveedor u otro -> manual
+    sub = _df_sp_ultima_semana_mes(anio, mes)
     if sub is None or len(sub) == 0:
         return None
     total = 0.0

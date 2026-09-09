@@ -135,9 +135,9 @@ def _construir():
     add("saldo_prov", "Saldo proveedores ($)", 0, "Administración", "$",
         "saldo", "menor", False, True, None)
     add("prov_corr", "Al corriente ($)", 1, "Administración", "$",
-        "saldo", "mayor", True, False, "saldo_prov")
+        "saldo", "mayor", True, False, "saldo_prov", fuente="auto:saldo_proveedor")
     add("prov_venc", "Vencido ($)", 1, "Administración", "$",
-        "saldo", "menor", True, False, "saldo_prov")
+        "saldo", "menor", True, False, "saldo_prov", fuente="auto:saldo_proveedor")
     # 37  Días proveedor
     add("dias_proveedor", "Días proveedor", 0, "Administración", "Días",
         "saldo", "mayor", True, False, None)

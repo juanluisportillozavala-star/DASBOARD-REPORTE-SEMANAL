@@ -282,32 +282,6 @@ def registrar_callbacks_bsc(app):
         )
         info = (f"{_MES_NOMBRE.get(int(mes), mes)} {anio} · "
                 f"deber ser a hoy: {ds*100:.0f}%")
-
-        # --- DIAGNÓSTICO TEMPORAL (auto ventas) ---
-        try:
-            import db as _db
-            _dfv = _db.obtener_df("ventas")
-            if _dfv is None:
-                info += "  | DIAG: ventas=None"
-            else:
-                cols = list(_dfv.columns)
-                tiene_anio = "Año" in cols
-                tiene_mes = "Mes" in cols
-                n_mes = 0
-                if tiene_anio and tiene_mes:
-                    n_mes = int(((_dfv["Año"] == int(anio)) &
-                                 (_dfv["Mes"] == int(mes))).sum())
-                from bsc import fuentes as _f
-                val_ilse = _f.valor_auto("auto:ventas",
-                    {"id": "venta_ilse", "nombre": "Ilse García", "nivel": 1},
-                    anio, mes)
-                info += (f"  | DIAG filas_ventas_mes={n_mes}"
-                         f" Año?={tiene_anio} Mes?={tiene_mes}"
-                         f" val_ilse={val_ilse}")
-        except Exception as e:
-            info += f"  | DIAG error: {e}"
-        # --- fin diagnóstico ---
-
         return grid, info
 
     # registrar callbacks de los otros paneles
