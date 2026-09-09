@@ -170,10 +170,22 @@ def crear_panel_captura_bsc():
                 style={"display": "none", "marginBottom": "12px"},
                 children=[
                     html.P("Copia de Excel el bloque de metas mensuales (una fila "
-                           "por indicador, en el MISMO orden de la tabla; columnas "
-                           "= Ene…Dic) y pégalo aquí (Ctrl+V). Luego «Aplicar».",
+                           "por indicador, columnas = Ene…Dic) y pégalo aquí "
+                           "(Ctrl+V). Elige desde qué indicador empezar y «Aplicar».",
                            style={"color": "#6C757D", "fontSize": "13px",
                                   "marginBottom": "6px"}),
+                    html.Div(
+                        [
+                            html.Span("Empezar a pegar desde:",
+                                      style={"fontWeight": "600", "color": AZUL,
+                                             "marginRight": "8px"}),
+                            dcc.Dropdown(id="bsc-cap-pegar-desde", options=[],
+                                         placeholder="Indicador inicial",
+                                         style={"width": "280px"}),
+                        ],
+                        style={"display": "flex", "alignItems": "center",
+                               "marginBottom": "8px"},
+                    ),
                     dcc.Textarea(
                         id="bsc-cap-pegar-texto",
                         placeholder="Pega aquí (Ctrl+V)…",
@@ -306,20 +318,23 @@ def registrar_callbacks_bsc_captura(app):
         return html.Span(f"✓ Objetivos {anio} guardados.",
                          style={"color": "#1E8449"})
 
-    # opciones del rellenado
+    # opciones del rellenado y del "pegar desde"
     @app.callback(
         Output("bsc-cap-ofill-ind", "options"),
         Output("bsc-cap-ofill-mes", "options"),
+        Output("bsc-cap-pegar-desde", "options"),
         Input("bsc-cap-anio", "value"),
     )
     def _ofill_opciones(anio):
         inds = [{"label": "— Todos los indicadores —", "value": "__todos__"}]
+        pegar = []
         for ind in catalogo.capturables():
             sangria = "    " if ind["nivel"] >= 1 else ""
             inds.append({"label": sangria + ind["nombre"], "value": ind["id"]})
+            pegar.append({"label": sangria + ind["nombre"], "value": ind["id"]})
         meses = [{"label": "— Todos los meses —", "value": "__todos__"}]
         meses += [{"label": n, "value": m} for m, n in MESES_COL]
-        return inds, meses
+        return inds, meses, pegar
 
     # aplicar rellenado a la tabla de objetivos
     @app.callback(
@@ -383,10 +398,11 @@ def registrar_callbacks_bsc_captura(app):
         Output("bsc-cap-pegar-msg", "children"),
         Input("bsc-cap-pegar-aplicar", "n_clicks"),
         State("bsc-cap-pegar-texto", "value"),
+        State("bsc-cap-pegar-desde", "value"),
         State("bsc-cap-obj-grid", "rowData"),
         prevent_initial_call=True,
     )
-    def _aplicar_pegado(n, texto, rowdata):
+    def _aplicar_pegado(n, texto, desde_id, rowdata):
         if not n or not texto or not rowdata:
             return no_update, ""
         lineas = [ln for ln in texto.replace("\r", "").split("\n")
@@ -397,6 +413,17 @@ def registrar_callbacks_bsc_captura(app):
         # filas capturables (en orden visual, saltando títulos)
         idx_capturables = [i for i, f in enumerate(rowdata)
                            if not f.get("es_titulo")]
+        if not idx_capturables:
+            return no_update, html.Span("No hay filas donde pegar.",
+                                        style={"color": "#C0392B"})
+
+        # ¿desde qué indicador empezar? buscar su posición en la lista
+        inicio = 0
+        if desde_id:
+            for pos, i in enumerate(idx_capturables):
+                if rowdata[i].get("id") == desde_id:
+                    inicio = pos
+                    break
 
         def _num(x):
             x = (x or "").strip().replace(",", "").replace("$", "")
@@ -409,10 +436,11 @@ def registrar_callbacks_bsc_captura(app):
 
         aplicadas = 0
         for li, linea in enumerate(lineas):
-            if li >= len(idx_capturables):
+            destino = inicio + li
+            if destino >= len(idx_capturables):
                 break
             celdas = linea.split("\t")
-            fila = rowdata[idx_capturables[li]]
+            fila = rowdata[idx_capturables[destino]]
             for ci, (m, _) in enumerate(MESES_COL):
                 if ci < len(celdas):
                     val = _num(celdas[ci])
