@@ -12,17 +12,17 @@ Técnica: cirugía de ZIP/XML (openpyxl NO soporta pivots/slicers
 y los rompería). Se reescribe únicamente el sheetN.xml de cada
 hoja BD; todo lo demás (pivots, caches, slicers) se copia intacto.
 
-Además:
-  • Se preserva el estilo (formato) de cada columna leyéndolo de
-    la fila 2 original -> las fechas siguen viéndose como fechas.
-  • Se ajusta el rango de origen de cada pivotCache al nuevo
-    número de filas.
-  • Se activa refreshOnLoad=1 -> las dinámicas se refrescan solas
-    al abrir el archivo.
+CORRECCIÓN AGING CxP: la plantilla calcula el aging de Saldo
+Proveedor usando el "Total pendiente" (que NO resta los abonos),
+por eso los saldos salían inflados. Aquí, SOLO para la hoja
+BD CxP, se RECALCULAN las 4 columnas de aging usando el
+"Importe adeudado" (saldo real, con abonos ya descontados) y
+los "Dias vencido". El resto de hojas no se toca.
 
-Requiere que la BD cruda esté guardada (db.leer_crudo). Si un
-módulo no tiene BD cruda aún, esa hoja se deja como está en la
-plantilla.
+Además:
+  • Se preserva el estilo (formato) de cada columna.
+  • Se ajusta el rango de origen de cada pivotCache.
+  • Se activa refreshOnLoad=1.
 """
 
 import io
@@ -43,8 +43,7 @@ MODULO_HOJA = {
     "saldo_proveedor": "BD CxP",
 }
 
-# módulo interno -> nombre de la hoja de la TABLA DINÁMICA (la que
-# se deja visible cuando se descarga "solo ese módulo").
+# módulo interno -> nombre de la hoja de la TABLA DINÁMICA
 MODULO_PIVOTE = {
     "ventas": "Ventas",
     "ingresos": "Ingreso",
@@ -54,6 +53,61 @@ MODULO_PIVOTE = {
 
 _NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 _NS_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+# =========================================================
+# CORRECCIÓN DEL AGING DE CxP (usar Importe adeudado)
+# =========================================================
+
+_AGING_CXP = ["Vencido 0-30 días", "Vencido 31-60 días",
+              "Vencido >60 días", "Vigente"]
+
+
+def _rango_aging(dias_vencido):
+    """En qué columna de aging cae, según los días de vencido."""
+    try:
+        dv = float(dias_vencido)
+    except (ValueError, TypeError):
+        dv = 0
+    if dv <= 0:
+        return "Vigente"
+    if dv <= 30:
+        return "Vencido 0-30 días"
+    if dv <= 60:
+        return "Vencido 31-60 días"
+    return "Vencido >60 días"
+
+
+def _buscar(cols, *cand):
+    norm = {str(c).strip().lower(): c for c in cols}
+    for c in cand:
+        k = c.strip().lower()
+        if k in norm:
+            return norm[k]
+    return None
+
+
+def _corregir_aging_cxp(df):
+    """Devuelve el df con las 4 columnas de aging RECALCULADAS a
+    partir de 'Importe adeudado' (saldo real) y 'Dias vencido'.
+    Si faltan esas columnas, devuelve el df sin cambios (seguro)."""
+    c_adeudado = _buscar(df.columns, "Importe adeudado", "Importe Adeudado")
+    c_dias = _buscar(df.columns, "Dias vencido", "Días vencido",
+                     "Dias vencidos", "Días vencidos")
+    # las 4 columnas de aging tal como están en la plantilla
+    cols_aging = {a: _buscar(df.columns, a) for a in _AGING_CXP}
+
+    if c_adeudado is None or c_dias is None or any(v is None for v in cols_aging.values()):
+        # no se puede corregir con seguridad -> dejar como viene
+        return df
+
+    df = df.copy()
+    adeudado = pd.to_numeric(df[c_adeudado], errors="coerce").fillna(0.0).abs()
+    rango = df[c_dias].apply(_rango_aging)
+    for a in _AGING_CXP:
+        col = cols_aging[a]
+        df[col] = adeudado.where(rango.values == a, 0.0).values
+    return df
 
 
 # ---------------------------------------------------------
@@ -90,7 +144,7 @@ def _celda_xml(ref, valor, estilo):
 
 
 # ---------------------------------------------------------
-# mapeo hoja -> sheetN.xml (dinámico, por si cambia el orden)
+# mapeo hoja -> sheetN.xml
 # ---------------------------------------------------------
 
 def _mapa_hojas(zf):
@@ -113,7 +167,7 @@ def _mapa_hojas(zf):
 
 
 # ---------------------------------------------------------
-# estilos por columna (leídos de la fila 2 del sheet original)
+# estilos por columna
 # ---------------------------------------------------------
 
 def _estilos_por_columna(sheet_xml):
@@ -126,15 +180,12 @@ def _estilos_por_columna(sheet_xml):
 
 
 def _cargar_shared_strings(zf):
-    """Lista de textos de sharedStrings.xml (para resolver celdas
-    tipo t='s' que referencian por índice)."""
     try:
         x = zf.read("xl/sharedStrings.xml").decode("utf-8")
     except KeyError:
         return []
     textos = []
     for si in re.findall(r"<si>(.*?)</si>", x, re.DOTALL):
-        # un <si> puede tener varios <t> (texto con formato); se concatenan
         partes = re.findall(r"<t[^>]*>(.*?)</t>", si, re.DOTALL)
         txt = "".join(partes)
         txt = (txt.replace("&amp;", "&").replace("&lt;", "<")
@@ -144,8 +195,6 @@ def _cargar_shared_strings(zf):
 
 
 def _headers_originales(sheet_xml, shared):
-    """Encabezados (fila 1) en orden de columna, resolviendo tanto
-    inlineStr como sharedString (t='s')."""
     fila1 = re.search(r'<row r="1"[^>]*>(.*?)</row>', sheet_xml, re.DOTALL)
     if not fila1:
         return []
@@ -171,13 +220,11 @@ def _headers_originales(sheet_xml, shared):
 
 def _sheet_data_xml(headers, df, estilos):
     filas = []
-    # fila 1: encabezados
     celdas = []
     for j, h in enumerate(headers):
         col = get_column_letter(j + 1)
         celdas.append(_celda_xml(f"{col}1", h, estilos.get(col, "")))
     filas.append(f'<row r="1">{"".join(celdas)}</row>')
-    # datos
     for i in range(len(df)):
         r = df.iloc[i]
         celdas = []
@@ -189,9 +236,6 @@ def _sheet_data_xml(headers, df, estilos):
 
 
 def _alinear(df_crudo, headers):
-    """Devuelve un df con EXACTAMENTE las columnas 'headers' (orden
-    de la plantilla). Empareja por nombre ignorando espacios/mayús;
-    columnas faltantes quedan vacías."""
     norm = {str(c).strip().lower(): c for c in df_crudo.columns}
     salida = pd.DataFrame()
     for h in headers:
@@ -206,7 +250,6 @@ def _actualizar_sheet(sheet_xml, headers, df, estilos):
     ultima = f"{get_column_letter(len(headers))}{n_filas}"
     sheet_xml = re.sub(r'<dimension ref="[^"]*"/>',
                        f'<dimension ref="A1:{ultima}"/>', sheet_xml, count=1)
-    # reemplazo LITERAL (evita que \g, \1, etc. del contenido se interpreten)
     if "<sheetData>" in sheet_xml:
         ini = sheet_xml.index("<sheetData>")
         fin = sheet_xml.index("</sheetData>") + len("</sheetData>")
@@ -217,8 +260,6 @@ def _actualizar_sheet(sheet_xml, headers, df, estilos):
 
 
 def _solo_visible(workbook_xml, hoja_visible):
-    """Deja visible SOLO la hoja indicada; oculta todas las demás.
-    Ajusta activeTab a la hoja visible. No borra nada (seguro)."""
     sheets = list(re.finditer(r'<sheet\b[^>]*/>', workbook_xml))
     viejos = [m.group(0) for m in sheets]
     nuevas = []
@@ -229,13 +270,12 @@ def _solo_visible(workbook_xml, hoja_visible):
         tag_sin = re.sub(r'\s+state="[^"]*"', "", tag)
         if nombre == hoja_visible:
             idx_visible = i
-            nuevas.append(tag_sin)  # visible
+            nuevas.append(tag_sin)
         else:
             nuevas.append(tag_sin[:-2] + ' state="hidden"/>')
     for viejo, nuevo in zip(viejos, nuevas):
         workbook_xml = workbook_xml.replace(viejo, nuevo, 1)
 
-    # activeTab -> índice de la hoja visible
     def _fix(m):
         wv = m.group(0)
         wv = re.sub(r'\s+activeTab="[^"]*"', "", wv)
@@ -248,9 +288,6 @@ def _solo_visible(workbook_xml, hoja_visible):
 
 
 def _ajustar_tabselected(sheet_xml, seleccionar):
-    """Deja tabSelected="1" solo en la hoja visible y lo quita del
-    resto. Si Excel ve una hoja OCULTA aún 'seleccionada' junto con
-    la visible, las trata como GRUPO y bloquea las dinámicas."""
     m = re.search(r'<sheetView\b[^>]*?>', sheet_xml)
     if not m:
         return sheet_xml
@@ -267,13 +304,10 @@ def _ajustar_tabselected(sheet_xml, seleccionar):
 
 
 def _actualizar_pivotcache(cache_xml, hoja, n_filas):
-    """Ajusta el ref del worksheetSource de esa hoja al nuevo número
-    de filas y activa refreshOnLoad."""
     def _rep(m):
         attrs = m.group(0)
         if f'sheet="{hoja}"' not in attrs:
             return attrs
-        # ref="A1:N684"  ->  ref="A1:N{n_filas}"
         return re.sub(r'ref="([A-Z]+1:[A-Z]+)\d+"',
                       lambda mm: f'ref="{mm.group(1)}{n_filas}"', attrs)
     cache_xml = re.sub(r'<worksheetSource[^>]*/>', _rep, cache_xml)
@@ -291,11 +325,7 @@ def _actualizar_pivotcache(cache_xml, hoja, n_filas):
 
 def generar_reporte(plantilla_path, solo_modulo=None):
     """Devuelve los BYTES del xlsx con las BD reemplazadas por lo
-    guardado en Supabase (BD cruda). Las dinámicas quedan vivas.
-
-    Si solo_modulo se indica (ventas/ingresos/cartera/saldo_proveedor),
-    el archivo se descarga con SOLO la pestaña de ese módulo visible
-    (las demás hojas se ocultan, no se borran, para no romper nada)."""
+    guardado en Supabase (BD cruda). Las dinámicas quedan vivas."""
     with zipfile.ZipFile(plantilla_path) as z:
         nombres = z.namelist()
         contenido = {n: z.read(n) for n in nombres}
@@ -303,7 +333,6 @@ def generar_reporte(plantilla_path, solo_modulo=None):
 
     mapa = _mapa_hojas(zipfile.ZipFile(plantilla_path))
 
-    # filas nuevas por hoja (para ajustar los pivotCache)
     filas_por_hoja = {}
 
     for modulo, hoja in MODULO_HOJA.items():
@@ -315,7 +344,15 @@ def generar_reporte(plantilla_path, solo_modulo=None):
         except Exception:
             df_crudo = None
         if df_crudo is None or len(df_crudo) == 0:
-            continue  # sin BD cruda -> se deja la hoja de la plantilla
+            continue
+
+        # CORRECCIÓN: para Saldo Proveedor, recalcular el aging con
+        # el "Importe adeudado" (saldo real) antes de escribir.
+        if modulo == "saldo_proveedor":
+            try:
+                df_crudo = _corregir_aging_cxp(df_crudo)
+            except Exception as e:
+                print(f">>> [CxP] No se pudo corregir aging: {e}", flush=True)
 
         sheet_xml = contenido[parte].decode("utf-8")
         headers = _headers_originales(sheet_xml, shared)
@@ -327,13 +364,11 @@ def generar_reporte(plantilla_path, solo_modulo=None):
         contenido[parte] = nuevo_xml.encode("utf-8")
         filas_por_hoja[hoja] = n_filas
 
-    # ajustar rangos de los pivotCache + refreshOnLoad
     for n in list(contenido.keys()):
         if re.search(r"xl/pivotCache/pivotCacheDefinition\d+\.xml$", n):
             x = contenido[n].decode("utf-8")
             for hoja, nf in filas_por_hoja.items():
                 x = _actualizar_pivotcache(x, hoja, nf)
-            # si la hoja de este cache no cambió, igual activamos refresh
             if "refreshOnLoad" in x:
                 x = re.sub(r'refreshOnLoad="[01]"', 'refreshOnLoad="1"', x)
             else:
@@ -341,16 +376,12 @@ def generar_reporte(plantilla_path, solo_modulo=None):
                               '<pivotCacheDefinition refreshOnLoad="1" ', 1)
             contenido[n] = x.encode("utf-8")
 
-    # si se pidió solo un módulo, ocultar las demás hojas
     if solo_modulo and solo_modulo in MODULO_PIVOTE:
         hoja_vis = MODULO_PIVOTE[solo_modulo]
         wbxml = contenido["xl/workbook.xml"].decode("utf-8")
         wbxml, _ = _solo_visible(wbxml, hoja_vis)
         contenido["xl/workbook.xml"] = wbxml.encode("utf-8")
 
-        # dejar tabSelected="1" SOLO en la hoja visible; quitarlo del
-        # resto (si no, Excel las trata como grupo y bloquea las
-        # dinámicas: "modo de edición de grupo").
         parte_visible = mapa.get(hoja_vis)
         for nombre_hoja, parte in mapa.items():
             if parte not in contenido:
