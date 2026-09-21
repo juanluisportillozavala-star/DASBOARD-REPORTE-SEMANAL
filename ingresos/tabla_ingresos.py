@@ -12,6 +12,8 @@ filtrados, en orden Contado→Crédito, Vigente→Vencido.
 
 Filtros: AÑO (maestro) + calendario Mes/Semana.
 Lee de la caché del servidor (db.obtener_df).
+
+NOTA (fix 35.3.0): getRowId debe ser STRING, no dict.
 """
 
 from dash import Input, Output, State, html, dcc, no_update
@@ -52,7 +54,6 @@ def _column_defs(combos):
             "cellStyle": {"function": "params.data.tieneHijos ? {cursor: 'pointer'} : {}"},
         },
     ]
-    # agrupar los combos presentes por término, respetando el orden
     terminos_orden = []
     for t, e in combos:
         if t not in terminos_orden:
@@ -221,7 +222,7 @@ def registrar_callbacks_tabla_ingresos(app):
                 id="tabla-ingresos-grid",
                 rowData=visibles.to_dict("records"),
                 columnDefs=_column_defs(combos),
-                getRowId={"function": "params.data.id"},
+                getRowId="params.data.id",
                 getRowStyle=_estilo_filas(),
                 defaultColDef={"flex": 1, "minWidth": 130, "sortable": False,
                                "filter": False, "resizable": True},
