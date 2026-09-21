@@ -25,6 +25,10 @@ IMPORTANTE: no hay filtro ni ordenamiento nativo de columnas.
 El sort nativo se quitó porque reordena TODAS las filas
 visibles juntas, rompiendo la jerarquía. El orden se controla
 desde Python con el dropdown "Ordenar por" (ver ventas/tabla_arbol.py).
+
+NOTA (fix 35.3.0): getRowId debe ser un STRING (la función JS
+como texto), NO un dict {"function": ...}. Con dict, AG Grid
+lanza "Invalid argument getRowId ... Expected string".
 """
 
 import dash_ag_grid as dag
@@ -206,16 +210,6 @@ def _estilo_filas():
 
 # =========================================================
 # ALTURA DEL GRID (ADAPTATIVA)
-#
-# - Pocas filas (<= UMBRAL_SCROLL): domLayout="autoHeight". El
-#   grid se ajusta EXACTO a su contenido, sin bloque vacío
-#   debajo (caso de la tabla con 3 vendedores sin expandir).
-# - Muchas filas (> UMBRAL_SCROLL): altura fija por viewport
-#   con scroll interno, así el encabezado de columnas queda
-#   pegado arriba al desplazarse.
-#
-# calcular_altura_grid() se conserva SIN uso por si se quiere
-# volver a una altura en px calculada.
 # =========================================================
 
 ALTO_FILA = 34
@@ -226,8 +220,6 @@ ALTO_MAXIMO = 500
 
 UMBRAL_SCROLL = 15
 
-# Altura fija SOLO cuando hay muchas filas (> UMBRAL_SCROLL).
-# Ajustable: "60vh" más compacto, "80vh" casi pantalla completa.
 ALTO_VIEWPORT = "70vh"
 
 
@@ -256,23 +248,6 @@ def calcular_altura_grid(cantidad_filas, hay_total=True):
 
 def configuracion_tamano(cantidad_filas, hay_total=True):
 
-    """
-    Devuelve (dashGridOptions_extra, altura_para_style).
-
-    Usa SIEMPRE altura en píxeles calculada por calcular_altura_grid:
-    - Pocas filas -> altura pequeña, ajustada al contenido (sin
-      bloque vacío debajo).
-    - Muchas filas -> crece hasta ALTO_MAXIMO y ahí se topa,
-      activando scroll interno con el encabezado pegado.
-
-    Por qué NO autoHeight: alternar domLayout entre "autoHeight"
-    (pocas filas) y normal (muchas) al expandir/contraer NO lo
-    aplica bien AG Grid en vivo — el grid se queda en autoHeight
-    y crece sin tope, chocando con lo de abajo. Con una altura en
-    px que solo cambia de número, no hay esa transición y el tope
-    (ALTO_MAXIMO) siempre se respeta.
-    """
-
     alto = calcular_altura_grid(cantidad_filas, hay_total=hay_total)
 
     return ({}, f"{alto}px")
@@ -283,13 +258,6 @@ def configuracion_tamano(cantidad_filas, hay_total=True):
 # =========================================================
 
 def opciones_grid(pinned, opciones_extra):
-
-    """
-    Arma el diccionario COMPLETO de dashGridOptions. Pública
-    porque "dashGridOptions" reemplaza todo el diccionario de
-    golpe, así que el callback de expandir también la necesita
-    para no perder animateRows/rowHeight/etc.
-    """
 
     return {
 
@@ -309,14 +277,6 @@ def opciones_grid(pinned, opciones_extra):
 def crear_aggrid(df, fila_total=None, id_grid="tabla-ventas",
                  titulo_concepto="Vendedor / Cliente / Producto"):
 
-    """
-    df: DataFrame con las filas visibles AHORA.
-    fila_total: dict opcional para fijar el TOTAL GENERAL al
-        fondo (pinnedBottomRowData, dentro de dashGridOptions).
-    id_grid: id del componente (una por tabla).
-    titulo_concepto: encabezado de la primera columna.
-    """
-
     pinned = [fila_total] if fila_total else None
 
     opciones_extra, alto_estilo = configuracion_tamano(
@@ -335,11 +295,7 @@ def crear_aggrid(df, fila_total=None, id_grid="tabla-ventas",
 
         columnDefs=_columnas(titulo_concepto),
 
-        getRowId={
-
-            "function": "params.data.id"
-
-        },
+        getRowId="params.data.id",
 
         getRowStyle=_estilo_filas(),
 
@@ -375,11 +331,6 @@ def crear_aggrid(df, fila_total=None, id_grid="tabla-ventas",
 # =========================================================
 
 def estilo_grid(alto):
-
-    """
-    alto: string CSS height listo, p.ej. "70vh" o "auto".
-    Viene de configuracion_tamano().
-    """
 
     return {
 
