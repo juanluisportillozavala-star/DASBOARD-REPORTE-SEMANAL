@@ -15,6 +15,9 @@ ubicación que esté puesto.
 import io
 from datetime import datetime
 
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+
 from dash import Input, Output, State, html, dcc, no_update
 import dash_ag_grid as dag
 import plotly.express as px
@@ -352,6 +355,109 @@ def _df_filtrado(ubicaciones):
     return df
 
 
+
+# =========================================================
+# GENERADOR DE EXCEL CON DISEÑO (detalle de inventario)
+# =========================================================
+# Reutilizable: lo usan la descarga del detalle actual y la del
+# histórico. Recibe un DataFrame ya con columnas AMIGABLES
+# (Ubicación, Producto, Unidad, Cantidad, Días en almacén,
+# Categoría, Valor) y devuelve los bytes del xlsx con diseño.
+
+def excel_detalle_inventario(salida, titulo="Inventario — Detalle de productos"):
+    _AZUL = "173C73"
+    _VERDE = "D5F5E3"; _AMAR = "FCF3CF"; _ROJO = "FADBD8"
+
+    cols = list(salida.columns)
+    ncol = len(cols)
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        salida.to_excel(writer, index=False, sheet_name="Inventario", startrow=1)
+        ws = writer.sheets["Inventario"]
+
+        # título (fila 1, combinado)
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncol)
+        t = ws.cell(row=1, column=1, value=titulo)
+        t.font = Font(name="Arial", bold=True, size=13, color="FFFFFF")
+        t.fill = PatternFill("solid", fgColor=_AZUL)
+        t.alignment = Alignment(horizontal="center", vertical="center")
+        ws.row_dimensions[1].height = 24
+
+        # encabezados (fila 2)
+        for c in range(1, ncol + 1):
+            cell = ws.cell(row=2, column=c)
+            cell.font = Font(name="Arial", bold=True, color="FFFFFF")
+            cell.fill = PatternFill("solid", fgColor=_AZUL)
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # índices de columnas (si existen)
+        def _idx(nombre):
+            return cols.index(nombre) + 1 if nombre in cols else None
+        cat_col = _idx("Categoría")
+        val_col = _idx("Valor")
+        cant_col = _idx("Cantidad")
+        dias_col = _idx("Días en almacén")
+
+        # datos: color por categoría + formatos
+        n = len(salida)
+        for i in range(n):
+            r = 3 + i
+            for c in range(1, ncol + 1):
+                ws.cell(row=r, column=c).font = Font(name="Arial", size=10)
+            if cat_col:
+                catv = str(ws.cell(row=r, column=cat_col).value or "")
+                fill = _ROJO if "61" in catv else (_AMAR if "31-60" in catv else _VERDE)
+                ws.cell(row=r, column=cat_col).fill = PatternFill("solid", fgColor=fill)
+            if val_col:
+                ws.cell(row=r, column=val_col).number_format = "$#,##0.00"
+            if cant_col:
+                ws.cell(row=r, column=cant_col).number_format = "#,##0"
+            if dias_col:
+                ws.cell(row=r, column=dias_col).number_format = "#,##0"
+
+        # fila total
+        tr = 3 + n
+        ws.cell(row=tr, column=1, value="TOTAL")
+        if cant_col:
+            ws.cell(row=tr, column=cant_col,
+                    value=f"=SUM({get_column_letter(cant_col)}3:{get_column_letter(cant_col)}{tr-1})").number_format = "#,##0"
+        if val_col:
+            ws.cell(row=tr, column=val_col,
+                    value=f"=SUM({get_column_letter(val_col)}3:{get_column_letter(val_col)}{tr-1})").number_format = "$#,##0.00"
+        for c in range(1, ncol + 1):
+            ws.cell(row=tr, column=c).fill = PatternFill("solid", fgColor="F4F1E4")
+            ws.cell(row=tr, column=c).font = Font(name="Arial", bold=True, color=_AZUL)
+
+        # anchos de columna
+        for i, col in enumerate(cols, start=1):
+            try:
+                ancho = max(12, min(45, int(salida[col].astype(str).str.len().max() or 10) + 3))
+            except Exception:
+                ancho = 16
+            ws.column_dimensions[get_column_letter(i)].width = ancho
+
+        ws.freeze_panes = "A3"
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def preparar_detalle(df):
+    """Toma el df de inventario (columnas internas) y devuelve el df
+    con columnas amigables, ordenado por días en almacén desc."""
+    cols = [COL_UBICACION, COL_PRODUCTO, COL_UNIDAD, COL_CANTIDAD,
+            "DIAS EN ALMACEN", "CATEGORIA", COL_VALOR]
+    cols = [c for c in cols if c in df.columns]
+    salida = df[cols].copy().rename(columns={
+        COL_UBICACION: "Ubicación", COL_PRODUCTO: "Producto",
+        COL_UNIDAD: "Unidad", COL_CANTIDAD: "Cantidad",
+        "DIAS EN ALMACEN": "Días en almacén", "CATEGORIA": "Categoría",
+        COL_VALOR: "Valor",
+    })
+    if "Días en almacén" in salida.columns:
+        salida = salida.sort_values("Días en almacén", ascending=False)
+    return salida
+
+
 def registrar_callbacks_inventario(app):
 
     @app.callback(
@@ -459,36 +565,10 @@ def registrar_callbacks_inventario(app):
         if df is None or len(df) == 0:
             return no_update
 
-        # columnas y nombres amigables para el Excel (tabla de detalle)
-        cols = [COL_UBICACION, COL_PRODUCTO, COL_UNIDAD, COL_CANTIDAD,
-                "DIAS EN ALMACEN", "CATEGORIA", COL_VALOR]
-        cols = [c for c in cols if c in df.columns]
-        salida = df[cols].copy()
-        salida = salida.rename(columns={
-            COL_UBICACION: "Ubicación",
-            COL_PRODUCTO: "Producto",
-            COL_UNIDAD: "Unidad",
-            COL_CANTIDAD: "Cantidad",
-            "DIAS EN ALMACEN": "Días en almacén",
-            "CATEGORIA": "Categoría",
-            COL_VALOR: "Valor",
-        })
-        # ordenar por días en almacén (los más lentos arriba)
-        if "Días en almacén" in salida.columns:
-            salida = salida.sort_values("Días en almacén", ascending=False)
-
-        # armar el xlsx en memoria
-        buf = io.BytesIO()
-        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-            salida.to_excel(writer, index=False, sheet_name="Inventario")
-            ws = writer.sheets["Inventario"]
-            # ancho de columnas automático (aproximado)
-            for i, col in enumerate(salida.columns, start=1):
-                ancho = max(12, min(45, int(salida[col].astype(str).str.len().max() or 10) + 2))
-                ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = ancho
-        buf.seek(0)
-
+        salida = preparar_detalle(df)
+        datos = excel_detalle_inventario(
+            salida, titulo="Inventario — Detalle de productos (lento movimiento)")
         fecha = datetime.now().strftime("%Y-%m-%d")
         etiqueta = "filtrado" if ubicaciones else "completo"
         nombre = f"Inventario_lento_movimiento_{etiqueta}_{fecha}.xlsx"
-        return dcc.send_bytes(buf.getvalue(), nombre)
+        return dcc.send_bytes(datos, nombre)
