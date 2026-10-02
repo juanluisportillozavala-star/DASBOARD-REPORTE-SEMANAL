@@ -12,12 +12,16 @@ inventario_historico), NO de la caché del inventario semanal.
 
 Reutiliza los constructores visuales de tabla_inventario.py para
 verse idéntico, sin duplicar ni tocar ese archivo.
+
+NUEVO: botón "Descargar Excel" que baja la foto del mes elegido
+con diseño (mismo generador que el inventario actual).
 """
 
 import dash_ag_grid as dag
 import plotly.express as px
 import pandas as pd
-from dash import Input, Output, html, dcc
+from datetime import datetime
+from dash import Input, Output, html, dcc, no_update, ctx
 
 import db
 from inventario.procesamiento import (
@@ -26,6 +30,7 @@ from inventario.procesamiento import (
 from inventario.tabla_inventario import (
     _tabla_resumen_rango, _tabla_resumen_ubicacion,
     _column_defs, _estilo_grid, _kpi_card,
+    excel_detalle_inventario, preparar_detalle,
     COLOR_CAT, AZUL, DORADO,
 )
 
@@ -107,10 +112,25 @@ def crear_layout_historico():
                            "marginBottom": "10px"}),
             html.Div(id="invh-tabla-ubicacion", style={"marginBottom": "24px"}),
 
-            # Detalle
-            html.H4("Detalle de productos",
-                    style={"color": AZUL, "fontWeight": "700",
-                           "marginBottom": "10px"}),
+            # Detalle + botón de descarga
+            dcc.Download(id="invh-descarga"),
+            html.Div(
+                [
+                    html.H4("Detalle de productos",
+                            style={"color": AZUL, "fontWeight": "700",
+                                   "margin": "0"}),
+                    html.Button(
+                        [html.I(className="fas fa-file-excel me-2"),
+                         "Descargar Excel"],
+                        id="invh-btn-descargar", n_clicks=0,
+                        style={"backgroundColor": "#1E8449", "color": "white",
+                               "border": "none", "padding": "10px 18px",
+                               "borderRadius": "8px", "fontWeight": "600",
+                               "cursor": "pointer"}),
+                ],
+                style={"display": "flex", "justifyContent": "space-between",
+                       "alignItems": "center", "marginBottom": "10px"},
+            ),
             html.Div(id="invh-tabla-detalle"),
 
             html.Br(),
@@ -144,8 +164,7 @@ def crear_layout_historico():
 
 def registrar_callbacks_historico_inv(app):
 
-    # --- alternar pestañas: paneles SIEMPRE montados, solo se
-    #     muestran/ocultan (así ningún callback queda huérfano) ---
+    # --- alternar pestañas ---
     @app.callback(
         Output("inv-panel-actual", "style"),
         Output("inv-panel-historico", "style"),
@@ -170,7 +189,7 @@ def registrar_callbacks_historico_inv(app):
         meses = db.meses_con_historico_inv(anio)
         opciones = [{"label": _MES_NOMBRE.get(m, str(m)), "value": m}
                     for m in meses]
-        valor = meses[-1] if meses else None   # el mes más reciente
+        valor = meses[-1] if meses else None
         return opciones, valor
 
     # --- render de la foto seleccionada ---
@@ -202,12 +221,10 @@ def registrar_callbacks_historico_inv(app):
                 style={"color": "#C0392B"})
             return aviso, [], vacio, vacio, vacio, fig_vacia, fig_vacia
 
-        # los datos vienen de JSON: reasegurar tipos numéricos
         for col in [COL_CANTIDAD, COL_VALOR, "DIAS EN ALMACEN"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        # línea de info (fecha de corte / cuándo se guardó)
         info = db.info_inventario_historico(anio, mes)
         etiqueta = f"Foto de {_MES_NOMBRE.get(int(mes), mes)} {anio}"
         if info:
@@ -217,11 +234,8 @@ def registrar_callbacks_historico_inv(app):
                 etiqueta += f" · guardado: {info['actualizado']}"
         info_div = html.Div(etiqueta, style={"fontStyle": "italic"})
 
-        # KPIs (mismos que el inventario actual)
         valor_total = df[COL_VALOR].sum()
         total_prod = len(df)
-        # Antigüedad PONDERADA por cantidad en inventario (kg/L):
-        # misma fórmula que el inventario actual, para que coincidan.
         _peso = df[COL_CANTIDAD].where(df["DIAS EN ALMACEN"].notna())
         antig = ((df["DIAS EN ALMACEN"] * _peso).sum() / _peso.sum()
                  if _peso.sum() else float("nan"))
@@ -232,11 +246,9 @@ def registrar_callbacks_historico_inv(app):
                       f"{antig:.0f} días" if pd.notna(antig) else "—"),
         ]
 
-        # tablas resumen (reutilizadas de tabla_inventario)
         t_rango = _tabla_resumen_rango(df)
         t_ubic = _tabla_resumen_ubicacion(df)
 
-        # detalle
         grid = dag.AgGrid(
             id="invh-grid",
             rowData=df.to_dict("records"),
@@ -249,7 +261,6 @@ def registrar_callbacks_historico_inv(app):
             style=_estilo_grid("600px"),
         )
 
-        # pastel: valor por categoría
         cat = df.groupby("CATEGORIA", observed=False)[COL_VALOR].sum().reset_index()
         cat = cat[cat[COL_VALOR] > 0]
         fig_pie = px.pie(cat, values=COL_VALOR, names="CATEGORIA",
@@ -260,7 +271,6 @@ def registrar_callbacks_historico_inv(app):
                               plot_bgcolor="rgba(0,0,0,0)",
                               margin=dict(t=50, b=20, l=20, r=20))
 
-        # barras: valor por ubicación
         ubi = df.groupby(COL_UBICACION)[COL_VALOR].sum().reset_index()
         ubi["etiqueta"] = ubi[COL_VALOR].apply(lambda v: f"${v:,.0f}")
         fig_bar = px.bar(ubi, x=COL_UBICACION, y=COL_VALOR,
@@ -278,3 +288,29 @@ def registrar_callbacks_historico_inv(app):
                               yaxis=dict(range=[0, (tope or 1) * 1.15]))
 
         return info_div, kpis, t_rango, t_ubic, grid, fig_pie, fig_bar
+
+    # --- DESCARGA del detalle histórico a Excel (con diseño) ---
+    @app.callback(
+        Output("invh-descarga", "data"),
+        Input("invh-btn-descargar", "n_clicks"),
+        Input("invh-anio", "value"),
+        Input("invh-mes", "value"),
+        prevent_initial_call=True,
+    )
+    def _descargar_historico(n, anio, mes):
+        # solo actuar cuando el disparo viene del BOTÓN (no al cambiar año/mes)
+        if ctx.triggered_id != "invh-btn-descargar":
+            return no_update
+        if not n or not anio or not mes:
+            return no_update
+        df = db.leer_inventario_historico(anio, mes)
+        if df is None or len(df) == 0:
+            return no_update
+        for col in [COL_CANTIDAD, COL_VALOR, "DIAS EN ALMACEN"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        salida = preparar_detalle(df)
+        titulo = f"Inventario histórico — {_MES_NOMBRE.get(int(mes), mes)} {anio}"
+        datos = excel_detalle_inventario(salida, titulo=titulo)
+        nombre = f"Inventario_historico_{anio}_{int(mes):02d}.xlsx"
+        return dcc.send_bytes(datos, nombre)
