@@ -6,7 +6,14 @@ Tabla PLANA de productos de inventario con diseño premium
 (encabezado azul, filas con marcador dorado). Incluye KPIs,
 filtro por ubicación y gráficos (pastel categoría + barras
 ubicación). Lee de la caché del servidor (db.obtener_df).
+
+NUEVO: botón "Descargar Excel" que baja la tabla de DETALLE
+de productos (lento movimiento) respetando el filtro de
+ubicación que esté puesto.
 """
+
+import io
+from datetime import datetime
 
 from dash import Input, Output, State, html, dcc, no_update
 import dash_ag_grid as dag
@@ -24,7 +31,6 @@ AZUL = "#173C73"
 DORADO = "#D4AF37"
 
 COLOR_CAT = {CAT_1: "#2ecc71", CAT_2: "#f1c40f", CAT_3: "#e74c3c"}
-# tonos suaves para pintar celdas de cada rango (verde/amarillo/rojo)
 COLOR_CAT_SUAVE = {CAT_1: "#D5F5E3", CAT_2: "#FCF3CF", CAT_3: "#FADBD8"}
 RANGOS = [CAT_1, CAT_2, CAT_3]
 
@@ -127,7 +133,6 @@ def _tabla_resumen_ubicacion(df):
         fila["pct"] = (tot_u / valor_total * 100) if valor_total else 0
         filas.append(fila)
 
-    # fila total
     ftot = {"ubicacion": "Total"}
     for r in RANGOS:
         s = df[df["CATEGORIA"] == r]
@@ -136,7 +141,6 @@ def _tabla_resumen_ubicacion(df):
     ftot["valor_total"] = float(valor_total)
     ftot["pct"] = 100.0
 
-    # columnas con grupos por rango (color en el encabezado de grupo)
     col_defs = [
         {"field": "ubicacion", "headerName": "Ubicación", "minWidth": 170,
          "pinned": "left", "sortable": False, "filter": False,
@@ -259,6 +263,9 @@ def crear_layout_tabla_inventario():
                 ),
                 style={"display": "none"},
             ),
+            # componente invisible que dispara la descarga del Excel
+            dcc.Download(id="inv-descarga"),
+
             # KPIs
             html.Div(id="inv-kpis",
                      style={"display": "flex", "gap": "16px", "flexWrap": "wrap",
@@ -288,16 +295,28 @@ def crear_layout_tabla_inventario():
                 style={"display": "flex", "alignItems": "center",
                        "marginBottom": "18px"},
             ),
-            # Tabla de detalle
-            html.H4("Detalle de productos",
-                    style={"color": AZUL, "fontWeight": "700",
-                           "marginBottom": "10px"}),
+            # Tabla de detalle + botón de descarga
+            html.Div(
+                [
+                    html.H4("Detalle de productos",
+                            style={"color": AZUL, "fontWeight": "700",
+                                   "margin": "0"}),
+                    html.Button(
+                        [html.I(className="fas fa-file-excel me-2"),
+                         "Descargar Excel"],
+                        id="inv-btn-descargar", n_clicks=0,
+                        style={"backgroundColor": "#1E8449", "color": "white",
+                               "border": "none", "padding": "10px 18px",
+                               "borderRadius": "8px", "fontWeight": "600",
+                               "cursor": "pointer"}),
+                ],
+                style={"display": "flex", "justifyContent": "space-between",
+                       "alignItems": "center", "marginBottom": "10px"},
+            ),
             html.Div(id="inv-tabla-cont"),
 
             html.Br(),
 
-            # Gráficos AL FINAL. Altura fija (400px) para evitar el
-            # bucle de auto-redimensionamiento de Plotly dentro de flex.
             html.H4("Análisis gráfico",
                     style={"color": AZUL, "fontWeight": "700",
                            "marginTop": "20px", "marginBottom": "10px"}),
@@ -335,8 +354,6 @@ def _df_filtrado(ubicaciones):
 
 def registrar_callbacks_inventario(app):
 
-    # Tablas RESUMEN: solo dependen de la carga (NO del filtro).
-    # Siempre muestran TODO el inventario.
     @app.callback(
         Output("inv-tabla-rango", "children"),
         Output("inv-tabla-ubicacion", "children"),
@@ -349,7 +366,6 @@ def registrar_callbacks_inventario(app):
             return vacio, vacio
         return _tabla_resumen_rango(df), _tabla_resumen_ubicacion(df)
 
-    # opciones del filtro de ubicación (al cargar datos)
     @app.callback(
         Output("inv-filtro-ubicacion", "options"),
         Input("store-bd-inventario", "data"),
@@ -361,7 +377,6 @@ def registrar_callbacks_inventario(app):
         ubis = sorted(df[COL_UBICACION].dropna().unique().tolist())
         return [{"label": u, "value": u} for u in ubis]
 
-    # KPIs + gráficos + tabla (reaccionan al filtro y a la carga)
     @app.callback(
         Output("inv-kpis", "children"),
         Output("inv-grafico-pastel", "figure"),
@@ -378,13 +393,8 @@ def registrar_callbacks_inventario(app):
                               style={"color": "#6C757D"})],
                     vacio, vacio, html.Div())
 
-        # KPIs
         valor_total = df[COL_VALOR].sum()
         total_prod = len(df)
-        # Antigüedad PONDERADA por cantidad en inventario (kg/L):
-        # promedio de "DIAS EN ALMACEN" pesado por la cantidad de cada
-        # producto -> "en promedio, cada kg/L lleva X días parado".
-        # Solo cuentan productos con días válidos (notna).
         _peso = df[COL_CANTIDAD].where(df["DIAS EN ALMACEN"].notna())
         antig = ((df["DIAS EN ALMACEN"] * _peso).sum() / _peso.sum()
                  if _peso.sum() else float("nan"))
@@ -395,7 +405,6 @@ def registrar_callbacks_inventario(app):
                       f"{antig:.0f} días" if pd.notna(antig) else "—"),
         ]
 
-        # Pastel: valor por categoría
         cat = df.groupby("CATEGORIA", observed=False)[COL_VALOR].sum().reset_index()
         cat = cat[cat[COL_VALOR] > 0]
         fig_pie = px.pie(cat, values=COL_VALOR, names="CATEGORIA",
@@ -406,7 +415,6 @@ def registrar_callbacks_inventario(app):
                               plot_bgcolor="rgba(0,0,0,0)",
                               margin=dict(t=50, b=20, l=20, r=20))
 
-        # Barras: valor por ubicación (valor fijo encima, sin hover)
         ubi = df.groupby(COL_UBICACION)[COL_VALOR].sum().reset_index()
         ubi["etiqueta"] = ubi[COL_VALOR].apply(lambda v: f"${v:,.0f}")
         fig_bar = px.bar(ubi, x=COL_UBICACION, y=COL_VALOR,
@@ -424,7 +432,6 @@ def registrar_callbacks_inventario(app):
                               margin=dict(t=50, b=20, l=20, r=20),
                               yaxis=dict(range=[0, ubi[COL_VALOR].max() * 1.15]))
 
-        # Tabla
         grid = dag.AgGrid(
             id="inv-grid",
             rowData=df.to_dict("records"),
@@ -437,3 +444,51 @@ def registrar_callbacks_inventario(app):
             style=_estilo_grid("600px"),
         )
         return kpis, fig_pie, fig_bar, grid
+
+    # ---- DESCARGA del detalle a Excel (respeta el filtro) ----
+    @app.callback(
+        Output("inv-descarga", "data"),
+        Input("inv-btn-descargar", "n_clicks"),
+        State("inv-filtro-ubicacion", "value"),
+        prevent_initial_call=True,
+    )
+    def descargar_excel(n, ubicaciones):
+        if not n:
+            return no_update
+        df = _df_filtrado(ubicaciones)
+        if df is None or len(df) == 0:
+            return no_update
+
+        # columnas y nombres amigables para el Excel (tabla de detalle)
+        cols = [COL_UBICACION, COL_PRODUCTO, COL_UNIDAD, COL_CANTIDAD,
+                "DIAS EN ALMACEN", "CATEGORIA", COL_VALOR]
+        cols = [c for c in cols if c in df.columns]
+        salida = df[cols].copy()
+        salida = salida.rename(columns={
+            COL_UBICACION: "Ubicación",
+            COL_PRODUCTO: "Producto",
+            COL_UNIDAD: "Unidad",
+            COL_CANTIDAD: "Cantidad",
+            "DIAS EN ALMACEN": "Días en almacén",
+            "CATEGORIA": "Categoría",
+            COL_VALOR: "Valor",
+        })
+        # ordenar por días en almacén (los más lentos arriba)
+        if "Días en almacén" in salida.columns:
+            salida = salida.sort_values("Días en almacén", ascending=False)
+
+        # armar el xlsx en memoria
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            salida.to_excel(writer, index=False, sheet_name="Inventario")
+            ws = writer.sheets["Inventario"]
+            # ancho de columnas automático (aproximado)
+            for i, col in enumerate(salida.columns, start=1):
+                ancho = max(12, min(45, int(salida[col].astype(str).str.len().max() or 10) + 2))
+                ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = ancho
+        buf.seek(0)
+
+        fecha = datetime.now().strftime("%Y-%m-%d")
+        etiqueta = "filtrado" if ubicaciones else "completo"
+        nombre = f"Inventario_lento_movimiento_{etiqueta}_{fecha}.xlsx"
+        return dcc.send_bytes(buf.getvalue(), nombre)
