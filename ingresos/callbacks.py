@@ -12,6 +12,11 @@ ligera {"cargado", "version"}.
 
 Columnas: AÑO / MES / SEMANA (las genera ingresos/procesamiento.py
 desde la Fecha último pago).
+
+FIX semana compartida: al DESELECCIONAR un mes, solo se quitan
+las semanas EXCLUSIVAS de ese mes. Las que también pertenecen a
+otro mes que sigue seleccionado se conservan (antes se perdía la
+semana que cruza, p.ej., junio-julio).
 """
 
 from dash import Input, Output, State, ALL, ctx, no_update
@@ -50,7 +55,6 @@ def registrar_callbacks_ingresos(app):
 
     # =====================================================
     # CARGAR SEÑAL AL ENTRAR + llenar dropdown de AÑOS
-    # (arranca en el más reciente)
     # =====================================================
     @app.callback(
         Output("store-bd-ingresos", "data"),
@@ -142,16 +146,23 @@ def registrar_callbacks_ingresos(app):
 
         semanas_del_mes = set(_semanas_de_meses(df, [mes]))
         if mes in meses_activos:
+            # ---- QUITAR mes ----
             meses_activos.remove(mes)
-            semanas_activas = [s for s in semanas_activas if s not in semanas_del_mes]
+            # FIX: conservar las semanas que también pertenezcan a
+            # otro mes que SIGUE activo; solo quitar las exclusivas.
+            semanas_de_meses_restantes = (
+                set(_semanas_de_meses(df, meses_activos)) if meses_activos else set())
+            a_quitar = semanas_del_mes - semanas_de_meses_restantes
+            semanas_activas = [s for s in semanas_activas if s not in a_quitar]
         else:
+            # ---- AGREGAR mes ----
             meses_activos.append(mes)
             semanas_activas = sorted(set(semanas_activas) | semanas_del_mes)
 
         return sorted(meses_activos), semanas_activas
 
     # =====================================================
-    # PINTAR MESES (según el año seleccionado)
+    # PINTAR MESES
     # =====================================================
     @app.callback(
         Output({"type": "btn-mes-ingresos", "index": ALL}, "className"),
@@ -214,7 +225,7 @@ def registrar_callbacks_ingresos(app):
         mes_result = no_update
 
         if semana in semanas_activas:
-            # ---- QUITAR semana (cualquiera, incluida la primera) ----
+            # ---- QUITAR semana ----
             semanas_activas.remove(semana)
             if df is not None:
                 fila = df[df[COL_SEMANA] == semana]
@@ -227,7 +238,7 @@ def registrar_callbacks_ingresos(app):
                         mes_result = sorted(
                             [m for m in meses_activos if m != mes_de])
         else:
-            # ---- AGREGAR semana (enciende su mes si no estaba) ----
+            # ---- AGREGAR semana ----
             semanas_activas.append(semana)
             if df is not None:
                 fila = df[df[COL_SEMANA] == semana]
@@ -239,7 +250,7 @@ def registrar_callbacks_ingresos(app):
         return sorted(semanas_activas), mes_result
 
     # =====================================================
-    # PINTAR SEMANAS (según el año seleccionado)
+    # PINTAR SEMANAS
     # =====================================================
     @app.callback(
         Output({"type": "btn-semana-ingresos", "index": ALL}, "className"),
