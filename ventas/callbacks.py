@@ -10,6 +10,11 @@ AÑO como filtro maestro: el dropdown de año se llena con los
 años disponibles y arranca en el MÁS RECIENTE. Al cambiar de
 año se reinician mes/semana y se recalculan los KPIs para ese
 año. Mes y semana siempre operan dentro del año elegido.
+
+FIX semana compartida: al DESELECCIONAR un mes, solo se quitan
+las semanas EXCLUSIVAS de ese mes. Las semanas que también
+pertenecen a otro mes que sigue seleccionado se mantienen
+(antes se perdía, p.ej., la semana que cruza junio-julio).
 """
 
 from dash import Input, Output, State, html, ALL, ctx, no_update
@@ -45,9 +50,6 @@ def registrar_callbacks_ventas(app):
 
     # =====================================================
     # CARGAR DESDE SUPABASE AL ENTRAR
-    # Marca ligera + llena el dropdown de años y preselecciona
-    # el más reciente. Los KPIs se calculan por año en otro
-    # callback (para que reaccionen al cambio de año).
     # =====================================================
 
     @app.callback(
@@ -72,14 +74,11 @@ def registrar_callbacks_ventas(app):
         anios = obtener_anios(df)
         opciones = [{"label": str(a), "value": int(a)} for a in anios]
 
-        # año seleccionado: conservar el actual si sigue existiendo;
-        # si no, el más reciente
         if anio_actual in anios:
             anio_sel = anio_actual
         else:
             anio_sel = anios[0] if anios else None
 
-        # Si el store ya tiene la versión vigente, solo asegurar opciones/año
         if marca and isinstance(marca, dict) and marca.get("version") == version:
             return no_update, opciones, anio_sel
 
@@ -87,7 +86,6 @@ def registrar_callbacks_ventas(app):
 
     # =====================================================
     # KPIs por AÑO
-    # Recalcula los KPIs cada vez que cambia el año (o al cargar).
     # =====================================================
 
     @app.callback(
@@ -116,8 +114,6 @@ def registrar_callbacks_ventas(app):
 
     # =====================================================
     # CAMBIO DE AÑO -> reiniciar mes/semana
-    # Al elegir otro año, se limpia la selección de mes/semana
-    # para no arrastrar meses del año anterior.
     # =====================================================
 
     @app.callback(
@@ -180,16 +176,24 @@ def registrar_callbacks_ventas(app):
         semanas_del_mes = set(obtener_semanas(df, [mes], anio))
 
         if mes in meses_activos:
+            # ---- QUITAR mes ----
             meses_activos.remove(mes)
-            semanas_activas = [s for s in semanas_activas if s not in semanas_del_mes]
+            # FIX: solo quitar las semanas EXCLUSIVAS de este mes.
+            # Las que también pertenecen a otro mes que SIGUE activo
+            # deben conservarse (ej. semana que cruza junio-julio).
+            semanas_de_meses_restantes = set(
+                obtener_semanas(df, meses_activos, anio)) if meses_activos else set()
+            a_quitar = semanas_del_mes - semanas_de_meses_restantes
+            semanas_activas = [s for s in semanas_activas if s not in a_quitar]
         else:
+            # ---- AGREGAR mes ----
             meses_activos.append(mes)
             semanas_activas = sorted(set(semanas_activas) | semanas_del_mes)
 
         return sorted(meses_activos), semanas_activas
 
     # =====================================================
-    # PINTAR MESES  (según el año seleccionado)
+    # PINTAR MESES
     # =====================================================
 
     @app.callback(
@@ -259,10 +263,8 @@ def registrar_callbacks_ventas(app):
         mes_resultado = no_update
 
         if semana in semanas_activas:
-            # ---- QUITAR semana (cualquiera, incluida la primera) ----
+            # ---- QUITAR semana ----
             semanas_activas.remove(semana)
-            # si al mes de esta semana ya no le queda NINGUNA semana
-            # activa, apagar ese mes (para que no quede pegado).
             if df is not None:
                 fila_semana = df[df["Semana"] == semana]
                 if not fila_semana.empty:
@@ -277,7 +279,7 @@ def registrar_callbacks_ventas(app):
                             [m for m in meses_activos
                              if m != mes_de_la_semana])
         else:
-            # ---- AGREGAR semana (enciende su mes si no estaba) ----
+            # ---- AGREGAR semana ----
             semanas_activas.append(semana)
             if df is not None:
                 fila_semana = df[df["Semana"] == semana]
@@ -290,7 +292,7 @@ def registrar_callbacks_ventas(app):
         return sorted(semanas_activas), mes_resultado
 
     # =====================================================
-    # PINTAR SEMANAS  (según el año seleccionado)
+    # PINTAR SEMANAS
     # =====================================================
 
     @app.callback(
