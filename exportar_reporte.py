@@ -88,25 +88,66 @@ def _buscar(cols, *cand):
 
 
 def _corregir_aging_cxp(df):
-    """Devuelve el df con las 4 columnas de aging RECALCULADAS a
-    partir de 'Importe adeudado' (saldo real) y 'Dias vencido'.
-    Si faltan esas columnas, devuelve el df sin cambios (seguro)."""
-    c_adeudado = _buscar(df.columns, "Importe adeudado", "Importe Adeudado")
+    """Recalcula las 4 columnas de aging de la hoja BD CxP usando la
+    MISMA fórmula que el archivo original (en PESOS):
+
+        W = IF(Impuesto == '', Total_pendiente, Total_pendiente/1.16) * -1
+
+    y se coloca W en la columna de aging que corresponda según el
+    Estatus (Vigente) o los Días vencido (0-30 / 31-60 / >60). Así el
+    Excel descargado queda en pesos (con IVA quitado donde aplica),
+    igual que la página. Si faltan columnas, devuelve el df sin tocar.
+    """
+    c_totpend = _buscar(df.columns, "Total pendiente", "Total Pendiente")
+    c_impuesto = _buscar(df.columns, "Impuesto")
+    c_estatus = _buscar(df.columns, "Estatus", "Estado")
     c_dias = _buscar(df.columns, "Dias vencido", "Días vencido",
                      "Dias vencidos", "Días vencidos")
-    # las 4 columnas de aging tal como están en la plantilla
     cols_aging = {a: _buscar(df.columns, a) for a in _AGING_CXP}
 
-    if c_adeudado is None or c_dias is None or any(v is None for v in cols_aging.values()):
-        # no se puede corregir con seguridad -> dejar como viene
-        return df
+    if c_totpend is None or any(v is None for v in cols_aging.values()):
+        return df  # no se puede corregir con seguridad
 
     df = df.copy()
-    adeudado = pd.to_numeric(df[c_adeudado], errors="coerce").fillna(0.0).abs()
-    rango = df[c_dias].apply(_rango_aging)
+    n = pd.to_numeric(df[c_totpend], errors="coerce").fillna(0.0)
+    imp = df[c_impuesto] if c_impuesto else None
+
+    # W = (N si no hay impuesto, si no N/1.16) * -1  -> monto en pesos
+    def _w(i):
+        val = n.iloc[i]
+        tiene_imp = False
+        if imp is not None:
+            iv = imp.iloc[i]
+            tiene_imp = not (iv is None or iv == "" or (isinstance(iv, float) and pd.isna(iv)) or iv == 0)
+        base = (val / 1.16) if tiene_imp else val
+        return base * -1
+
+    # rango: Vigente si estatus=="Vigente", si no por días de vencido
+    def _rango(i):
+        est = str(df[c_estatus].iloc[i]).strip().lower() if c_estatus else ""
+        if est == "vigente":
+            return "Vigente"
+        dv = 0
+        if c_dias:
+            try:
+                dv = float(df[c_dias].iloc[i])
+            except (ValueError, TypeError):
+                dv = 0
+        if dv <= 0:
+            return "Vigente"
+        if dv <= 30:
+            return "Vencido 0-30 días"
+        if dv <= 60:
+            return "Vencido 31-60 días"
+        return "Vencido >60 días"
+
+    # reconstruir las 4 columnas
+    nuevas = {a: [0.0] * len(df) for a in _AGING_CXP}
+    for i in range(len(df)):
+        w = _w(i)
+        nuevas[_rango(i)][i] = w
     for a in _AGING_CXP:
-        col = cols_aging[a]
-        df[col] = adeudado.where(rango.values == a, 0.0).values
+        df[cols_aging[a]] = nuevas[a]
     return df
 
 
