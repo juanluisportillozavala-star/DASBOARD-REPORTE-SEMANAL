@@ -88,47 +88,66 @@ def _buscar(cols, *cand):
 
 
 def _corregir_aging_cxp(df):
-    """Recalcula las 4 columnas de aging de la hoja BD CxP usando la
-    MISMA fórmula que el archivo original (en PESOS):
+    """Recalcula las 4 columnas de aging de BD CxP con el saldo
+    PENDIENTE REAL (resta abonos), convertido a pesos y SIN IVA:
 
-        W = IF(Impuesto == '', Total_pendiente, Total_pendiente/1.16) * -1
+      USD:  pendiente = Importe_adeudado * (Importe / Total_en_divisa)
+            (Importe/Total_en_divisa = tipo de cambio SIN IVA)
+      MXN:  pendiente = Importe_adeudado / 1.16  (si la factura tiene
+            impuesto; si no, el adeudado tal cual)
 
-    y se coloca W en la columna de aging que corresponda según el
-    Estatus (Vigente) o los Días vencido (0-30 / 31-60 / >60). Así el
-    Excel descargado queda en pesos (con IVA quitado donde aplica),
-    igual que la página. Si faltan columnas, devuelve el df sin tocar.
+    El resultado se coloca en la columna de aging que corresponda
+    según el Estatus (Vigente) o los Días vencido. Así el Excel
+    descargado cuadra con la página (lo que realmente falta pagar,
+    en pesos, sin IVA). Si faltan columnas, no toca el df.
     """
-    c_totpend = _buscar(df.columns, "Total pendiente", "Total Pendiente")
+    c_div = _buscar(df.columns, "Divisa", "Moneda")
+    c_imp_mn = _buscar(df.columns, "Importe")          # importe en MN
+    c_divisa_tot = _buscar(df.columns, "Total en divisa", "Total en divisa ")
+    c_adeudado = _buscar(df.columns, "Importe adeudado", "Importe Adeudado")
     c_impuesto = _buscar(df.columns, "Impuesto")
     c_estatus = _buscar(df.columns, "Estatus", "Estado")
     c_dias = _buscar(df.columns, "Dias vencido", "Días vencido",
                      "Dias vencidos", "Días vencidos")
     cols_aging = {a: _buscar(df.columns, a) for a in _AGING_CXP}
 
-    if c_totpend is None or any(v is None for v in cols_aging.values()):
+    if c_adeudado is None or any(v is None for v in cols_aging.values()):
         return df  # no se puede corregir con seguridad
 
     df = df.copy()
-    n = pd.to_numeric(df[c_totpend], errors="coerce").fillna(0.0)
-    imp = df[c_impuesto] if c_impuesto else None
 
-    # W = (N si no hay impuesto, si no N/1.16) * -1  -> monto en pesos
-    def _w(i):
-        val = n.iloc[i]
-        tiene_imp = False
-        if imp is not None:
-            iv = imp.iloc[i]
-            tiene_imp = not (iv is None or iv == "" or (isinstance(iv, float) and pd.isna(iv)) or iv == 0)
-        base = (val / 1.16) if tiene_imp else val
-        return base * -1
+    def _num(serie, i):
+        try:
+            v = serie.iloc[i]
+            return float(v) if v not in (None, "") and not (isinstance(v, float) and pd.isna(v)) else 0.0
+        except Exception:
+            return 0.0
 
-    # rango: Vigente si estatus=="Vigente", si no por días de vencido
+    def _pendiente_pesos(i):
+        L = _num(df[c_adeudado], i)
+        if L == 0:
+            return 0.0
+        divisa = str(df[c_div].iloc[i]).strip().upper() if c_div else "MXN"
+        tiene_iva = False
+        if c_impuesto is not None:
+            iv = df[c_impuesto].iloc[i]
+            tiene_iva = not (iv is None or iv == "" or (isinstance(iv, float) and pd.isna(iv)) or iv == 0)
+        if divisa == "USD" and c_imp_mn is not None and c_divisa_tot is not None:
+            H = _num(df[c_imp_mn], i)       # importe en pesos (sin IVA)
+            K = _num(df[c_divisa_tot], i)   # total en divisa (USD)
+            if K != 0:
+                tc = abs(H) / abs(K)        # tipo de cambio SIN IVA
+                return abs(L) * tc
+            return abs(L)
+        # MXN: el adeudado ya viene en pesos, con IVA -> quitar IVA si aplica
+        return (abs(L) / 1.16) if tiene_iva else abs(L)
+
     def _rango(i):
         est = str(df[c_estatus].iloc[i]).strip().lower() if c_estatus else ""
         if est == "vigente":
             return "Vigente"
         dv = 0
-        if c_dias:
+        if c_dias is not None:
             try:
                 dv = float(df[c_dias].iloc[i])
             except (ValueError, TypeError):
@@ -141,11 +160,9 @@ def _corregir_aging_cxp(df):
             return "Vencido 31-60 días"
         return "Vencido >60 días"
 
-    # reconstruir las 4 columnas
     nuevas = {a: [0.0] * len(df) for a in _AGING_CXP}
     for i in range(len(df)):
-        w = _w(i)
-        nuevas[_rango(i)][i] = w
+        nuevas[_rango(i)][i] = _pendiente_pesos(i)
     for a in _AGING_CXP:
         df[cols_aging[a]] = nuevas[a]
     return df
