@@ -22,6 +22,7 @@ plano se siguen mostrando bien.
 
 from dash import Input, Output, State, html, dcc, no_update
 import dash_ag_grid as dag
+from datetime import date
 
 import db
 from db import VENDEDORES
@@ -46,6 +47,37 @@ MESES_NOMBRE = {m: n for m, n in MESES}
 FMT_NUM = {"function": "params.value == null ? '' : d3.format(',.0f')(params.value)"}
 FMT_MONEDA = {"function": "params.value == null ? '' : '$' + d3.format(',.2f')(params.value)"}
 FMT_PCT = {"function": "params.value == null ? '—' : d3.format(',.1f')(params.value) + '%'"}
+
+
+
+def _mes_anio_default():
+    """Año y mes a seleccionar al ENTRAR:
+      - el ACTUAL si tiene proyección;
+      - si el mes actual no tiene, el mes anterior con datos de ese año;
+      - si no, el más reciente con datos que no pase del actual;
+      - si no hay nada <= hoy, el más reciente que exista.
+    Devuelve (anio, mes) o (None, None) si no hay proyecciones."""
+    anios = db.anios_con_proyeccion()
+    if not anios:
+        return None, None
+    hoy = date.today()
+    ah, mh = hoy.year, hoy.month
+    if ah in anios:
+        meses = db.meses_con_proyeccion(ah)
+        if mh in meses:
+            return ah, mh
+        ant = [m for m in meses if m < mh]
+        if ant:
+            return ah, max(ant)
+    previos = sorted([a for a in anios if a <= ah], reverse=True)
+    for a in previos:
+        meses = db.meses_con_proyeccion(a)
+        validos = meses if a < ah else [m for m in meses if m <= mh]
+        if validos:
+            return a, max(validos)
+    a = max(anios)
+    meses = db.meses_con_proyeccion(a)
+    return (a, max(meses)) if meses else (a, None)
 
 
 def crear_layout_proyeccion():
@@ -383,7 +415,14 @@ def registrar_callbacks_proyeccion(app):
         if not anios:
             return [], None
         ops = [{"label": str(a), "value": a} for a in anios]
-        val = actual if actual in anios else anios[0]
+        # al entrar: año por defecto = el actual (o el más reciente con datos)
+        anio_def, _ = _mes_anio_default()
+        if actual in anios:
+            val = actual
+        elif anio_def in anios:
+            val = anio_def
+        else:
+            val = anios[0]
         return ops, val
 
     @app.callback(
@@ -399,7 +438,15 @@ def registrar_callbacks_proyeccion(app):
         if not meses:
             return [], None
         ops = [{"label": MESES_NOMBRE.get(m, str(m)), "value": m} for m in meses]
-        val = actual if actual in meses else meses[0]
+        if actual in meses:
+            val = actual
+        else:
+            # mes por defecto para el año seleccionado
+            anio_def, mes_def = _mes_anio_default()
+            if anio == anio_def and mes_def in meses:
+                val = mes_def
+            else:
+                val = meses[-1]   # el más reciente de ese año
         return ops, val
 
     # construir la tabla de cumplimiento + detalle de varios +
