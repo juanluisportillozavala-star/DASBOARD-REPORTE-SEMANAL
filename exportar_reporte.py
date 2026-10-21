@@ -88,83 +88,23 @@ def _buscar(cols, *cand):
 
 
 def _corregir_aging_cxp(df):
-    """Recalcula las 4 columnas de aging de BD CxP con el saldo
-    PENDIENTE REAL (resta abonos), convertido a pesos y SIN IVA:
+    """El archivo de origen (BD CxP) YA trae las 4 columnas de aging
+    correctas: en PESOS y restando los abonos (saldo pendiente real).
+    El problema era que la PLANTILLA las recalculaba con su propia
+    fórmula (que no resta abonos ni convierte dólares).
 
-      USD:  pendiente = Importe_adeudado * (Importe / Total_en_divisa)
-            (Importe/Total_en_divisa = tipo de cambio SIN IVA)
-      MXN:  pendiente = Importe_adeudado / 1.16  (si la factura tiene
-            impuesto; si no, el adeudado tal cual)
-
-    El resultado se coloca en la columna de aging que corresponda
-    según el Estatus (Vigente) o los Días vencido. Así el Excel
-    descargado cuadra con la página (lo que realmente falta pagar,
-    en pesos, sin IVA). Si faltan columnas, no toca el df.
-    """
-    c_div = _buscar(df.columns, "Divisa", "Moneda")
-    c_imp_mn = _buscar(df.columns, "Importe")          # importe en MN
-    c_divisa_tot = _buscar(df.columns, "Total en divisa", "Total en divisa ")
-    c_adeudado = _buscar(df.columns, "Importe adeudado", "Importe Adeudado")
-    c_impuesto = _buscar(df.columns, "Impuesto")
-    c_estatus = _buscar(df.columns, "Estatus", "Estado")
-    c_dias = _buscar(df.columns, "Dias vencido", "Días vencido",
-                     "Dias vencidos", "Días vencidos")
+    Aquí NO se recalcula nada: se dejan las columnas de aging EXACTAS
+    como vienen en el crudo. La escritura del export las pone como
+    VALORES fijos, por lo que la fórmula de la plantilla ya no las
+    pisa. Devuelve el df igual (solo se asegura que las columnas sean
+    numéricas para que sumen bien en la dinámica)."""
     cols_aging = {a: _buscar(df.columns, a) for a in _AGING_CXP}
-
-    if c_adeudado is None or any(v is None for v in cols_aging.values()):
-        return df  # no se puede corregir con seguridad
-
+    if any(v is None for v in cols_aging.values()):
+        return df
     df = df.copy()
-
-    def _num(serie, i):
-        try:
-            v = serie.iloc[i]
-            return float(v) if v not in (None, "") and not (isinstance(v, float) and pd.isna(v)) else 0.0
-        except Exception:
-            return 0.0
-
-    def _pendiente_pesos(i):
-        L = _num(df[c_adeudado], i)
-        if L == 0:
-            return 0.0
-        divisa = str(df[c_div].iloc[i]).strip().upper() if c_div else "MXN"
-        tiene_iva = False
-        if c_impuesto is not None:
-            iv = df[c_impuesto].iloc[i]
-            tiene_iva = not (iv is None or iv == "" or (isinstance(iv, float) and pd.isna(iv)) or iv == 0)
-        if divisa == "USD" and c_imp_mn is not None and c_divisa_tot is not None:
-            H = _num(df[c_imp_mn], i)       # importe en pesos (sin IVA)
-            K = _num(df[c_divisa_tot], i)   # total en divisa (USD)
-            if K != 0:
-                tc = abs(H) / abs(K)        # tipo de cambio SIN IVA
-                return abs(L) * tc
-            return abs(L)
-        # MXN: el adeudado ya viene en pesos, con IVA -> quitar IVA si aplica
-        return (abs(L) / 1.16) if tiene_iva else abs(L)
-
-    def _rango(i):
-        est = str(df[c_estatus].iloc[i]).strip().lower() if c_estatus else ""
-        if est == "vigente":
-            return "Vigente"
-        dv = 0
-        if c_dias is not None:
-            try:
-                dv = float(df[c_dias].iloc[i])
-            except (ValueError, TypeError):
-                dv = 0
-        if dv <= 0:
-            return "Vigente"
-        if dv <= 30:
-            return "Vencido 0-30 días"
-        if dv <= 60:
-            return "Vencido 31-60 días"
-        return "Vencido >60 días"
-
-    nuevas = {a: [0.0] * len(df) for a in _AGING_CXP}
-    for i in range(len(df)):
-        nuevas[_rango(i)][i] = _pendiente_pesos(i)
     for a in _AGING_CXP:
-        df[cols_aging[a]] = nuevas[a]
+        col = cols_aging[a]
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
     return df
 
 
