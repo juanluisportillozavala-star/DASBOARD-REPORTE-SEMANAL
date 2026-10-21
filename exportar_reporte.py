@@ -88,23 +88,73 @@ def _buscar(cols, *cand):
 
 
 def _corregir_aging_cxp(df):
-    """El archivo de origen (BD CxP) YA trae las 4 columnas de aging
-    correctas: en PESOS y restando los abonos (saldo pendiente real).
-    El problema era que la PLANTILLA las recalculaba con su propia
-    fórmula (que no resta abonos ni convierte dólares).
+    """Recalcula las 4 columnas de aging de BD CxP con el saldo
+    PENDIENTE real (Importe adeudado, que resta abonos), convertido
+    a pesos y sin IVA, para que cuadre EXACTO con la página:
 
-    Aquí NO se recalcula nada: se dejan las columnas de aging EXACTAS
-    como vienen en el crudo. La escritura del export las pone como
-    VALORES fijos, por lo que la fórmula de la plantilla ya no las
-    pisa. Devuelve el df igual (solo se asegura que las columnas sean
-    numéricas para que sumen bien en la dinámica)."""
+      USD:  saldo = Importe_adeudado * (Importe / Total_en_divisa)
+            (Importe/Total_en_divisa = tipo de cambio, ya sin IVA)
+      MXN:  saldo = Importe_adeudado / 1.16   (quita IVA)
+
+    El resultado se coloca en la columna de aging según el Estatus
+    (Vigente) o los Días vencido. Si faltan columnas, no toca el df.
+    Verificado contra la página (p.ej. RITA = 27,348.34).
+    """
+    c_div = _buscar(df.columns, "Divisa", "Moneda")
+    c_imp = _buscar(df.columns, "Importe")              # importe en MN
+    c_divtot = _buscar(df.columns, "Total en divisa", "Total en divisa ")
+    c_adeudado = _buscar(df.columns, "Importe adeudado", "Importe Adeudado")
+    c_estatus = _buscar(df.columns, "Estatus", "Estado")
+    c_dias = _buscar(df.columns, "Dias vencido", "Días vencido",
+                     "Dias vencidos", "Días vencidos")
     cols_aging = {a: _buscar(df.columns, a) for a in _AGING_CXP}
-    if any(v is None for v in cols_aging.values()):
+
+    if c_adeudado is None or any(v is None for v in cols_aging.values()):
         return df
+
     df = df.copy()
+
+    def _num(serie, i):
+        try:
+            v = serie.iloc[i]
+            return float(v) if v not in (None, "") and not (isinstance(v, float) and pd.isna(v)) else 0.0
+        except Exception:
+            return 0.0
+
+    def _saldo(i):
+        L = abs(_num(df[c_adeudado], i))
+        if L == 0:
+            return 0.0
+        divisa = str(df[c_div].iloc[i]).strip().upper() if c_div else "MXN"
+        if divisa == "USD" and c_imp is not None and c_divtot is not None:
+            H = abs(_num(df[c_imp], i))
+            K = abs(_num(df[c_divtot], i))
+            return L * (H / K) if K else L     # USD: adeudado × TC
+        return L / 1.16                        # MXN: quitar IVA
+
+    def _rango(i):
+        est = str(df[c_estatus].iloc[i]).strip().lower() if c_estatus else ""
+        if est == "vigente":
+            return "Vigente"
+        dv = 0
+        if c_dias is not None:
+            try:
+                dv = float(df[c_dias].iloc[i])
+            except (ValueError, TypeError):
+                dv = 0
+        if dv <= 0:
+            return "Vigente"
+        if dv <= 30:
+            return "Vencido 0-30 días"
+        if dv <= 60:
+            return "Vencido 31-60 días"
+        return "Vencido >60 días"
+
+    nuevas = {a: [0.0] * len(df) for a in _AGING_CXP}
+    for i in range(len(df)):
+        nuevas[_rango(i)][i] = _saldo(i)
     for a in _AGING_CXP:
-        col = cols_aging[a]
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+        df[cols_aging[a]] = nuevas[a]
     return df
 
 
