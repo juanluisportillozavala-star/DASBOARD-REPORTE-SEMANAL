@@ -1,5 +1,8 @@
 """
 SIDEBAR
+=========================================================
+NOTA: el ítem "Dashboard" está OCULTO por ahora (módulo aún no
+desarrollado). Para reactivarlo, descomentar su línea abajo.
 """
 
 from dash import html, dcc
@@ -44,7 +47,8 @@ def crear_sidebar(rol=None, vendedor=None):
             className="menu-titulo"
         ),
 
-        item("Dashboard", "fas fa-gauge-high", "/dashboard"),
+        # Dashboard OCULTO por ahora (módulo en desarrollo):
+        # item("Dashboard", "fas fa-gauge-high", "/dashboard"),
 
         item("Ventas", "fas fa-chart-line", "/ventas"),
 
@@ -67,17 +71,17 @@ def crear_sidebar(rol=None, vendedor=None):
     # Captura de proyecciones: solo la ven el ADMIN o un usuario con
     # VENDEDOR asignado (los que de verdad pueden editar algo). A un
     # usuario de consulta sin vendedor se le oculta el ítem.
+    # Se inserta después de "Proyección". Como Dashboard ya no está,
+    # Proyección es el índice 2 y Captura va en el índice 3.
     if rol == "admin" or vendedor:
 
-        # se inserta después de "Proyección" (posición 4 de la lista)
         items.insert(
-            4,
+            3,
             item("Captura de proyecciones", "fas fa-pen-to-square",
                  "/captura-proyeccion"),
         )
 
     # Ítems SOLO para admin: carga de datos y configuración.
-    # (BSC ya incluye sus pestañas de Captura y Objetivos según el rol.)
     if rol == "admin":
 
         items.append(

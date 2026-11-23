@@ -2,11 +2,15 @@
 =========================================================
 ROUTER DEL SISTEMA
 =========================================================
+NOTA: el módulo Dashboard está OCULTO por ahora (aún no está
+bien desarrollado). La página de inicio ("/" y "/dashboard")
+carga VENTAS. Para reactivarlo: devolver crear_dashboard() en
+esas rutas y volver a mostrar su ítem en el sidebar.
 """
 
 from dash import html
 
-from layouts.dashboard import crear_dashboard
+from layouts.dashboard import crear_dashboard  # se conserva el import (oculto)
 from ventas.layout import crear_layout_ventas
 from carga import crear_layout_carga
 from ingresos.layout import crear_layout_ingresos
@@ -44,9 +48,10 @@ def pagina_temporal(nombre):
 
 def crear_router(pathname):
 
+    # Inicio y /dashboard -> VENTAS (Dashboard oculto por ahora)
     if pathname in [None, "/", "/dashboard"]:
 
-        return crear_dashboard()
+        return crear_layout_ventas()
 
     elif pathname == "/ventas":
 
